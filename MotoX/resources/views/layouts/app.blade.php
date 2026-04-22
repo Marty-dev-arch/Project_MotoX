@@ -31,13 +31,80 @@
                             </label>
 
                             <div class="ml-auto flex items-center gap-2 sm:gap-3">
-                                <a href="{{ route('landing') }}" class="icon-button" aria-label="Back to Landing">
+                                <div class="header-menu-shell">
+                                    <button
+                                        class="icon-button"
+                                        type="button"
+                                        aria-label="Notifications"
+                                        title="Notifications"
+                                        data-header-menu-trigger="notifications"
+                                        aria-expanded="false"
+                                    >
+                                    <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500"></span>
+                                    <x-icon name="bell" class="h-5 w-5" />
+                                    </button>
+                                    <div class="header-menu-panel hidden" data-header-menu-panel="notifications">
+                                        <p class="header-menu-title">Notifications</p>
+                                        <div class="header-menu-item">
+                                            <x-icon name="alert" class="h-4 w-4 text-brand-500" />
+                                            <div>
+                                                <p class="header-menu-label">Low stock alert</p>
+                                                <p class="header-menu-text">Brake pads are nearing minimum stock.</p>
+                                            </div>
+                                        </div>
+                                        <div class="header-menu-item">
+                                            <x-icon name="job-orders" class="h-4 w-4 text-sky-500" />
+                                            <div>
+                                                <p class="header-menu-label">Job order update</p>
+                                                <p class="header-menu-text">Two vehicles were marked ready for release.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="header-menu-shell">
+                                    <button
+                                        class="icon-button"
+                                        type="button"
+                                        aria-label="Settings"
+                                        title="Settings"
+                                        data-header-menu-trigger="settings"
+                                        aria-expanded="false"
+                                    >
+                                        <x-icon name="settings" class="h-5 w-5" />
+                                    </button>
+                                    <div class="header-menu-panel hidden" data-header-menu-panel="settings">
+                                        <p class="header-menu-title">Quick Settings</p>
+                                        <a href="{{ route('settings') }}" class="header-menu-link">Open settings page</a>
+                                        <a href="{{ route('settings') }}#profile" class="header-menu-link">Edit shop profile</a>
+                                    </div>
+                                </div>
+
+                                <div class="header-menu-shell">
+                                    <button
+                                        class="icon-button"
+                                        type="button"
+                                        aria-label="Profile"
+                                        title="Profile"
+                                        data-header-menu-trigger="profile"
+                                        aria-expanded="false"
+                                    >
+                                        <x-icon name="user" class="h-5 w-5" />
+                                    </button>
+                                    <div class="header-menu-panel hidden" data-header-menu-panel="profile">
+                                        <p class="header-menu-title">Profile</p>
+                                        <a href="{{ route('settings') }}#profile" class="header-menu-link">View profile</a>
+                                        <a href="{{ route('settings') }}" class="header-menu-link">Account preferences</a>
+                                    </div>
+                                </div>
+
+                                <a href="{{ route('landing') }}" class="icon-button" aria-label="Back to Landing" title="Back to Landing">
                                     <x-icon name="car" class="h-5 w-5" />
                                 </a>
 
                                 <form method="POST" action="{{ route('logout') }}">
                                     @csrf
-                                    <button class="icon-button" type="submit" aria-label="Log Out">
+                                    <button class="icon-button" type="submit" aria-label="Log Out" title="Log Out">
                                         <x-icon name="logout" class="h-5 w-5" />
                                     </button>
                                 </form>
