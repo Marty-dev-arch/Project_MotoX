@@ -35,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
     initializePasswordToggles();
     initializeDashboardPolling();
     initializeHeaderMenus();
+    initializeNotificationActions();
+    initializeSidebarNavigation();
 });
 
 function initializeModalControls() {
@@ -524,4 +526,122 @@ function initializeHeaderMenus() {
             closeAllMenus();
         }
     });
+}
+
+function initializeSidebarNavigation() {
+    const layout = document.querySelector('[data-app-layout]');
+    const sidebar = document.getElementById('sidebar');
+    const mobileToggle = document.getElementById('sidebar-toggle');
+    const desktopToggle = document.getElementById('sidebar-desktop-toggle');
+
+    if (!(layout instanceof HTMLElement) || !(sidebar instanceof HTMLElement)) {
+        return;
+    }
+
+    const collapsedStorageKey = 'motox.sidebar.collapsed';
+    const mobileOpenClass = 'sidebar-mobile-open';
+    const desktopCollapsedClass = 'sidebar-desktop-collapsed';
+    const desktopExpandedLabel = 'Hide sidebar';
+    const desktopCollapsedLabel = 'Show sidebar';
+
+    const setDesktopToggleText = (collapsed) => {
+        if (!(desktopToggle instanceof HTMLButtonElement)) {
+            return;
+        }
+
+        const label = collapsed ? desktopCollapsedLabel : desktopExpandedLabel;
+        desktopToggle.setAttribute('aria-label', label);
+        desktopToggle.setAttribute('title', label);
+    };
+
+    const setDesktopCollapsed = (collapsed) => {
+        layout.classList.toggle(desktopCollapsedClass, collapsed);
+        setDesktopToggleText(collapsed);
+
+        try {
+            localStorage.setItem(collapsedStorageKey, collapsed ? '1' : '0');
+        } catch (error) {
+            console.warn('Unable to persist sidebar state', error);
+        }
+    };
+
+    const setMobileOpen = (isOpen) => {
+        sidebar.classList.toggle(mobileOpenClass, isOpen);
+        sidebar.classList.toggle('hidden', !isOpen);
+        if (mobileToggle instanceof HTMLButtonElement) {
+            mobileToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+        }
+    };
+
+    try {
+        const shouldCollapseDesktop = localStorage.getItem(collapsedStorageKey) === '1';
+        setDesktopCollapsed(shouldCollapseDesktop);
+    } catch (error) {
+        setDesktopCollapsed(false);
+    }
+
+    if (desktopToggle instanceof HTMLButtonElement) {
+        desktopToggle.addEventListener('click', () => {
+            const willCollapse = !layout.classList.contains(desktopCollapsedClass);
+            setDesktopCollapsed(willCollapse);
+        });
+    }
+
+    if (mobileToggle instanceof HTMLButtonElement) {
+        mobileToggle.setAttribute('aria-expanded', 'false');
+        mobileToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const willOpen = sidebar.classList.contains('hidden');
+            setMobileOpen(willOpen);
+        });
+    }
+
+    document.addEventListener('click', (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        if (!target.closest('#sidebar') && !target.closest('#sidebar-toggle')) {
+            setMobileOpen(false);
+        }
+    });
+
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 1280) {
+            setMobileOpen(false);
+        }
+    });
+}
+
+function initializeNotificationActions() {
+    const markAsReadButton = document.querySelector('[data-mark-notifications-read]');
+    const unreadDot = document.querySelector('[data-notification-dot]');
+    const storageKey = 'motox.notifications.read';
+
+    if (!(unreadDot instanceof HTMLElement)) {
+        return;
+    }
+
+    const applyReadState = (isRead) => {
+        unreadDot.classList.toggle('hidden', isRead);
+    };
+
+    try {
+        const isRead = localStorage.getItem(storageKey) === '1';
+        applyReadState(isRead);
+    } catch (error) {
+        applyReadState(false);
+    }
+
+    if (markAsReadButton instanceof HTMLButtonElement) {
+        markAsReadButton.addEventListener('click', () => {
+            applyReadState(true);
+            try {
+                localStorage.setItem(storageKey, '1');
+            } catch (error) {
+                console.warn('Unable to persist notification state', error);
+            }
+        });
+    }
 }

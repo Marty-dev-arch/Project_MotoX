@@ -16,7 +16,7 @@
         <form method="POST" action="{{ route('settings.update') }}" class="space-y-6">
             @csrf
 
-            <section class="panel-card p-6">
+            <section id="profile" class="panel-card scroll-mt-28 p-6">
                 <h2 class="text-2xl font-bold text-slate-900">Profile</h2>
                 <p class="mt-1 text-sm text-slate-500">Owner and account identity used across the system.</p>
 
@@ -44,7 +44,7 @@
                 </div>
             </section>
 
-            <section class="panel-card p-6">
+            <section id="settings" class="panel-card scroll-mt-28 p-6">
                 <h2 class="text-2xl font-bold text-slate-900">Shop Preferences</h2>
                 <p class="mt-1 text-sm text-slate-500">Real settings used by job orders and billing.</p>
 
@@ -107,7 +107,7 @@
             </section>
 
             <section class="grid gap-6 lg:grid-cols-2">
-                <article class="panel-card p-6">
+                <article id="notifications" class="panel-card scroll-mt-28 p-6">
                     <div class="flex items-center gap-3">
                         <span class="icon-chip appearance-card-icon">
                             <x-icon name="bell" class="h-5 w-5" />
@@ -120,12 +120,40 @@
 
                     <div class="mt-6 space-y-3">
                         <div class="detail-card">
-                            <p class="text-base font-semibold text-slate-900">Low-stock alerts</p>
-                            <p class="mt-1 text-sm text-slate-500">Shown in dashboard and inventory in real time.</p>
+                            <label class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-base font-semibold text-slate-900">Low-stock alerts</p>
+                                    <p class="mt-1 text-sm text-slate-500">Shown in dashboard and inventory in real time.</p>
+                                </div>
+                                <select name="notify_low_stock_alerts" class="input-shell max-w-[140px]">
+                                    <option value="1" @selected((string) old('notify_low_stock_alerts', $notifications['notify_low_stock_alerts'] ? '1' : '0') === '1')>Enabled</option>
+                                    <option value="0" @selected((string) old('notify_low_stock_alerts', $notifications['notify_low_stock_alerts'] ? '1' : '0') === '0')>Disabled</option>
+                                </select>
+                            </label>
                         </div>
                         <div class="detail-card">
-                            <p class="text-base font-semibold text-slate-900">Job order reminders</p>
-                            <p class="mt-1 text-sm text-slate-500">Highlighted for pending and in-progress work.</p>
+                            <label class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-base font-semibold text-slate-900">Job order reminders</p>
+                                    <p class="mt-1 text-sm text-slate-500">Highlighted for pending and in-progress work.</p>
+                                </div>
+                                <select name="notify_job_order_updates" class="input-shell max-w-[140px]">
+                                    <option value="1" @selected((string) old('notify_job_order_updates', $notifications['notify_job_order_updates'] ? '1' : '0') === '1')>Enabled</option>
+                                    <option value="0" @selected((string) old('notify_job_order_updates', $notifications['notify_job_order_updates'] ? '1' : '0') === '0')>Disabled</option>
+                                </select>
+                            </label>
+                        </div>
+                        <div class="detail-card">
+                            <label class="flex items-center justify-between gap-3">
+                                <div>
+                                    <p class="text-base font-semibold text-slate-900">Billing updates</p>
+                                    <p class="mt-1 text-sm text-slate-500">Notify when invoices become due or overdue.</p>
+                                </div>
+                                <select name="notify_billing_updates" class="input-shell max-w-[140px]">
+                                    <option value="1" @selected((string) old('notify_billing_updates', $notifications['notify_billing_updates'] ? '1' : '0') === '1')>Enabled</option>
+                                    <option value="0" @selected((string) old('notify_billing_updates', $notifications['notify_billing_updates'] ? '1' : '0') === '0')>Disabled</option>
+                                </select>
+                            </label>
                         </div>
                     </div>
                 </article>

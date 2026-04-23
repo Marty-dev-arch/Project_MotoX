@@ -33,6 +33,11 @@ class SettingsController extends Controller
                 'currency_code' => $shop->currency_code ?: 'PHP',
                 'auto_assign_job_orders' => (bool) $shop->auto_assign_job_orders,
             ],
+            'notifications' => [
+                'notify_low_stock_alerts' => (bool) $shop->notify_low_stock_alerts,
+                'notify_job_order_updates' => (bool) $shop->notify_job_order_updates,
+                'notify_billing_updates' => (bool) $shop->notify_billing_updates,
+            ],
         ]));
     }
 
@@ -56,9 +61,12 @@ class SettingsController extends Controller
             'default_labor_rate' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'currency_code' => ['required', Rule::in(['PHP', 'USD', 'EUR', 'GBP'])],
             'auto_assign_job_orders' => ['nullable', 'boolean'],
+            'notify_low_stock_alerts' => ['nullable', 'boolean'],
+            'notify_job_order_updates' => ['nullable', 'boolean'],
+            'notify_billing_updates' => ['nullable', 'boolean'],
         ]);
 
-$user->update([
+        $user->update([
             'name' => trim($validated['owner_name']),
             'email' => strtolower(trim($validated['email'])),
         ]);
@@ -70,6 +78,9 @@ $user->update([
             'default_labor_rate' => $validated['default_labor_rate'],
             'currency_code' => $validated['currency_code'],
             'auto_assign_job_orders' => (bool) ($validated['auto_assign_job_orders'] ?? false),
+            'notify_low_stock_alerts' => (bool) ($validated['notify_low_stock_alerts'] ?? false),
+            'notify_job_order_updates' => (bool) ($validated['notify_job_order_updates'] ?? false),
+            'notify_billing_updates' => (bool) ($validated['notify_billing_updates'] ?? false),
         ]);
 
         return redirect()

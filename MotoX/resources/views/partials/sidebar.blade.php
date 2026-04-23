@@ -1,4 +1,4 @@
-<aside class="hidden border-r border-slate-200 bg-white px-5 py-6 xl:flex xl:min-h-screen xl:flex-col xl:border-r-white/60 transition-all duration-300" id="sidebar">
+<aside class="hidden border-r border-slate-200 bg-white px-5 py-6 transition-all duration-300 xl:flex xl:min-h-screen xl:flex-col xl:border-r-white/60" id="sidebar">
         <div class="space-y-6">
             <div>
                 <a href="{{ route('landing') }}" class="inline-flex items-center gap-2 text-2xl font-black tracking-tight text-slate-900 transition hover:text-brand-700">

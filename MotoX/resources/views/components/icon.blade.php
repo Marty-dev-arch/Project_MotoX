@@ -69,6 +69,12 @@
             <path d="m21 21-4.35-4.35" />
             @break
 
+        @case('menu')
+            <path d="M4 7h16" />
+            <path d="M4 12h16" />
+            <path d="M4 17h16" />
+            @break
+
         @case('bell')
             <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.17V11a6 6 0 1 0-12 0v3.17a2 2 0 0 1-.59 1.42L4 17h5" />
             <path d="M10 17a2 2 0 0 0 4 0" />

@@ -6,11 +6,11 @@
 
         <title>{{ $pageTitle ?? 'MotoX' }}</title>
 
-@vite(['resources/css/app.css', 'resources/js/app.js', 'resources/js/sidebar-toggle.js'])
+@vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="app-shell transition-colors duration-200">
-        <div class="min-h-screen xl:grid xl:grid-cols-[272px_1fr]" id="main-layout">
-<button id="sidebar-toggle" class="fixed z-30 xl:hidden left-4 top-20 p-2 bg-white border border-slate-200 shadow-lg rounded-xl hover:shadow-xl hover:bg-slate-50 transition-all" onclick="toggleSidebar()" aria-label="Toggle navigation">
+        <div class="min-h-screen xl:grid xl:grid-cols-[272px_1fr]" id="main-layout" data-app-layout>
+            <button id="sidebar-toggle" class="fixed left-4 top-20 z-30 rounded-xl border border-slate-200 bg-white p-2 shadow-lg transition-all hover:bg-slate-50 hover:shadow-xl xl:hidden" aria-label="Toggle navigation">
                 <x-icon name="menu" class="h-5 w-5 text-slate-700" />
             </button>
 
@@ -20,6 +20,9 @@
                 @if ($showTopbar ?? true)
                     <header class="sticky top-0 z-20 border-b border-white/60 bg-slate-100/90 backdrop-blur-xl">
                         <div class="mx-auto flex max-w-[1600px] items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
+                            <button id="sidebar-desktop-toggle" type="button" class="icon-button hidden xl:inline-flex" aria-label="Hide sidebar" title="Hide sidebar">
+                                <x-icon name="menu" class="h-5 w-5" />
+                            </button>
                             <label class="search-shell hidden max-w-xl flex-1 items-center gap-3 lg:flex">
                                 <x-icon name="search" class="h-5 w-5 text-slate-400" />
                                 <input
@@ -40,8 +43,8 @@
                                         data-header-menu-trigger="notifications"
                                         aria-expanded="false"
                                     >
-                                    <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500"></span>
-                                    <x-icon name="bell" class="h-5 w-5" />
+                                        <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500" data-notification-dot></span>
+                                        <x-icon name="bell" class="h-5 w-5" />
                                     </button>
                                     <div class="header-menu-panel hidden" data-header-menu-panel="notifications">
                                         <p class="header-menu-title">Notifications</p>
@@ -59,6 +62,8 @@
                                                 <p class="header-menu-text">Two vehicles were marked ready for release.</p>
                                             </div>
                                         </div>
+                                        <button type="button" class="header-menu-link w-full text-left" data-mark-notifications-read>Mark all as read</button>
+                                        <a href="{{ route('settings') }}#notifications" class="header-menu-link">Notification settings</a>
                                     </div>
                                 </div>
 
@@ -75,7 +80,7 @@
                                     </button>
                                     <div class="header-menu-panel hidden" data-header-menu-panel="settings">
                                         <p class="header-menu-title">Quick Settings</p>
-                                        <a href="{{ route('settings') }}" class="header-menu-link">Open settings page</a>
+                                        <a href="{{ route('settings') }}#settings" class="header-menu-link">Open settings page</a>
                                         <a href="{{ route('settings') }}#profile" class="header-menu-link">Edit shop profile</a>
                                     </div>
                                 </div>
@@ -94,7 +99,7 @@
                                     <div class="header-menu-panel hidden" data-header-menu-panel="profile">
                                         <p class="header-menu-title">Profile</p>
                                         <a href="{{ route('settings') }}#profile" class="header-menu-link">View profile</a>
-                                        <a href="{{ route('settings') }}" class="header-menu-link">Account preferences</a>
+                                        <a href="{{ route('settings') }}#settings" class="header-menu-link">Account preferences</a>
                                     </div>
                                 </div>
 
