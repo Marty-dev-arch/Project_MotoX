@@ -92,15 +92,28 @@
                     <span class="h-px flex-1 bg-slate-200"></span>
                 </div>
 
-                <a href="{{ route('google.redirect') }}" class="google-login-btn">
-                    <svg viewBox="0 0 24 24" aria-hidden="true">
-                        <path fill="#EA4335" d="M12 10.2v3.92h5.45c-.24 1.26-.95 2.33-2.03 3.06l3.28 2.54c1.91-1.75 3.01-4.34 3.01-7.42 0-.73-.06-1.43-.19-2.1H12Z"/>
-                        <path fill="#34A853" d="M12 22c2.72 0 5-.9 6.67-2.42l-3.28-2.54c-.91.62-2.08.98-3.39.98-2.61 0-4.82-1.76-5.61-4.12H3.02v2.59A10 10 0 0 0 12 22Z"/>
-                        <path fill="#4A90E2" d="M6.39 13.9a6.02 6.02 0 0 1 0-3.8V7.51H3.02a10 10 0 0 0 0 8.98l3.37-2.59Z"/>
-                        <path fill="#FBBC05" d="M12 5.98c1.48 0 2.8.51 3.84 1.52l2.88-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.98 5.51l3.37 2.59c.8-2.36 3-4.12 5.61-4.12Z"/>
-                    </svg>
-                    Continue with Google
-                </a>
+                @if ($googleOauthConfigured ?? false)
+                    <a href="{{ route('google.redirect') }}" class="google-login-btn">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="#EA4335" d="M12 10.2v3.92h5.45c-.24 1.26-.95 2.33-2.03 3.06l3.28 2.54c1.91-1.75 3.01-4.34 3.01-7.42 0-.73-.06-1.43-.19-2.1H12Z"/>
+                            <path fill="#34A853" d="M12 22c2.72 0 5-.9 6.67-2.42l-3.28-2.54c-.91.62-2.08.98-3.39.98-2.61 0-4.82-1.76-5.61-4.12H3.02v2.59A10 10 0 0 0 12 22Z"/>
+                            <path fill="#4A90E2" d="M6.39 13.9a6.02 6.02 0 0 1 0-3.8V7.51H3.02a10 10 0 0 0 0 8.98l3.37-2.59Z"/>
+                            <path fill="#FBBC05" d="M12 5.98c1.48 0 2.8.51 3.84 1.52l2.88-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.98 5.51l3.37 2.59c.8-2.36 3-4.12 5.61-4.12Z"/>
+                        </svg>
+                        Continue with Google
+                    </a>
+                @else
+                    <button type="button" class="google-login-btn opacity-60 cursor-not-allowed" disabled aria-disabled="true">
+                        <svg viewBox="0 0 24 24" aria-hidden="true">
+                            <path fill="#EA4335" d="M12 10.2v3.92h5.45c-.24 1.26-.95 2.33-2.03 3.06l3.28 2.54c1.91-1.75 3.01-4.34 3.01-7.42 0-.73-.06-1.43-.19-2.1H12Z"/>
+                            <path fill="#34A853" d="M12 22c2.72 0 5-.9 6.67-2.42l-3.28-2.54c-.91.62-2.08.98-3.39.98-2.61 0-4.82-1.76-5.61-4.12H3.02v2.59A10 10 0 0 0 12 22Z"/>
+                            <path fill="#4A90E2" d="M6.39 13.9a6.02 6.02 0 0 1 0-3.8V7.51H3.02a10 10 0 0 0 0 8.98l3.37-2.59Z"/>
+                            <path fill="#FBBC05" d="M12 5.98c1.48 0 2.8.51 3.84 1.52l2.88-2.88A9.64 9.64 0 0 0 12 2a10 10 0 0 0-8.98 5.51l3.37 2.59c.8-2.36 3-4.12 5.61-4.12Z"/>
+                        </svg>
+                        Continue with Google
+                    </button>
+                    <p class="mt-2 text-center text-xs text-slate-500">Google Sign-In is currently unavailable. Configure Google OAuth in the app environment.</p>
+                @endif
 
                 <p class="mt-8 text-center text-base text-slate-500">
                     Need an account?

@@ -211,6 +211,11 @@
         @apply bg-transparent text-slate-500 shadow-none hover:bg-white/70;
     }
 
+    .sidebar-inline-toggle {
+        @apply mb-4 inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200/80 bg-white text-slate-500 transition duration-200 hover:bg-slate-50 hover:text-slate-900;
+        box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.35);
+    }
+
     .mobile-nav-chip {
         @apply inline-flex shrink-0 items-center gap-2 rounded-full border border-slate-200/80 bg-white px-4 py-2 text-sm font-semibold text-slate-500 transition hover:text-slate-900;
     }
@@ -825,6 +830,10 @@
 
     .dark .sidebar-link-secondary {
         @apply text-slate-400 hover:bg-slate-800/80;
+    }
+
+    .dark .sidebar-inline-toggle {
+        @apply border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800 hover:text-slate-100;
     }
 
     .dark .mobile-nav-chip {

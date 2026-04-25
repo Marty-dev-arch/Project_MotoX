@@ -130,26 +130,6 @@
                     </header>
                 @endif
 
-                <div class="border-b border-white/60 bg-white/70 px-4 py-3 xl:hidden">
-                    <div class="no-scrollbar flex gap-2 overflow-x-auto">
-                        @foreach ($navigation as $item)
-                            @php
-                                $active = request()->routeIs($item['route']);
-                            @endphp
-                            <a
-                                href="{{ route($item['route']) }}"
-                                @class([
-                                    'mobile-nav-chip',
-                                    'mobile-nav-chip-active' => $active,
-                                ])
-                            >
-                                <x-icon :name="$item['icon']" class="h-4 w-4" />
-                                <span>{{ $item['label'] }}</span>
-                            </a>
-                        @endforeach
-                    </div>
-                </div>
-
                 <main class="mx-auto max-w-[1600px] px-4 py-6 sm:px-6 lg:px-8">
                     @yield('content')
                 </main>

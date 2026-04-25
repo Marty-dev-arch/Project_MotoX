@@ -533,6 +533,7 @@ function initializeSidebarNavigation() {
     const sidebar = document.getElementById('sidebar');
     const mobileToggle = document.getElementById('sidebar-toggle');
     const desktopToggle = document.getElementById('sidebar-desktop-toggle');
+    const inlineToggle = document.getElementById('sidebar-inline-toggle');
 
     if (!(layout instanceof HTMLElement) || !(sidebar instanceof HTMLElement)) {
         return;
@@ -593,6 +594,20 @@ function initializeSidebarNavigation() {
             event.stopPropagation();
             const willOpen = sidebar.classList.contains('hidden');
             setMobileOpen(willOpen);
+        });
+    }
+
+    if (inlineToggle instanceof HTMLButtonElement) {
+        inlineToggle.addEventListener('click', (event) => {
+            event.stopPropagation();
+
+            if (window.innerWidth >= 1280) {
+                const willCollapse = !layout.classList.contains(desktopCollapsedClass);
+                setDesktopCollapsed(willCollapse);
+                return;
+            }
+
+            setMobileOpen(false);
         });
     }
 

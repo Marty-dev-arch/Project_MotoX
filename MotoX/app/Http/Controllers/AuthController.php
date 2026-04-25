@@ -7,6 +7,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -21,6 +22,7 @@ class AuthController extends Controller
     {
         return view('pages.login', [
             'pageTitle' => 'Log In',
+            'googleOauthConfigured' => $this->isGoogleOauthConfigured(),
         ]);
     }
 
@@ -46,6 +48,14 @@ class AuthController extends Controller
 
     public function redirectToGoogle(): RedirectResponse
     {
+        if (! $this->isGoogleOauthConfigured()) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Google Sign-In is not configured yet. Set GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and GOOGLE_REDIRECT_URI in .env.',
+                ]);
+        }
+
         return Socialite::driver('google')
             ->redirectUrl(route('google.callback'))
             ->redirect();
@@ -53,6 +63,14 @@ class AuthController extends Controller
 
     public function handleGoogleCallback(Request $request): RedirectResponse
     {
+        if (! $this->isGoogleOauthConfigured()) {
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Google Sign-In is not configured yet. Please contact the administrator.',
+                ]);
+        }
+
         if ($request->filled('error')) {
             $description = $request->string('error_description')->toString();
             $message = $description !== '' ? $description : 'Google login was cancelled or failed.';
@@ -173,5 +191,14 @@ class AuthController extends Controller
         $request->session()->regenerateToken();
 
         return redirect()->route('login');
+    }
+
+    private function isGoogleOauthConfigured(): bool
+    {
+        $clientId = (string) Config::get('services.google.client_id', '');
+        $clientSecret = (string) Config::get('services.google.client_secret', '');
+        $redirect = (string) Config::get('services.google.redirect', '');
+
+        return $clientId !== '' && $clientSecret !== '' && $redirect !== '';
     }
 }
