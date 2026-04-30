@@ -10,7 +10,7 @@
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
         <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
 
-@vite(['resources/css/app.css', 'resources/js/app.js'])
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
     <body class="app-shell transition-colors duration-200">
         @php
@@ -28,15 +28,17 @@
                 @if ($showTopbar ?? true)
                     <header class="sticky top-0 z-20 border-b border-white/60 bg-slate-100/90 backdrop-blur-xl">
                         <div class="flex w-full items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
-                            <label class="search-shell hidden min-w-0 max-w-2xl flex-1 items-center gap-5 lg:mr-8 lg:flex">
-                                <x-icon name="search" class="h-5 w-5 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value=""
-                                    placeholder="{{ $searchPlaceholder ?? 'Search anything...' }}"
-                                    class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-                                >
-                            </label>
+                            @if ($showHeaderSearch ?? true)
+                                <label class="search-shell hidden min-w-0 max-w-2xl flex-1 items-center gap-5 lg:mr-8 lg:flex">
+                                    <x-icon name="search" class="h-5 w-5 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        value=""
+                                        placeholder="{{ $searchPlaceholder ?? 'Search anything...' }}"
+                                        class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                                    >
+                                </label>
+                            @endif
 
                             <div class="ml-auto flex items-center gap-5 sm:gap-8">
                                 <div class="header-menu-shell">
@@ -121,17 +123,19 @@
                             </div>
                         </div>
 
-                        <div class="pb-50 pl-28 pr-10 lg:hidden">
-                            <label class="search-shell flex items-center gap-4">
-                                <x-icon name="search" class="h-5 w-5 text-slate-400" />
-                                <input
-                                    type="text"
-                                    value=""
-                                    placeholder="{{ $searchPlaceholder ?? 'Search anything...' }}"
-                                    class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-                                >
-                            </label>
-                        </div>
+                        @if ($showHeaderSearch ?? true)
+                            <div class="pb-50 pl-28 pr-10 lg:hidden">
+                                <label class="search-shell flex items-center gap-4">
+                                    <x-icon name="search" class="h-5 w-5 text-slate-400" />
+                                    <input
+                                        type="text"
+                                        value=""
+                                        placeholder="{{ $searchPlaceholder ?? 'Search anything...' }}"
+                                        class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                                    >
+                                </label>
+                            </div>
+                        @endif
                     </header>
                 @endif
 

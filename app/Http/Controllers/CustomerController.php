@@ -55,6 +55,7 @@ class CustomerController extends Controller
             'heading' => 'Customers',
             'subheading' => 'Manage your real customer records and keep service history linked to every profile.',
             'searchPlaceholder' => 'Search customer, email, phone...',
+            'showHeaderSearch' => false,
             'customers' => $customers,
             'selectedCustomer' => $selectedCustomer,
             'editingCustomer' => $editingCustomer,
@@ -147,7 +148,6 @@ class CustomerController extends Controller
             ->with('status', 'Customer deleted.');
     }
 
-    
     private function validatePayload(Request $request, int $shopId, ?int $ignoreCustomerId = null): array
     {
         return $request->validate([
@@ -172,4 +172,5 @@ class CustomerController extends Controller
 
         return $customer;
     }
-}
+    }
+
