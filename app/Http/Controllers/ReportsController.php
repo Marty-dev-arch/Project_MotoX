@@ -22,10 +22,10 @@ class ReportsController extends Controller
 
         $reportData = $this->buildReportSnapshot($shop);
 
-        return view('pages.reports', $this->buildPageData('reports', [
+return view('pages.reports', $this->buildPageData('reports', [
             'heading' => 'Reports',
             'subheading' => 'Live operational metrics generated from your actual customer, inventory, and job-order data.',
-            'searchPlaceholder' => 'Search report section...',
+            'showHeaderSearch' => false,
             'stats' => $reportData['stats'],
             'monthlyTrend' => $reportData['monthlyTrend'],
             'monthlyTrendSummary' => $reportData['monthlyTrendSummary'],

@@ -32,10 +32,9 @@ class DashboardController extends Controller
             ->take(6)
             ->get();
 
-        return view('pages.dashboard', $this->baseData([
+return view('pages.dashboard', $this->baseData([
             'heading' => 'Dashboard',
             'subheading' => 'Real-time inventory visibility and spare parts activity.',
-            'searchPlaceholder' => 'Search part, sku, movement reference...',
             'stats' => [
                 [
                     'label' => 'Total SKUs',
@@ -111,7 +110,7 @@ class DashboardController extends Controller
         $user = auth()->user();
         $shop = $user?->shop;
 
-        return array_merge([
+return array_merge([
             'pageTitle' => $pageData['heading'] ?? 'MotoX',
             'navigation' => $this->navigationItems(),
             'supportLinks' => $this->supportItems(),
@@ -127,6 +126,7 @@ class DashboardController extends Controller
                 'online' => true,
             ],
             'showTopbar' => true,
+            'showHeaderSearch' => false,
         ], $pageData);
     }
 

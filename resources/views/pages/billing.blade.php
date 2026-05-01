@@ -35,7 +35,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="soft-table min-w-[980px]">
+                <table class="soft-table w-full min-w-[980px]">
                     <thead>
                         <tr class="table-heading">
                             <th>Invoice #</th>

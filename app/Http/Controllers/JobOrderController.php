@@ -32,9 +32,15 @@ class JobOrderController extends Controller
             ->orderBy('name')
             ->get(['id', 'name']);
 
-        $selectedOrder = $orders->firstWhere('id', (int) $request->query('order'))
+$selectedOrder = $orders->firstWhere('id', (int) $request->query('order'))
             ?? $orders->first();
         $editingOrder = $orders->firstWhere('id', (int) $request->query('edit'));
+
+        // Support create=1 query parameter to show blank create form
+        $isCreating = $request->integer('create', 0) === 1;
+        if ($isCreating) {
+            $editingOrder = null;
+        }
 
         $statusCounts = [
             JobOrder::STATUS_PENDING => $orders->where('status', JobOrder::STATUS_PENDING)->count(),
@@ -43,7 +49,7 @@ class JobOrderController extends Controller
             JobOrder::STATUS_CANCELLED => $orders->where('status', JobOrder::STATUS_CANCELLED)->count(),
         ];
 
-        return view('pages.job-orders', $this->buildPageData('job-orders', [
+return view('pages.job-orders', $this->buildPageData('job-orders', [
             'heading' => 'Job Orders',
             'subheading' => 'Track live repair jobs and update progress from intake to release.',
             'searchPlaceholder' => 'Search job order, vehicle, customer...',
@@ -51,6 +57,7 @@ class JobOrderController extends Controller
             'customers' => $customers,
             'selectedOrder' => $selectedOrder,
             'editingOrder' => $editingOrder,
+            'isCreating' => $isCreating,
             'statusCounts' => $statusCounts,
             'statusOptions' => JobOrder::statuses(),
             'totalEstimated' => $orders->sum(fn (JobOrder $order): float => (float) $order->estimated_cost),

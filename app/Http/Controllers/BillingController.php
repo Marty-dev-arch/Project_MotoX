@@ -21,10 +21,10 @@ class BillingController extends Controller
 
         $snapshot = $this->buildBillingSnapshot($shop);
 
-        return view('pages.billing', $this->buildPageData('billing', [
+return view('pages.billing', $this->buildPageData('billing', [
             'heading' => 'Billing',
             'subheading' => 'Invoice-ready totals generated from real job order records.',
-            'searchPlaceholder' => 'Search invoice, order, customer...',
+            'showHeaderSearch' => false,
             'invoices' => $snapshot['invoices'],
             'stats' => $snapshot['stats'],
             'billingMetricsUrl' => route('billing.metrics'),

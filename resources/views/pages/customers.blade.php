@@ -8,7 +8,7 @@
             </div>
         @endif
 
-        <div class="flex flex-wrap items-start justify-between gap-4">
+<div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-4xl font-black tracking-tight text-slate-900">{{ $heading }}</h1>
                 <p class="mt-2 text-sm text-slate-500">{{ $subheading }}</p>
@@ -94,98 +94,19 @@
             </div>
         </div>
 
-        @php
-            $isEditing = $editingCustomer !== null;
-        @endphp
 
-        <!-- Add Customer (full width) -->
-        <section class="panel-card p-5 sm:p-6">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900">{{ $isEditing ? 'Edit Customer' : 'Add Customer' }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">Use real customer records for job orders and billing.</p>
-                </div>
 
-                @if ($isEditing)
-                    <a href="{{ route('customers') }}" class="ghost-button">Cancel</a>
-                @endif
-            </div>
-
-            <form
-                method="POST"
-                action="{{ $isEditing ? route('customers.update', $editingCustomer) : route('customers.store') }}"
-                class="mt-6 space-y-4"
-            >
-                @csrf
-                @if ($isEditing)
-                    @method('PUT')
-                @endif
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <label class="form-field">
-                        <span class="muted-label">Full Name</span>
-                        <input
-                            type="text"
-                            name="name"
-                            value="{{ old('name', $editingCustomer?->name) }}"
-                            class="input-shell"
-                            required
-                        >
-                    </label>
-
-                    <label class="form-field">
-                        <span class="muted-label">Email</span>
-                        <input
-                            type="email"
-                            name="email"
-                            value="{{ old('email', $editingCustomer?->email) }}"
-                            class="input-shell"
-                        >
-                    </label>
-                </div>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <label class="form-field">
-                        <span class="muted-label">Phone</span>
-                        <input
-                            type="text"
-                            name="phone"
-                            value="{{ old('phone', $editingCustomer?->phone) }}"
-                            class="input-shell"
-                        >
-                    </label>
-
-                    <label class="form-field">
-                        <span class="muted-label">Address</span>
-                        <input
-                            type="text"
-                            name="address"
-                            value="{{ old('address', $editingCustomer?->address) }}"
-                            class="input-shell"
-                        >
-                    </label>
-                </div>
-
-                <label class="form-field">
-                    <span class="muted-label">Notes</span>
-                    <textarea name="notes" rows="4" class="input-shell">{{ old('notes', $editingCustomer?->notes) }}</textarea>
-                </label>
-
-                <div class="flex justify-end">
-                    <button type="submit" class="primary-button">
-                        {{ $isEditing ? 'Save Changes' : 'Create Customer' }}
-                    </button>
-                </div>
-            </form>
-        </section>
-
-        <!-- Customer Directory (full width) -->
+<!-- Customer Directory (full width) -->
         <section class="table-shell">
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div>
                     <h3 class="text-2xl font-bold tracking-tight text-slate-900">Customer Directory</h3>
                     <p class="text-sm text-slate-500" id="visible-customers-count">{{ $customers->count() }} profiles</p>
                 </div>
+                <button type="button" class="primary-button" data-open-modal="create-customer-modal">
+                    <x-icon name="plus" class="h-4 w-4" />
+                    <span>Create Customer</span>
+                </button>
             </div>
 
             <div class="overflow-x-auto">
@@ -255,14 +176,57 @@
                             <tr>
                                 <td colspan="5" class="py-10 text-center text-sm text-slate-500">No customers yet. Add your first customer profile.</td>
                             </tr>
-                        @endforelse
+@endforelse
                     </tbody>
                 </table>
             </div>
         </section>
-                        </table>
-                    </div>
+
+    <!-- Create Customer Modal -->
+    <div class="app-modal hidden" data-modal="create-customer-modal">
+        <div class="app-modal-card">
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-2xl font-bold text-slate-900">Create Customer</h3>
+                <button type="button" class="icon-button" data-close-modal="create-customer-modal">
+                    <x-icon name="x" class="h-4 w-4" />
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('customers.store') }}" class="mt-6 space-y-4">
+                @csrf
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label">Full Name</span>
+                        <input type="text" name="name" class="input-shell" required>
+                    </label>
+                    <label class="form-field">
+                        <span class="muted-label">Email</span>
+                        <input type="email" name="email" class="input-shell">
+                    </label>
                 </div>
-            </section>
-</section>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label">Phone</span>
+                        <input type="text" name="phone" class="input-shell">
+                    </label>
+                    <label class="form-field">
+                        <span class="muted-label">Address</span>
+                        <input type="text" name="address" class="input-shell">
+                    </label>
+                </div>
+
+                <label class="form-field">
+                    <span class="muted-label">Notes</span>
+                    <textarea name="notes" rows="4" class="input-shell"></textarea>
+                </label>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" class="ghost-button" data-close-modal="create-customer-modal">Cancel</button>
+                    <button type="submit" class="primary-button">Create Customer</button>
+                </div>
+            </form>
+        </div>
+    </div>
 @endsection

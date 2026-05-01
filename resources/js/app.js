@@ -37,8 +37,9 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    initializeModalControls();
+initializeModalControls();
     initializePasswordToggles();
+    initializeDashboardSearch();
     initializeDashboardPolling();
     initializeBillingPolling();
     initializeCustomersPolling();
@@ -1748,4 +1749,52 @@ function initializeJobOrdersFilters() {
             }
         });
     }
+}
+
+function initializeDashboardSearch() {
+    const searchInput = document.getElementById('dashboard-search-input');
+    const dashboardRoot = document.querySelector('[data-dashboard-search]');
+
+    // Return early if no search input found (not on dashboard page)
+    if (!(searchInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    // Get all searchable items
+    const dashboardItems = document.querySelectorAll('[data-dashboard-item]');
+    const lowStockSection = document.querySelector('[data-dashboard-results="low-stock"]');
+    const movementsSection = document.querySelector('[data-dashboard-results="movements"]');
+
+    // Live search functionality
+    searchInput.addEventListener('input', function (e) {
+        const searchTerm = e.target.value.toLowerCase().trim();
+
+        // If empty search, show all items
+        if (searchTerm === '') {
+            dashboardItems.forEach(row => {
+                row.style.display = '';
+            });
+            return;
+        }
+
+        // Filter dashboard items
+        dashboardItems.forEach(row => {
+            const partName = row.dataset.partName?.toLowerCase() || '';
+            const partSku = row.dataset.partSku?.toLowerCase() || '';
+            const partCategory = row.dataset.partCategory?.toLowerCase() || '';
+            const movementName = row.dataset.movementName?.toLowerCase() || '';
+            const movementType = row.dataset.movementType?.toLowerCase() || '';
+            const movementReason = row.dataset.movementReason?.toLowerCase() || '';
+
+            // Check if any field contains the search term
+            const matches = partName.includes(searchTerm) ||
+                          partSku.includes(searchTerm) ||
+                          partCategory.includes(searchTerm) ||
+                          movementName.includes(searchTerm) ||
+                          movementType.includes(searchTerm) ||
+                          movementReason.includes(searchTerm);
+
+            row.style.display = matches ? '' : 'none';
+        });
+    });
 }

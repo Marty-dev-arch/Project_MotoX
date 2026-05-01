@@ -5,7 +5,7 @@ namespace App\Http\Controllers\Concerns;
 trait BuildsPageData
 {
     
-    protected function buildPageData(string $currentPage, array $data, bool $showTopbar = true): array
+protected function buildPageData(string $currentPage, array $data, bool $showTopbar = true, bool $showHeaderSearch = false): array
     {
         $user = auth()->user();
         $shop = $user?->shop;
@@ -26,6 +26,7 @@ trait BuildsPageData
                 'online' => true,
             ],
             'showTopbar' => $showTopbar,
+            'showHeaderSearch' => $showHeaderSearch,
         ], $data);
     }
 

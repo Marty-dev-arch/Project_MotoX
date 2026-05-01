@@ -8,9 +8,21 @@
             </div>
         @endif
 
-        <div class="space-y-2">
+<div class="space-y-2">
             <h1 class="text-4xl font-black tracking-tight text-slate-900">{{ $heading }}</h1>
             <p class="text-base text-slate-500">{{ $subheading }}</p>
+        </div>
+
+        <div class="flex items-center gap-4">
+            <label class="search-shell flex-1 max-w-md" data-dashboard-search>
+                <x-icon name="search" class="h-5 w-5 text-slate-400" />
+                <input
+                    type="text"
+                    id="dashboard-search-input"
+                    placeholder="Search part, sku, category..."
+                    class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+                >
+            </label>
         </div>
 
         <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
@@ -89,7 +101,7 @@
             </section>
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-[1fr_1fr]">
+<div class="grid gap-6 xl:grid-cols-[1fr_1fr]">
             <section class="panel-card p-5 sm:p-6">
                 <div class="flex items-center justify-between gap-4">
                     <div>
@@ -99,9 +111,9 @@
                     <a href="{{ route('inventory') }}" class="text-sm font-semibold text-brand-600 transition hover:text-brand-700">Open Inventory</a>
                 </div>
 
-                <div class="mt-5 space-y-3">
+                <div class="mt-5 space-y-3" data-dashboard-results="low-stock">
                     @forelse ($lowStockParts as $part)
-                        <article class="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3">
+                        <article class="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3" data-dashboard-item data-part-name="{{ $part->name }}" data-part-sku="{{ $part->sku }}" data-part-category="{{ $part->category }}">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="font-semibold text-slate-900">{{ $part->name }}</p>
@@ -122,13 +134,13 @@
                     <p class="mt-1 text-sm text-slate-500">Latest inventory movements from your team.</p>
                 </div>
 
-                <div class="mt-5 space-y-3">
+<div class="mt-5 space-y-3" data-dashboard-results="movements">
                     @forelse ($recentMovements as $movement)
                         @php
                             $delta = $movement->delta();
                             $tone = $delta > 0 ? 'success' : ($delta < 0 ? 'danger' : 'accent');
                         @endphp
-                        <article class="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                        <article class="rounded-2xl border border-slate-100 bg-white px-4 py-3" data-dashboard-item data-movement-name="{{ $movement->part?->name ?? '' }}" data-movement-type="{{ $movement->type }}" data-movement-reason="{{ $movement->reason ?? '' }}">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="font-semibold text-slate-900">{{ $movement->part?->name ?? 'Part Removed' }}</p>

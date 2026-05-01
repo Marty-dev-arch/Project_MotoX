@@ -102,127 +102,17 @@
             </div>
         </div>
 
-        @php
-            $isEditing = $editingOrder !== null;
-        @endphp
-
-        {{-- Create / Edit Job Order (full width) --}}
-        <section class="panel-card p-5 sm:p-6">
-            <div class="flex items-center justify-between gap-3">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900">{{ $isEditing ? 'Edit Job Order' : 'Create Job Order' }}</h2>
-                    <p class="mt-1 text-sm text-slate-500">Use this form for real workshop job tracking.</p>
-                </div>
-
-                @if ($isEditing)
-                    <a href="{{ route('job-orders') }}" class="ghost-button">Cancel</a>
-                @endif
-            </div>
-
-            <form
-                method="POST"
-                action="{{ $isEditing ? route('job-orders.update', $editingOrder) : route('job-orders.store') }}"
-                class="mt-6 space-y-4"
-            >
-                @csrf
-                @if ($isEditing)
-                    @method('PUT')
-                @endif
-
-                <label class="form-field">
-                    <span class="muted-label">Customer</span>
-                    <select name="customer_id" class="input-shell">
-                        <option value="">Walk-in Customer</option>
-                        @foreach ($customers as $customer)
-                            <option
-                                value="{{ $customer->id }}"
-                                @selected((string) old('customer_id', $editingOrder?->customer_id) === (string) $customer->id)
-                            >
-                                {{ $customer->name }}
-                            </option>
-                        @endforeach
-                    </select>
-                </label>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <label class="form-field">
-                        <span class="muted-label">Vehicle</span>
-                        <input
-                            type="text"
-                            name="vehicle"
-                            value="{{ old('vehicle', $editingOrder?->vehicle) }}"
-                            class="input-shell"
-                            required
-                        >
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Status</span>
-                        <select name="status" class="input-shell" required>
-                            @foreach ($statusOptions as $status)
-                                <option value="{{ $status }}" @selected(old('status', $editingOrder?->status ?? 'pending') === $status)>
-                                    {{ str_replace('_', ' ', ucfirst($status)) }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </label>
-                </div>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <label class="form-field">
-                        <span class="muted-label">Concern</span>
-                        <input
-                            type="text"
-                            name="concern"
-                            value="{{ old('concern', $editingOrder?->concern) }}"
-                            class="input-shell"
-                            required
-                        >
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Estimated Cost (PHP)</span>
-                        <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            name="estimated_cost"
-                            value="{{ old('estimated_cost', $editingOrder?->estimated_cost ?? '0.00') }}"
-                            class="input-shell"
-                            required
-                        >
-                    </label>
-                </div>
-
-                <div class="grid gap-4 md:grid-cols-2">
-                    <label class="form-field">
-                        <span class="muted-label">Scheduled For</span>
-                        <input
-                            type="date"
-                            name="scheduled_for"
-                            value="{{ old('scheduled_for', optional($editingOrder?->scheduled_for)->format('Y-m-d')) }}"
-                            class="input-shell"
-                        >
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Notes</span>
-                        <textarea name="notes" rows="1" class="input-shell">{{ old('notes', $editingOrder?->notes) }}</textarea>
-                    </label>
-                </div>
-
-                <div class="flex justify-end">
-                    <button type="submit" class="primary-button">
-                        {{ $isEditing ? 'Save Changes' : 'Create Job Order' }}
-                    </button>
-                </div>
-            </form>
-        </section>
-
-        {{-- Job Order List (full width) --}}
+{{-- Job Order List (full width) --}}
         <section class="table-shell">
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div>
                     <h3 class="text-2xl font-bold tracking-tight text-slate-900">Job Order List</h3>
                     <p class="text-sm text-slate-500">Latest orders with real-time status tracking.</p>
                 </div>
+<button type="button" class="primary-button" data-open-modal="create-joborder-modal">
+                    <x-icon name="plus" class="h-4 w-4" />
+                    <span>Create Job Order</span>
+                </button>
             </div>
 
             <div class="overflow-x-auto">
@@ -282,7 +172,75 @@
                     </tbody>
                 </table>
             </div>
-        </section>
+</section>
+
+    <!-- Create Job Order Modal -->
+<div class="app-modal hidden" data-modal="create-joborder-modal">
+        <div class="app-modal-card">
+            <div class="flex items-center justify-between gap-3">
+                <h3 class="text-2xl font-bold text-slate-900">Create Job Order</h3>
+                <button type="button" class="icon-button" data-close-modal="create-joborder-modal">
+                    <x-icon name="x" class="h-4 w-4" />
+                </button>
+            </div>
+
+            <form method="POST" action="{{ route('job-orders.store') }}" class="mt-6 space-y-4">
+                @csrf
+
+                <label class="form-field">
+                    <span class="muted-label">Customer</span>
+                    <select name="customer_id" class="input-shell">
+                        <option value="">Walk-in Customer</option>
+                        @foreach ($customers as $customer)
+                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                        @endforeach
+                    </select>
+                </label>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label">Vehicle</span>
+                        <input type="text" name="vehicle" class="input-shell" required>
+                    </label>
+                    <label class="form-field">
+                        <span class="muted-label">Status</span>
+                        <select name="status" class="input-shell" required>
+                            @foreach ($statusOptions as $status)
+                                <option value="{{ $status }}">{{ str_replace('_', ' ', ucfirst($status)) }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label">Concern</span>
+                        <input type="text" name="concern" class="input-shell" required>
+                    </label>
+                    <label class="form-field">
+                        <span class="muted-label">Estimated Cost (PHP)</span>
+                        <input type="number" step="0.01" min="0" name="estimated_cost" class="input-shell" required>
+                    </label>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label">Scheduled For</span>
+                        <input type="date" name="scheduled_for" class="input-shell">
+                    </label>
+                    <label class="form-field">
+                        <span class="muted-label">Notes</span>
+                        <textarea name="notes" rows="1" class="input-shell"></textarea>
+                    </label>
+                </div>
+
+                <div class="flex justify-end gap-3 pt-2">
+                    <button type="button" class="ghost-button" data-close-modal="create-joborder-modal">Cancel</button>
+                    <button type="submit" class="primary-button">Create Job Order</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
     </section>
 @endsection
