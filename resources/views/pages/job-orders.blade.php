@@ -41,17 +41,21 @@
          <!-- Search & Filter -->
         <div class="flex flex-wrap gap-3">
             <div class="relative flex-1 min-w-[200px]">
-                <span class="absolute inset-y-0 left-4 flex items-center text-slate-400">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                    </svg>
-</span>
-                <input
-                    type="text"
-                    id="joborder-search-input"
-                    placeholder="Search order, customer, vehicle..."
-                    class="input-shell w-full pl-11"
-                />
+                <label class="search-shell flex items-center flex-1 max-w-md gap-2">
+    <span class="text-slate-400 flex items-center">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.35-4.35"/>
+        </svg>
+    </span>
+
+    <input
+        type="text"
+        id="joborder-search-input"
+        placeholder="Search order, customer, vehicle..."
+        class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+    >
+</label>
             </div>
            <!-- Filter by Date Dropdown -->
             <div class="relative">

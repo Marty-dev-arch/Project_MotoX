@@ -14,7 +14,7 @@
         </div>
 
         <div class="flex items-center gap-4">
-            <label class="search-shell flex-1 max-w-md" data-dashboard-search>
+            <label class="search-shell flex items-center flex-1 max-w-md gap-2" data-dashboard-search>
                 <x-icon name="search" class="h-5 w-5 text-slate-400" />
                 <input
                     type="text"
