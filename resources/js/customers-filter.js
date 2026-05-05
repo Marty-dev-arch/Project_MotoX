@@ -6,7 +6,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const progressDropdown = document.getElementById('progress-dropdown');
     const customerRows = document.querySelectorAll('.customer-row');
 
-    // Live search functionality
     if (searchInput) {
         searchInput.addEventListener('input', function (e) {
             const searchTerm = e.target.value.toLowerCase();
@@ -27,7 +26,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Filter by Date dropdown toggle
     if (filterDateBtn && dateDropdown) {
         filterDateBtn.addEventListener('click', function () {
             dateDropdown.classList.toggle('hidden');
@@ -40,7 +38,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Date filter options
         dateDropdown.querySelectorAll('[data-date-filter]').forEach(option => {
             option.addEventListener('click', function () {
                 const filter = this.dataset.dateFilter;
@@ -51,7 +48,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Filter by Progress dropdown toggle
     if (filterProgressBtn && progressDropdown) {
         filterProgressBtn.addEventListener('click', function () {
             progressDropdown.classList.toggle('hidden');
@@ -64,7 +60,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Progress filter options
         progressDropdown.querySelectorAll('[data-progress-filter]').forEach(option => {
             option.addEventListener('click', function () {
                 const filter = this.dataset.progressFilter;
@@ -75,7 +70,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Date filter logic
     function applyDateFilter(filter) {
         const now = new Date();
         let startDate = null;
@@ -95,7 +89,6 @@ document.addEventListener('DOMContentLoaded', function () {
                 break;
             case 'all':
             default:
-                // Show all
                 customerRows.forEach(row => row.style.display = '');
                 updateVisibleCount();
                 return;
@@ -116,7 +109,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateVisibleCount();
     }
 
-    // Progress filter logic
     function applyProgressFilter(filter) {
         customerRows.forEach(row => {
             const activeJobs = parseInt(row.dataset.activeJobs) || 0;
@@ -145,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateVisibleCount();
     }
 
-    // Update visible count
     function updateVisibleCount() {
         const visibleCount = Array.from(customerRows).filter(row => row.style.display !== 'none').length;
         const countElement = document.getElementById('visible-customers-count');

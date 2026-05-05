@@ -29,6 +29,13 @@
             <path d="M12 22V12" />
             @break
 
+        @case('clipboard')
+            <rect x="6" y="4" width="12" height="17" rx="2" />
+            <path d="M9 4.5h6" />
+            <path d="M9 9h6" />
+            <path d="M9 13h6" />
+            @break
+
         @case('billing')
             <rect x="3" y="5" width="18" height="14" rx="2" />
             <path d="M3 10h18" />
@@ -69,6 +76,24 @@
             <path d="m21 21-4.35-4.35" />
             @break
 
+        @case('camera')
+            <path d="M14.5 4 16 7h3a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h3l1.5-3h5Z" />
+            <circle cx="12" cy="13" r="3.2" />
+            @break
+
+        @case('calendar')
+            <rect x="3" y="5" width="18" height="16" rx="2" />
+            <path d="M16 3v4" />
+            <path d="M8 3v4" />
+            <path d="M3 11h18" />
+            @break
+
+        @case('image')
+            <rect x="3" y="4" width="18" height="16" rx="2" />
+            <circle cx="8.5" cy="9.5" r="1.5" />
+            <path d="m21 15-4.5-4.5L5 20" />
+            @break
+
         @case('menu')
             <path d="M4 7h16" />
             <path d="M4 12h16" />
@@ -78,6 +103,12 @@
         @case('bell')
             <path d="M15 17h5l-1.4-1.4A2 2 0 0 1 18 14.17V11a6 6 0 1 0-12 0v3.17a2 2 0 0 1-.59 1.42L4 17h5" />
             <path d="M10 17a2 2 0 0 0 4 0" />
+            @break
+
+        @case('messages')
+            <path d="M21 11.5a8.5 8.5 0 0 1-8.5 8.5H6l-3 3v-6.5A8.5 8.5 0 1 1 21 11.5Z" />
+            <path d="M8 10h8" />
+            <path d="M8 14h5" />
             @break
 
         @case('user')
@@ -91,15 +122,14 @@
             @break
 
         @case('eye')
-            <path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z" />
-            <circle cx="12" cy="12" r="2.5" />
+            <path d="M2.5 12s3.7-6.2 9.5-6.2 9.5 6.2 9.5 6.2-3.7 6.2-9.5 6.2S2.5 12 2.5 12Z" />
+            <circle cx="12" cy="12" r="2.7" />
             @break
 
         @case('eye-off')
-            <path d="M3 3 21 21" />
-            <path d="M10.6 6.3A11.7 11.7 0 0 1 12 6c6 0 9.5 6 9.5 6a17.6 17.6 0 0 1-3.1 3.8" />
-            <path d="M6.2 6.2A16.5 16.5 0 0 0 2.5 12s3.5 6 9.5 6c1.3 0 2.6-.3 3.7-.8" />
-            <path d="M9.9 9.9A3 3 0 0 0 12 15a3 3 0 0 0 2.1-.9" />
+            <path d="M2.5 12s3.7-6.2 9.5-6.2 9.5 6.2 9.5 6.2-3.7 6.2-9.5 6.2S2.5 12 2.5 12Z" />
+            <circle cx="12" cy="12" r="2.7" />
+            <path d="M4 4 20 20" />
             @break
 
         @case('id-card')
@@ -177,6 +207,26 @@
 
         @case('chevron-down')
             <path d="m6 9 6 6 6-6" />
+            @break
+
+        @case('arrow-up')
+            <path d="M12 19V5" />
+            <path d="m5 12 7-7 7 7" />
+            @break
+
+        @case('instagram')
+            <rect x="4" y="4" width="16" height="16" rx="4" />
+            <circle cx="12" cy="12" r="3.2" />
+            <path d="M16.8 7.2h.01" />
+            @break
+
+        @case('facebook')
+            <path d="M14 8h2.5V4.5H14a4 4 0 0 0-4 4V11H7v3.5h3V21h3.8v-6.5h2.9L17.2 11h-3.4V8.7c0-.45.25-.7.7-.7Z" />
+            @break
+
+        @case('tiktok')
+            <path d="M14 4v9.2a4 4 0 1 1-4-4" />
+            <path d="M14 4c.6 3.3 2.5 5.1 5 5.4" />
             @break
 
         @case('check-circle')

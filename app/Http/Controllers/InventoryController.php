@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Part;
 use App\Models\StockMovement;
 use App\Support\InventoryMetrics;
+use App\Support\InventoryUnits;
+use App\Support\SystemNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +18,7 @@ class InventoryController extends Controller
 {
     public function index(Request $request): View
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $parts = InventoryMetrics::partsWithStockQuery($shop)
@@ -25,7 +27,7 @@ class InventoryController extends Controller
         $summary = InventoryMetrics::summarizeParts($parts);
         $lowStockParts = $parts
             ->where('is_active', true)
-            ->filter(fn (Part $part): bool => $part->current_stock < $part->minimum_stock)
+            ->filter(fn (Part $part): bool => $part->current_stock <= 0 || ($part->current_stock > 0 && $part->current_stock < $part->minimum_stock))
             ->values();
 
         $categories = $parts
@@ -74,15 +76,19 @@ class InventoryController extends Controller
 
     public function storePart(Request $request): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $validated = $request->validate([
             'sku' => ['required', 'string', 'max:50', Rule::unique('parts', 'sku')->where(fn ($query) => $query->where('shop_id', $shop->id))],
             'name' => ['required', 'string', 'max:140'],
             'category' => ['required', 'string', 'max:100'],
+            'stock_mode' => ['required', Rule::in(['piece', 'box_piece', 'liquid'])],
+            'unit_label' => ['required', 'string', 'max:20'],
+            'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'numeric', 'min:0.001', 'max:1000000'],
+            'allow_fractional_quantity' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'minimum_stock' => ['required', 'integer', 'min:0', 'max:100000'],
+            'minimum_stock' => ['required', 'numeric', 'min:0', 'max:100000'],
             'unit_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'is_active' => ['nullable', 'boolean'],
         ]);
@@ -92,23 +98,38 @@ class InventoryController extends Controller
             $imagePath = $request->file('image')->storePublicly('parts', 'public');
         }
 
-        Part::query()->create([
+        $part = Part::query()->create([
             'shop_id' => $shop->id,
             'sku' => strtoupper(trim($validated['sku'])),
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
+            'stock_mode' => $validated['stock_mode'],
+            'unit_label' => trim((string) $validated['unit_label']),
+            'pieces_per_box' => $validated['stock_mode'] === 'box_piece' ? (float) ($validated['pieces_per_box'] ?? 0) : null,
+            'allow_fractional_quantity' => $validated['stock_mode'] === 'liquid'
+                || (bool) ($validated['allow_fractional_quantity'] ?? false),
             'image_path' => $imagePath,
             'minimum_stock' => $validated['minimum_stock'],
             'unit_price' => $validated['unit_price'],
             'is_active' => (bool) ($validated['is_active'] ?? true),
         ]);
 
+        SystemNotifier::notifyShop(
+            $shop,
+            'part.created',
+            'Part Added',
+            sprintf('%s was added to inventory.', $part->name),
+            'success',
+            ['part_id' => $part->id],
+        );
+        SystemNotifier::notifyStockLevel($part->fresh(), 0.0);
+
         return redirect()->route('inventory')->with('status', 'Part added successfully.');
     }
 
     public function updatePart(Request $request, Part $part): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
 
@@ -123,8 +144,12 @@ class InventoryController extends Controller
             ],
             'name' => ['required', 'string', 'max:140'],
             'category' => ['required', 'string', 'max:100'],
+            'stock_mode' => ['required', Rule::in(['piece', 'box_piece', 'liquid'])],
+            'unit_label' => ['required', 'string', 'max:20'],
+            'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'numeric', 'min:0.001', 'max:1000000'],
+            'allow_fractional_quantity' => ['nullable', 'boolean'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'minimum_stock' => ['required', 'integer', 'min:0', 'max:100000'],
+            'minimum_stock' => ['required', 'numeric', 'min:0', 'max:100000'],
             'unit_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'is_active' => ['nullable', 'boolean'],
         ]);
@@ -142,18 +167,40 @@ class InventoryController extends Controller
             'sku' => strtoupper(trim($validated['sku'])),
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
+            'stock_mode' => $validated['stock_mode'],
+            'unit_label' => trim((string) $validated['unit_label']),
+            'pieces_per_box' => $validated['stock_mode'] === 'box_piece' ? (float) ($validated['pieces_per_box'] ?? 0) : null,
+            'allow_fractional_quantity' => $validated['stock_mode'] === 'liquid'
+                || (bool) ($validated['allow_fractional_quantity'] ?? false),
             'image_path' => $imagePath,
             'minimum_stock' => $validated['minimum_stock'],
             'unit_price' => $validated['unit_price'],
             'is_active' => (bool) ($validated['is_active'] ?? true),
         ]);
 
+        SystemNotifier::notifyShop(
+            $shop,
+            'part.updated',
+            'Part Updated',
+            sprintf('%s details were updated.', $part->name),
+            'success',
+            ['part_id' => $part->id],
+        );
+
+        $freshPart = InventoryMetrics::partsWithStockQuery($shop->id)
+            ->where('parts.id', $part->id)
+            ->first();
+
+        if ($freshPart) {
+            SystemNotifier::notifyStockLevel($part->fresh(), (float) $freshPart->current_stock);
+        }
+
         return redirect()->route('inventory')->with('status', 'Part updated successfully.');
     }
 
     public function destroyPart(Request $request, Part $part): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
 
@@ -176,21 +223,37 @@ class InventoryController extends Controller
 
     public function storeMovement(Request $request, Part $part): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
         $currentStock = $this->currentStockForPart($shop->id, $part->id);
 
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in([StockMovement::TYPE_IN, StockMovement::TYPE_OUT, StockMovement::TYPE_ADJUST])],
-            'quantity' => ['required', 'integer', 'min:-100000', 'max:100000'],
+            'quantity' => ['required', 'numeric', 'min:-100000', 'max:100000'],
+            'quantity_unit' => ['nullable', Rule::in(['piece', 'box', 'liter', 'milliliter'])],
             'reason' => ['nullable', 'string', 'max:255'],
-            'reference' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $validator->after(function ($validator) use ($currentStock): void {
+        $validator->after(function ($validator) use ($currentStock, $part): void {
             $type = (string) request('type');
-            $rawQty = (int) request('quantity');
+            $inputQuantity = (float) request('quantity');
+            $quantityUnit = (string) request('quantity_unit', '');
+            $rawQty = InventoryUnits::toBaseQuantity($part, $inputQuantity, $quantityUnit);
+
+            try {
+                InventoryUnits::assertValidSellQuantity(
+                    $part,
+                    $type === StockMovement::TYPE_ADJUST ? abs($rawQty) : $rawQty
+                );
+            } catch (\Illuminate\Validation\ValidationException $exception) {
+                foreach ($exception->errors() as $fieldErrors) {
+                    foreach ($fieldErrors as $error) {
+                        $validator->errors()->add('quantity', $error);
+                    }
+                }
+                return;
+            }
 
             if (in_array($type, [StockMovement::TYPE_IN, StockMovement::TYPE_OUT], true) && $rawQty <= 0) {
                 $validator->errors()->add('quantity', 'Quantity must be greater than zero for stock in/out.');
@@ -211,21 +274,45 @@ class InventoryController extends Controller
         });
 
         $validated = $validator->validate();
+        $baseQuantity = InventoryUnits::toBaseQuantity(
+            $part,
+            (float) $validated['quantity'],
+            $validated['quantity_unit'] ?? null
+        );
 
         StockMovement::query()->create([
             'part_id' => $part->id,
             'user_id' => $request->user()->id,
             'type' => $validated['type'],
-            'quantity' => $this->normalizeMovementQuantity($validated['type'], (int) $validated['quantity']),
+            'quantity' => $this->normalizeMovementQuantity($validated['type'], $baseQuantity),
             'reason' => $validated['reason'] ?? null,
-            'reference' => $validated['reference'] ?? null,
+            'reference' => null,
             'moved_at' => now(),
         ]);
+
+        $freshPart = InventoryMetrics::partsWithStockQuery($shop->id)
+            ->where('parts.id', $part->id)
+            ->first();
+
+        if ($freshPart) {
+            SystemNotifier::notifyStockLevel($part->fresh(), (float) $freshPart->current_stock);
+        }
+
+        $movementValue = InventoryUnits::priceForBaseQuantity($part, $baseQuantity);
+
+        SystemNotifier::notifyShop(
+            $shop,
+            'stock.movement',
+            'Stock Movement Recorded',
+            sprintf('%s stock %s: %.3f %s worth PHP %s.', $part->name, $validated['type'], $baseQuantity, $part->defaultUnitLabel(), number_format($movementValue, 2)),
+            $validated['type'] === StockMovement::TYPE_OUT ? 'warning' : 'success',
+            ['part_id' => $part->id, 'quantity' => $baseQuantity, 'type' => $validated['type'], 'movement_value' => $movementValue],
+        );
 
         return redirect()->route('inventory')->with('status', 'Stock movement recorded.');
     }
 
-    private function movementDelta(string $type, int $quantity): int
+    private function movementDelta(string $type, float $quantity): float
     {
         return match ($type) {
             StockMovement::TYPE_IN => abs($quantity),
@@ -234,7 +321,7 @@ class InventoryController extends Controller
         };
     }
 
-    private function normalizeMovementQuantity(string $type, int $quantity): int
+    private function normalizeMovementQuantity(string $type, float $quantity): float
     {
         return match ($type) {
             StockMovement::TYPE_IN, StockMovement::TYPE_OUT => abs($quantity),
@@ -249,20 +336,20 @@ class InventoryController extends Controller
         return $part;
     }
 
-    private function currentStockForPart(int $shopId, int $partId): int
+    private function currentStockForPart(int $shopId, int $partId): float
     {
         $stockRow = InventoryMetrics::partsWithStockQuery($shopId)
             ->where('parts.id', $partId)
             ->first();
 
-        return (int) ($stockRow?->current_stock ?? 0);
+        return (float) ($stockRow?->current_stock ?? 0);
     }
 
     
     private function baseData(string $page, array $pageData): array
     {
         $user = auth()->user();
-        $shop = $user?->shop;
+        $shop = $user?->workspaceShop();
 
         return array_merge([
             'pageTitle' => $pageData['heading'] ?? 'MotoX',
@@ -280,12 +367,10 @@ class InventoryController extends Controller
                 'online' => true,
             ],
             'showTopbar' => true,
+            'showHeaderSearch' => false,
         ], $pageData);
     }
 
-    /**
-     * @return array<int, array{label:string,route:string,icon:string}>
-     */
     private function navigationItems(): array
     {
         return [
@@ -299,9 +384,6 @@ class InventoryController extends Controller
         ];
     }
 
-    /**
-     * @return array<int, array{label:string,icon:string,href:string}>
-     */
     private function supportItems(): array
     {
         return [

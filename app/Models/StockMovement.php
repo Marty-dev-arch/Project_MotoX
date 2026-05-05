@@ -20,7 +20,7 @@ class StockMovement extends Model
     protected function casts(): array
     {
         return [
-            'quantity' => 'integer',
+            'quantity' => 'decimal:3',
             'moved_at' => 'datetime',
         ];
     }
@@ -37,13 +37,12 @@ class StockMovement extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function delta(): int
+    public function delta(): float
     {
         return match ($this->type) {
-            self::TYPE_IN => abs($this->quantity),
-            self::TYPE_OUT => abs($this->quantity) * -1,
-            default => $this->quantity,
+            self::TYPE_IN => abs((float) $this->quantity),
+            self::TYPE_OUT => abs((float) $this->quantity) * -1,
+            default => (float) $this->quantity,
         };
     }
 }
-

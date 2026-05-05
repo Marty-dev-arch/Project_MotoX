@@ -59,4 +59,9 @@ class Shop extends Model
     {
         return $this->hasMany(JobOrder::class);
     }
+
+    public function notificationsFeed(): HasMany
+    {
+        return $this->hasMany(SystemNotification::class);
+    }
 }

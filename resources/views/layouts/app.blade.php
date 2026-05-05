@@ -3,8 +3,17 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ $pageTitle ?? 'MotoX' }}</title>
+
+        <script>
+            (() => {
+                const theme = String(localStorage.getItem('theme') || 'light').includes('dark') ? 'dark' : 'light';
+                document.documentElement.classList.toggle('dark', theme === 'dark');
+                document.documentElement.classList.toggle('light', theme !== 'dark');
+            })();
+        </script>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -41,21 +50,10 @@
                                         <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500" data-notification-dot></span>
                                         <x-icon name="bell" class="h-5 w-5" />
                                     </button>
-                                    <div class="header-menu-panel hidden" data-header-menu-panel="notifications">
+                                    <div class="header-menu-panel hidden" data-header-menu-panel="notifications" data-notifications-url="{{ route('notifications.index') }}" data-notifications-read-url="{{ route('notifications.read-all') }}" data-notifications-delete-template="{{ url('/notifications/__ID__') }}">
                                         <p class="header-menu-title">Notifications</p>
-                                        <div class="header-menu-item">
-                                            <x-icon name="alert" class="h-4 w-4 text-brand-500" />
-                                            <div>
-                                                <p class="header-menu-label">Low stock alert</p>
-                                                <p class="header-menu-text">Brake pads are nearing minimum stock.</p>
-                                            </div>
-                                        </div>
-                                        <div class="header-menu-item">
-                                            <x-icon name="job-orders" class="h-4 w-4 text-sky-500" />
-                                            <div>
-                                                <p class="header-menu-label">Job order update</p>
-                                                <p class="header-menu-text">Two vehicles were marked ready for release.</p>
-                                            </div>
+                                        <div class="mt-3 space-y-2" data-notification-list>
+                                            <p class="text-xs text-slate-500">Loading notifications...</p>
                                         </div>
                                         <button type="button" class="header-menu-link w-full text-left" data-mark-notifications-read>Mark all as read</button>
                                         <a href="{{ route('settings') }}#notifications" class="header-menu-link">Notification settings</a>

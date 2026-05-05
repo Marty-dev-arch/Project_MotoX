@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsPageData;
 use App\Models\Customer;
 use App\Models\JobOrder;
+use App\Support\SystemNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -17,7 +19,7 @@ class CustomerController extends Controller
 
     public function index(Request $request): View
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $customers = Customer::query()
@@ -35,14 +37,15 @@ class CustomerController extends Controller
         $selectedCustomer = $customers->firstWhere('id', (int) $request->query('customer'))
             ?? $customers->first();
         $editingCustomer = $customers->firstWhere('id', (int) $request->query('edit'));
+        $historyCustomer = $customers->firstWhere('id', (int) $request->query('history'));
 
-        $recentJobs = $selectedCustomer
+        $historyJobs = $historyCustomer
             ? JobOrder::query()
                 ->forShop($shop)
                 ->with('customer')
-                ->where('customer_id', $selectedCustomer->id)
+                ->where('customer_id', $historyCustomer->id)
                 ->latest()
-                ->take(8)
+                ->take(12)
                 ->get()
             : collect();
 
@@ -59,7 +62,8 @@ class CustomerController extends Controller
             'customers' => $customers,
             'selectedCustomer' => $selectedCustomer,
             'editingCustomer' => $editingCustomer,
-            'recentJobs' => $recentJobs,
+            'historyCustomer' => $historyCustomer,
+            'historyJobs' => $historyJobs,
             'stats' => [
                 'total' => $customers->count(),
                 'active_jobs' => $activeJobs,
@@ -71,7 +75,7 @@ class CustomerController extends Controller
 
     public function metrics(Request $request): JsonResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $customers = Customer::query()
@@ -95,10 +99,13 @@ class CustomerController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $validated = $this->validatePayload($request, $shop->id);
+        $profilePhotoPath = $request->hasFile('profile_photo')
+            ? $request->file('profile_photo')->storePublicly('customer-profiles', 'public')
+            : null;
 
         $customer = Customer::query()->create([
             'shop_id' => $shop->id,
@@ -107,7 +114,17 @@ class CustomerController extends Controller
             'phone' => $validated['phone'] ? trim($validated['phone']) : null,
             'address' => $validated['address'] ? trim($validated['address']) : null,
             'notes' => $validated['notes'] ? trim($validated['notes']) : null,
+            'profile_photo_path' => $profilePhotoPath,
         ]);
+
+        SystemNotifier::notifyShop(
+            $shop,
+            'customer.created',
+            'Customer Added',
+            sprintf('%s was added to the customer directory.', $customer->name),
+            'success',
+            ['customer_id' => $customer->id],
+        );
 
         return redirect()
             ->route('customers', ['customer' => $customer->id])
@@ -116,11 +133,20 @@ class CustomerController extends Controller
 
     public function update(Request $request, Customer $customer): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $customer = $this->shopCustomer($customer, $shop->id);
 
         $validated = $this->validatePayload($request, $shop->id, $customer->id);
+        $profilePhotoPath = $customer->profile_photo_path;
+
+        if ($request->hasFile('profile_photo')) {
+            $profilePhotoPath = $request->file('profile_photo')->storePublicly('customer-profiles', 'public');
+
+            if ($customer->profile_photo_path) {
+                Storage::disk('public')->delete($customer->profile_photo_path);
+            }
+        }
 
         $customer->update([
             'name' => trim($validated['name']),
@@ -128,7 +154,17 @@ class CustomerController extends Controller
             'phone' => $validated['phone'] ? trim($validated['phone']) : null,
             'address' => $validated['address'] ? trim($validated['address']) : null,
             'notes' => $validated['notes'] ? trim($validated['notes']) : null,
+            'profile_photo_path' => $profilePhotoPath,
         ]);
+
+        SystemNotifier::notifyShop(
+            $shop,
+            'customer.updated',
+            'Customer Updated',
+            sprintf('%s profile was updated.', $customer->name),
+            'success',
+            ['customer_id' => $customer->id],
+        );
 
         return redirect()
             ->route('customers', ['customer' => $customer->id])
@@ -137,11 +173,24 @@ class CustomerController extends Controller
 
     public function destroy(Request $request, Customer $customer): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $customer = $this->shopCustomer($customer, $shop->id);
+        $customerName = $customer->name;
+
+        if ($customer->profile_photo_path) {
+            Storage::disk('public')->delete($customer->profile_photo_path);
+        }
 
         $customer->delete();
+
+        SystemNotifier::notifyShop(
+            $shop,
+            'customer.deleted',
+            'Customer Deleted',
+            sprintf('%s was removed from the customer directory.', $customerName),
+            'warning',
+        );
 
         return redirect()
             ->route('customers')
@@ -163,6 +212,7 @@ class CustomerController extends Controller
             'phone' => ['nullable', 'string', 'max:40'],
             'address' => ['nullable', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'profile_photo' => ['nullable', 'image', 'max:2048'],
         ]);
     }
 
@@ -172,5 +222,4 @@ class CustomerController extends Controller
 
         return $customer;
     }
-    }
-
+}

@@ -9,9 +9,10 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'avatar_path', 'email', 'password'])]
+#[Fillable(['name', 'username', 'avatar_path', 'email', 'password', 'role', 'shop_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
@@ -25,9 +26,24 @@ class User extends Authenticatable
         ];
     }
 
+    public function isAdminMechanic(): bool
+    {
+        return $this->role === 'admin';
+    }
+
     public function shop(): HasOne
     {
         return $this->hasOne(Shop::class);
+    }
+
+    public function assignedShop(): BelongsTo
+    {
+        return $this->belongsTo(Shop::class, 'shop_id');
+    }
+
+    public function workspaceShop(): ?Shop
+    {
+        return $this->assignedShop ?: $this->shop;
     }
 
     public function stockMovements(): HasMany
@@ -35,4 +51,8 @@ class User extends Authenticatable
         return $this->hasMany(StockMovement::class);
     }
 
+    public function notificationsFeed(): HasMany
+    {
+        return $this->hasMany(SystemNotification::class);
+    }
 }

@@ -20,6 +20,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'scheduled_for',
     'completed_at',
     'notes',
+    'walk_in_profile_photo_path',
 ])]
 class JobOrder extends Model
 {
@@ -71,4 +72,3 @@ class JobOrder extends Model
         return $this->belongsTo(Customer::class);
     }
 }
-

@@ -8,7 +8,7 @@ trait BuildsPageData
 protected function buildPageData(string $currentPage, array $data, bool $showTopbar = true, bool $showHeaderSearch = false): array
     {
         $user = auth()->user();
-        $shop = $user?->shop;
+        $shop = $user?->workspaceShop();
 
         return array_merge([
             'pageTitle' => $data['heading'] ?? 'MotoX',
@@ -30,9 +30,6 @@ protected function buildPageData(string $currentPage, array $data, bool $showTop
         ], $data);
     }
 
-    /**
-     * @return array<int, array{label:string,route:string,icon:string}>
-     */
     private function navigationItems(): array
     {
         return [
@@ -46,9 +43,6 @@ protected function buildPageData(string $currentPage, array $data, bool $showTop
         ];
     }
 
-    /**
-     * @return array<int, array{label:string,icon:string,href:string}>
-     */
     private function supportItems(): array
     {
         return [

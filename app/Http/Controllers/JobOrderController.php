@@ -5,9 +5,11 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsPageData;
 use App\Models\Customer;
 use App\Models\JobOrder;
+use App\Support\SystemNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
@@ -17,7 +19,7 @@ class JobOrderController extends Controller
 
     public function index(Request $request): View
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $orders = JobOrder::query()
@@ -30,13 +32,12 @@ class JobOrderController extends Controller
         $customers = Customer::query()
             ->forShop($shop)
             ->orderBy('name')
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'profile_photo_path']);
 
 $selectedOrder = $orders->firstWhere('id', (int) $request->query('order'))
             ?? $orders->first();
         $editingOrder = $orders->firstWhere('id', (int) $request->query('edit'));
 
-        // Support create=1 query parameter to show blank create form
         $isCreating = $request->integer('create', 0) === 1;
         if ($isCreating) {
             $editingOrder = null;
@@ -67,7 +68,7 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
     public function metrics(Request $request): JsonResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $orders = JobOrder::query()
@@ -88,11 +89,14 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
     public function store(Request $request): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $validated = $this->validatePayload($request, $shop->id);
         $orderNumber = $this->nextOrderNumber($shop->id);
+        $walkInProfilePhotoPath = empty($validated['customer_id']) && $request->hasFile('walk_in_profile_photo')
+            ? $request->file('walk_in_profile_photo')->storePublicly('job-order-profiles', 'public')
+            : null;
 
         $order = JobOrder::query()->create([
             'shop_id' => $shop->id,
@@ -105,7 +109,28 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'scheduled_for' => $validated['scheduled_for'],
             'completed_at' => $validated['status'] === JobOrder::STATUS_COMPLETED ? now() : null,
             'notes' => $validated['notes'] ? trim($validated['notes']) : null,
+            'walk_in_profile_photo_path' => $walkInProfilePhotoPath,
         ]);
+
+        SystemNotifier::notifyShop(
+            $shop,
+            'job.created',
+            'New Job Order',
+            sprintf('%s was created for %s.', $order->order_number, $order->customer?->name ?? 'Walk-in Customer'),
+            'info',
+            ['job_order_id' => $order->id],
+        );
+
+        if ((float) $order->estimated_cost > 0) {
+            SystemNotifier::notifyShop(
+                $shop,
+                'billing.updated',
+                'Billing Updated',
+                sprintf('%s added %s to billing.', $order->order_number, 'PHP '.number_format((float) $order->estimated_cost, 2)),
+                'success',
+                ['job_order_id' => $order->id, 'amount' => (float) $order->estimated_cost],
+            );
+        }
 
         return redirect()
             ->route('job-orders', ['order' => $order->id])
@@ -114,12 +139,29 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
     public function update(Request $request, JobOrder $jobOrder): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $jobOrder = $this->shopOrder($jobOrder, $shop->id);
 
         $validated = $this->validatePayload($request, $shop->id);
         $isCompleting = $validated['status'] === JobOrder::STATUS_COMPLETED;
+        $originalStatus = $jobOrder->status;
+        $originalAmount = (float) $jobOrder->estimated_cost;
+        $walkInProfilePhotoPath = $jobOrder->walk_in_profile_photo_path;
+
+        if (! empty($validated['customer_id'])) {
+            if ($walkInProfilePhotoPath) {
+                Storage::disk('public')->delete($walkInProfilePhotoPath);
+            }
+
+            $walkInProfilePhotoPath = null;
+        } elseif ($request->hasFile('walk_in_profile_photo')) {
+            $walkInProfilePhotoPath = $request->file('walk_in_profile_photo')->storePublicly('job-order-profiles', 'public');
+
+            if ($jobOrder->walk_in_profile_photo_path) {
+                Storage::disk('public')->delete($jobOrder->walk_in_profile_photo_path);
+            }
+        }
 
         $jobOrder->update([
             'customer_id' => $validated['customer_id'],
@@ -130,7 +172,30 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'scheduled_for' => $validated['scheduled_for'],
             'completed_at' => $isCompleting ? ($jobOrder->completed_at ?: now()) : null,
             'notes' => $validated['notes'] ? trim($validated['notes']) : null,
+            'walk_in_profile_photo_path' => $walkInProfilePhotoPath,
         ]);
+
+        if ($originalStatus !== $jobOrder->status) {
+            SystemNotifier::notifyShop(
+                $shop,
+                'job.updated',
+                'Job Order Updated',
+                sprintf('%s status changed to %s.', $jobOrder->order_number, str_replace('_', ' ', $jobOrder->status)),
+                $jobOrder->status === JobOrder::STATUS_COMPLETED ? 'success' : 'info',
+                ['job_order_id' => $jobOrder->id, 'status' => $jobOrder->status],
+            );
+        }
+
+        if ($originalStatus !== $jobOrder->status || $originalAmount !== (float) $jobOrder->estimated_cost) {
+            SystemNotifier::notifyShop(
+                $shop,
+                'billing.updated',
+                'Billing Updated',
+                sprintf('%s billing is now %s.', $jobOrder->order_number, 'PHP '.number_format((float) $jobOrder->estimated_cost, 2)),
+                'success',
+                ['job_order_id' => $jobOrder->id, 'amount' => (float) $jobOrder->estimated_cost],
+            );
+        }
 
         return redirect()
             ->route('job-orders', ['order' => $jobOrder->id])
@@ -139,9 +204,13 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
     public function destroy(Request $request, JobOrder $jobOrder): RedirectResponse
     {
-        $shop = $request->user()->shop;
+        $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $jobOrder = $this->shopOrder($jobOrder, $shop->id);
+
+        if ($jobOrder->walk_in_profile_photo_path) {
+            Storage::disk('public')->delete($jobOrder->walk_in_profile_photo_path);
+        }
 
         $jobOrder->delete();
 
@@ -165,6 +234,7 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'estimated_cost' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'scheduled_for' => ['nullable', 'date'],
             'notes' => ['nullable', 'string', 'max:2000'],
+            'walk_in_profile_photo' => ['nullable', 'image', 'max:2048'],
         ]);
     }
 

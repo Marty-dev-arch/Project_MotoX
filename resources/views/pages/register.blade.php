@@ -93,7 +93,7 @@
                             <span class="auth-label">Password</span>
                             <div class="auth-input-wrap">
                                 <x-icon name="lock" class="h-5 w-5 text-slate-500" />
-                                <input id="register-password" type="password" name="password" class="auth-input auth-input-password" placeholder="At least 8 characters" required>
+                                <input id="register-password" type="password" name="password" class="auth-input auth-input-password" placeholder="Input 8 character" required>
                                 <button
                                     type="button"
                                     class="password-toggle"
@@ -101,8 +101,8 @@
                                     data-target="register-password"
                                     aria-label="Show password"
                                 >
-                                    <x-icon name="eye" class="password-toggle-icon" data-password-icon="show" />
-                                    <x-icon name="eye-off" class="password-toggle-icon hidden" data-password-icon="hide" />
+                                    <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
+                                    <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                                 </button>
                             </div>
                         </label>
@@ -119,12 +119,23 @@
                                     data-target="register-password-confirmation"
                                     aria-label="Show password"
                                 >
-                                    <x-icon name="eye" class="password-toggle-icon" data-password-icon="show" />
-                                    <x-icon name="eye-off" class="password-toggle-icon hidden" data-password-icon="hide" />
+                                    <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
+                                    <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                                 </button>
                             </div>
                         </label>
                     </div>
+
+                    <label class="auth-consent">
+                        <input type="checkbox" name="terms" value="1" class="sr-only" required @checked(old('terms'))>
+                        <span class="auth-consent-dot" aria-hidden="true"></span>
+                        <span>
+                            I agree to the
+                            <a href="{{ route('landing') }}#contact">Terms</a>
+                            &amp;
+                            <a href="{{ route('landing') }}#contact">Privacy Policy</a>
+                        </span>
+                    </label>
 
                     <button type="submit" class="auth-submit mt-1">
                         <span>Register Account</span>

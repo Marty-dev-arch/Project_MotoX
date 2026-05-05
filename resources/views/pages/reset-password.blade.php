@@ -38,13 +38,12 @@
 
                 <form action="{{ route('password.update') }}" method="POST" class="mt-8 space-y-5">
                     @csrf
-                    <input type="hidden" name="token" value="{{ $token }}">
 
                     <label class="form-field gap-2.5">
                         <span class="auth-label">Email Address</span>
                         <div class="auth-input-wrap">
                             <x-icon name="user" class="h-5 w-5 text-slate-500" />
-                            <input type="email" name="email" class="auth-input" placeholder="you@example.com" value="{{ old('email', $email ?? '') }}" required>
+                            <input type="email" name="email" class="auth-input" placeholder="you@example.com" value="{{ old('email', $email ?? '') }}" required readonly>
                         </div>
                     </label>
 
@@ -60,8 +59,8 @@
                                 data-target="reset-password"
                                 aria-label="Show password"
                             >
-                                <x-icon name="eye" class="password-toggle-icon" data-password-icon="show" />
-                                <x-icon name="eye-off" class="password-toggle-icon hidden" data-password-icon="hide" />
+                                <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
+                                <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                             </button>
                         </div>
                     </label>
@@ -78,8 +77,8 @@
                                 data-target="reset-password-confirmation"
                                 aria-label="Show password"
                             >
-                                <x-icon name="eye" class="password-toggle-icon" data-password-icon="show" />
-                                <x-icon name="eye-off" class="password-toggle-icon hidden" data-password-icon="hide" />
+                                <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
+                                <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                             </button>
                         </div>
                     </label>

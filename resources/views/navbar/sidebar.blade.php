@@ -3,7 +3,9 @@
         <div>
             <div class="sidebar-brand-row flex items-center justify-between gap-3">
                 <a href="{{ route('landing') }}" title="MotoX" class="sidebar-brand-link inline-flex items-center gap-2 text-2xl font-black tracking-tight transition hover:text-brand-400">
-                    <x-icon name="car" class="h-5 w-5 text-brand-600" />
+                    <span class="sidebar-brand-icon">
+                        <x-icon name="car" class="h-5 w-5" />
+                    </span>
                     <span class="sidebar-text">MotoX</span>
                 </a>
 

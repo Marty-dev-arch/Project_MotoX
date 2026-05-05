@@ -2,16 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\PasswordResetOtp;
 use App\Models\Shop;
 use App\Models\User;
-use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
@@ -35,19 +35,35 @@ class AuthController extends Controller
         $credentials = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
+            'remember' => ['nullable', 'boolean'],
         ]);
 
-        if (! Auth::attempt($credentials)) {
+        $remember = $request->boolean('remember');
+        unset($credentials['remember']);
+
+        if (! Auth::attempt($credentials, $remember)) {
             return back()
                 ->withErrors([
-                    'email' => 'Invalid Email or Passsword.',
+                    'email' => 'Invalid email or password.',
+                ])
+                ->onlyInput('email');
+        }
+
+        if (($request->user()?->role ?? null) === 'client') {
+            Auth::guard('web')->logout();
+
+            return back()
+                ->withErrors([
+                    'email' => 'Client accounts are no longer supported.',
                 ])
                 ->onlyInput('email');
         }
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        $target = $this->homeRouteFor($request->user());
+
+        return redirect()->route($target);
     }
 
     public function showForgotPassword(): View
@@ -63,62 +79,182 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $status = Password::sendResetLink([
-            'email' => strtolower(trim((string) $validated['email'])),
-        ]);
-
-        if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('status', __($status));
+        if (! $this->canSendResetOtpEmail()) {
+            return back()
+                ->withErrors([
+                    'email' => $this->resetOtpMailHint(),
+                ])
+                ->withInput($request->only('email'));
         }
 
-        return back()
-            ->withErrors(['email' => __($status)])
-            ->withInput($request->only('email'));
+        $email = strtolower(trim((string) $validated['email']));
+        $user = User::query()->where('email', $email)->first();
+
+        if (! $user) {
+            return redirect()
+                ->route('password.otp.form', ['email' => $email])
+                ->with('status', 'If this email is registered, an OTP has been sent.');
+        }
+
+        $latestOtp = PasswordResetOtp::query()
+            ->where('email', $email)
+            ->latest('id')
+            ->first();
+
+        if ($latestOtp && $latestOtp->created_at?->gt(now()->subMinute())) {
+            return back()
+                ->withErrors([
+                    'email' => 'Please wait at least 1 minute before requesting a new OTP.',
+                ])
+                ->withInput($request->only('email'));
+        }
+
+        $otp = (string) random_int(100000, 999999);
+
+        $otpRecord = PasswordResetOtp::query()->create([
+            'email' => $email,
+            'otp_hash' => Hash::make($otp),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(10),
+            'ip_address' => $request->ip(),
+        ]);
+
+        $message = implode("\n", [
+            'MotoX Password Reset OTP',
+            '',
+            "Your OTP is: {$otp}",
+            'This code expires in 10 minutes.',
+            'If you did not request this, you can ignore this email.',
+        ]);
+
+        try {
+            Mail::raw($message, function ($mail) use ($email): void {
+                $mail
+                    ->to($email)
+                    ->subject('MotoX Password Reset OTP');
+            });
+        } catch (Throwable $exception) {
+            report($exception);
+            $otpRecord->delete();
+
+            return back()
+                ->withErrors([
+                    'email' => $this->otpDeliveryErrorMessage($exception),
+                ])
+                ->withInput($request->only('email'));
+        }
+
+        return redirect()
+            ->route('password.otp.form', ['email' => $email])
+            ->with('status', 'A 6-digit OTP has been sent to your email.');
     }
 
-    public function showResetPassword(Request $request, string $token): View
+    public function showVerifyOtp(Request $request): View
     {
+        return view('pages.forgot-password-otp', [
+            'pageTitle' => 'Verify OTP',
+            'email' => $request->string('email')->toString(),
+        ]);
+    }
+
+    public function verifyOtp(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email'],
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        $email = strtolower(trim((string) $validated['email']));
+        $record = PasswordResetOtp::query()
+            ->activeForEmail($email)
+            ->latest('id')
+            ->first();
+
+        if (! $record) {
+            return back()
+                ->withErrors(['otp' => 'OTP is invalid or expired.'])
+                ->withInput($request->only('email'));
+        }
+
+        if ($record->attempts >= 5) {
+            return back()
+                ->withErrors(['otp' => 'Too many attempts. Request a new OTP.'])
+                ->withInput($request->only('email'));
+        }
+
+        $otp = (string) $validated['otp'];
+        if (! Hash::check($otp, $record->otp_hash)) {
+            $record->increment('attempts');
+
+            return back()
+                ->withErrors(['otp' => 'Incorrect OTP.'])
+                ->withInput($request->only('email'));
+        }
+
+        $record->update([
+            'consumed_at' => now(),
+        ]);
+
+        $request->session()->put('password_reset_verified', [
+            'email' => $email,
+            'verified_at' => now()->timestamp,
+        ]);
+
+        return redirect()
+            ->route('password.reset')
+            ->with('status', 'OTP verified. You can now reset your password.');
+    }
+
+    public function showResetPassword(Request $request): View
+    {
+        $verified = $request->session()->get('password_reset_verified');
+        abort_if(! is_array($verified) || ! isset($verified['email']), 403, 'Password reset session not found.');
+
         return view('pages.reset-password', [
             'pageTitle' => 'Reset Password',
-            'token' => $token,
-            'email' => $request->string('email')->toString(),
+            'email' => (string) $verified['email'],
+            'otpVerified' => true,
         ]);
     }
 
     public function resetPassword(Request $request): RedirectResponse
     {
+        $verified = $request->session()->get('password_reset_verified');
+        if (! is_array($verified) || ! isset($verified['email'])) {
+            return redirect()
+                ->route('password.request')
+                ->withErrors(['email' => 'OTP verification is required.']);
+        }
+
         $validated = $request->validate([
-            'token' => ['required', 'string'],
             'email' => ['required', 'email'],
             'password' => ['required', 'string', 'confirmed', 'min:8', 'max:255'],
         ]);
 
-        $status = Password::reset(
-            [
-                'email' => strtolower(trim((string) $validated['email'])),
-                'password' => (string) $validated['password'],
-                'password_confirmation' => (string) $request->input('password_confirmation'),
-                'token' => (string) $validated['token'],
-            ],
-            function (User $user, string $password): void {
-                $user->forceFill([
-                    'password' => Hash::make($password),
-                    'remember_token' => Str::random(60),
-                ])->save();
-
-                event(new PasswordReset($user));
-            },
-        );
-
-        if ($status === Password::PASSWORD_RESET) {
-            return redirect()
-                ->route('login')
-                ->with('status', __($status));
+        $email = strtolower(trim((string) $validated['email']));
+        if ($email !== strtolower(trim((string) $verified['email']))) {
+            return back()->withErrors(['email' => 'Email does not match verified OTP session.']);
         }
 
-        return back()
-            ->withErrors(['email' => __($status)])
-            ->withInput($request->only('email'));
+        $user = User::query()->where('email', $email)->first();
+        if (! $user) {
+            return back()->withErrors(['email' => 'Account not found.']);
+        }
+
+        $user->forceFill([
+            'password' => Hash::make((string) $validated['password']),
+            'remember_token' => Str::random(60),
+        ])->save();
+
+        PasswordResetOtp::query()
+            ->where('email', $email)
+            ->update(['consumed_at' => now()]);
+
+        $request->session()->forget('password_reset_verified');
+
+        return redirect()
+            ->route('login')
+            ->with('status', 'Password updated successfully. Please log in.');
     }
 
     public function redirectToGoogle(): RedirectResponse
@@ -206,23 +342,31 @@ class AuthController extends Controller
         $displayName = $displayName !== '' ? $displayName : 'MotoX User';
 
         $user = DB::transaction(function () use ($email, $displayName): User {
+            $isNewUser = false;
             $user = User::query()->where('email', $email)->first();
 
             if (! $user) {
+                $isNewUser = true;
                 $user = User::query()->create([
                     'name' => Str::limit($displayName, 120, ''),
+                    'username' => $this->uniqueUsernameFor($email, $displayName),
                     'email' => $email,
                     'password' => Str::random(40),
+                    'role' => 'admin',
                 ]);
             }
 
-            if (! $user->shop) {
-                Shop::query()->create([
+            if ($isNewUser || ! $user->shop) {
+                $shop = Shop::query()->create([
                     'user_id' => $user->id,
                     'name' => Str::limit("{$displayName}'s Garage", 120, ''),
                     'owner_name' => Str::limit($displayName, 120, ''),
                     'contact_number' => null,
                 ]);
+
+                $user->update(['shop_id' => $shop->id, 'role' => 'admin']);
+            } elseif (! $user->shop_id && $user->shop) {
+                $user->update(['shop_id' => $user->shop->id]);
             }
 
             return $user;
@@ -231,7 +375,9 @@ class AuthController extends Controller
         Auth::login($user, true);
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        $target = $this->homeRouteFor($user);
+
+        return redirect()->route($target);
     }
 
     public function showRegister(): View
@@ -249,29 +395,31 @@ class AuthController extends Controller
             'email' => ['required', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'contact_number' => ['nullable', 'string', 'max:40'],
             'password' => ['required', 'string', 'confirmed', 'min:8', 'max:255'],
+            'terms' => ['accepted'],
         ]);
 
-        $user = DB::transaction(function () use ($validated): User {
+        DB::transaction(function () use ($validated): void {
             $user = User::query()->create([
                 'name' => $validated['owner_name'],
+                'username' => $this->uniqueUsernameFor($validated['email'], $validated['owner_name']),
                 'email' => $validated['email'],
                 'password' => $validated['password'],
+                'role' => 'admin',
             ]);
 
-            Shop::query()->create([
+            $shop = Shop::query()->create([
                 'user_id' => $user->id,
                 'name' => $validated['shop_name'],
                 'owner_name' => $validated['owner_name'],
                 'contact_number' => $validated['contact_number'] ?: null,
             ]);
 
-            return $user;
+            $user->update(['shop_id' => $shop->id]);
         });
 
-        Auth::login($user);
-        $request->session()->regenerate();
-
-        return redirect()->route('dashboard');
+        return redirect()
+            ->route('login')
+            ->with('status', 'Your account has been successfully registered.');
     }
 
     public function logout(Request $request): RedirectResponse
@@ -341,5 +489,86 @@ class AuthController extends Controller
             implode(', ', $missing),
             $this->configuredGoogleRedirectUrl(),
         );
+    }
+
+    private function canSendResetOtpEmail(): bool
+    {
+        return $this->resetOtpMailHint() === null;
+    }
+
+    private function resetOtpMailHint(): ?string
+    {
+        $defaultMailer = (string) Config::get('mail.default', '');
+        $transport = (string) Config::get("mail.mailers.{$defaultMailer}.transport", '');
+
+        if ($defaultMailer === '' || $transport === '' || in_array($transport, ['log', 'array'], true)) {
+            return 'Password reset email is not configured. Set MAIL_MAILER=smtp and valid SMTP credentials in your .env file.';
+        }
+
+        $scheme = strtolower(trim((string) Config::get("mail.mailers.{$defaultMailer}.scheme", '')));
+        if ($scheme !== '' && ! in_array($scheme, ['smtp', 'smtps'], true)) {
+            return 'MAIL_SCHEME is invalid. Use MAIL_SCHEME=smtp for port 587 or MAIL_SCHEME=smtps for port 465.';
+        }
+
+        $host = strtolower(trim((string) Config::get("mail.mailers.{$defaultMailer}.host", '')));
+        $username = trim((string) Config::get("mail.mailers.{$defaultMailer}.username", ''));
+        $password = trim((string) Config::get("mail.mailers.{$defaultMailer}.password", ''));
+        $fromAddress = strtolower(trim((string) Config::get('mail.from.address', '')));
+
+        if ($host === '' || $username === '' || $password === '' || $fromAddress === '') {
+            return 'SMTP mail settings are incomplete. Set MAIL_HOST, MAIL_USERNAME, MAIL_PASSWORD, and MAIL_FROM_ADDRESS in .env.';
+        }
+
+        if (str_contains($username, 'your_gmail@') || str_contains($password, 'your_google_app_password') || str_contains($fromAddress, 'your_gmail@')) {
+            return 'Replace example mail values with your real Gmail address and a Google App Password in .env.';
+        }
+
+        return null;
+    }
+
+    private function otpDeliveryErrorMessage(Throwable $exception): string
+    {
+        $message = strtolower($exception->getMessage());
+
+        if (
+            str_contains($message, 'badcredentials')
+            || str_contains($message, 'username and password not accepted')
+            || str_contains($message, 'expected response code "235" but got code "535"')
+        ) {
+            return 'Gmail rejected SMTP login. Set MAIL_USERNAME to your Gmail and MAIL_PASSWORD to a 16-character Google App Password (not your normal Gmail password).';
+        }
+
+        return 'OTP email could not be sent. Check your mail configuration and try again.';
+    }
+
+    private function homeRouteFor(?User $user): string
+    {
+        if (! $user) {
+            return 'login';
+        }
+
+        return 'dashboard';
+    }
+
+    private function uniqueUsernameFor(string $email, string $fallbackName): string
+    {
+        $source = Str::before($email, '@') ?: $fallbackName;
+        $base = Str::of($source)
+            ->lower()
+            ->replaceMatches('/[^a-z0-9_.-]+/', '-')
+            ->trim('-_.')
+            ->limit(48, '')
+            ->toString();
+
+        $base = $base !== '' ? $base : 'motox-user';
+        $username = $base;
+        $suffix = 2;
+
+        while (User::query()->where('username', $username)->exists()) {
+            $username = Str::limit($base, 52, '').'-'.$suffix;
+            $suffix++;
+        }
+
+        return $username;
     }
 }

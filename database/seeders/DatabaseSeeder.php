@@ -19,6 +19,7 @@ class DatabaseSeeder extends Seeder
             'name' => 'MotoX Demo Admin',
             'email' => 'admin@motox.test',
             'password' => 'password123',
+            'role' => 'admin',
         ]);
 
         $shop = Shop::query()->create([
@@ -27,6 +28,8 @@ class DatabaseSeeder extends Seeder
             'owner_name' => 'MotoX Demo Admin',
             'contact_number' => '+63 900 000 0000',
         ]);
+
+        $user->update(['shop_id' => $shop->id]);
 
         MotorcyclePartsCatalog::seedShop($shop, $user->id);
     }

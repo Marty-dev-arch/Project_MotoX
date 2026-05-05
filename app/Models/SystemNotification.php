@@ -8,30 +8,50 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['shop_id', 'name', 'email', 'phone', 'address', 'notes', 'profile_photo_path'])]
-class Customer extends Model
+#[Fillable([
+    'shop_id',
+    'user_id',
+    'type',
+    'title',
+    'body',
+    'severity',
+    'data',
+    'read_at',
+])]
+class SystemNotification extends Model
 {
     use HasFactory;
+
+    protected function casts(): array
+    {
+        return [
+            'read_at' => 'datetime',
+            'data' => 'array',
+        ];
+    }
+
+    #[Scope]
+    protected function unread(Builder $query): void
+    {
+        $query->whereNull('read_at');
+    }
 
     #[Scope]
     protected function forShop(Builder $query, Shop|int $shop): void
     {
         $shopId = $shop instanceof Shop ? $shop->id : $shop;
-
         $query->where('shop_id', $shopId);
     }
 
-    
     public function shop(): BelongsTo
     {
         return $this->belongsTo(Shop::class);
     }
 
-    
-    public function jobOrders(): HasMany
+    public function user(): BelongsTo
     {
-        return $this->hasMany(JobOrder::class);
+        return $this->belongsTo(User::class);
     }
 }
+

@@ -30,9 +30,8 @@
             </article>
         </div>
 
-        <!-- Search & Filter -->
-        <div class="flex flex-wrap gap-3">
-            <div class="relative flex-1 min-w-[200px]">
+        <div class="flex flex-wrap justify-end gap-3">
+            <div class="relative w-full md:w-[360px]">
                 <span class="absolute inset-y-0 left-4 flex items-center text-slate-400">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
@@ -46,7 +45,6 @@
                 />
             </div>
 
-            <!-- Filter by Date Dropdown -->
             <div class="relative">
                 <button type="button" id="filter-date-btn" class="ghost-button flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -71,7 +69,6 @@
                 </div>
             </div>
 
-            <!-- Filter by Progress Dropdown -->
             <div class="relative">
                 <button type="button" id="filter-progress-btn" class="ghost-button flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -96,7 +93,6 @@
 
 
 
-<!-- Customer Directory (full width) -->
         <section class="table-shell">
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div>
@@ -134,9 +130,29 @@
                                 data-active-jobs="{{ $customer->active_job_orders_count }}"
                             >
                                 <td>
-                                    <div>
-                                        <p class="font-semibold text-slate-900">{{ $customer->name }}</p>
-                                        <p class="text-xs text-slate-500">{{ $customer->email ?: 'No email' }}</p>
+                                    <div class="flex items-center gap-3">
+                                        @php
+                                            $initials = collect(explode(' ', (string) $customer->name))
+                                                ->filter()
+                                                ->map(fn (string $part): string => mb_substr($part, 0, 1))
+                                                ->take(2)
+                                                ->implode('');
+                                        @endphp
+                                        @if ($customer->profile_photo_path)
+                                            <img
+                                                src="{{ \Illuminate\Support\Facades\Storage::url($customer->profile_photo_path) }}"
+                                                alt="{{ $customer->name }} profile photo"
+                                                class="h-11 w-11 rounded-full object-cover"
+                                            >
+                                        @else
+                                            <span class="inline-flex h-11 w-11 items-center justify-center rounded-full bg-slate-900 text-sm font-black text-white">
+                                                {{ strtoupper($initials ?: 'CU') }}
+                                            </span>
+                                        @endif
+                                        <div>
+                                            <p class="font-semibold text-slate-900">{{ $customer->name }}</p>
+                                            <p class="text-xs text-slate-500">{{ $customer->email ?: 'No email' }}</p>
+                                        </div>
                                     </div>
                                 </td>
                                 <td>{{ $customer->phone ?: 'No phone' }}</td>
@@ -149,11 +165,11 @@
                                 <td>
                                     <div class="flex justify-end gap-2">
                                         <a
-                                            href="{{ route('customers', ['customer' => $customer->id]) }}"
+                                            href="{{ route('customers', ['history' => $customer->id, 'customer' => $customer->id]) }}"
                                             class="icon-button"
-                                            aria-label="View customer"
+                                            aria-label="View customer history"
                                         >
-                                            <x-icon name="id-card" class="h-4 w-4" />
+                                            <x-icon name="clipboard" class="h-4 w-4" />
                                         </a>
                                         <a
                                             href="{{ route('customers', ['edit' => $customer->id, 'customer' => $customer->id]) }}"
@@ -182,7 +198,6 @@
             </div>
         </section>
 
-    <!-- Create Customer Modal -->
     <div class="app-modal hidden" data-modal="create-customer-modal">
         <div class="app-modal-card">
             <div class="flex items-center justify-between gap-3">
@@ -192,8 +207,22 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('customers.store') }}" class="mt-6 space-y-4">
+            <form method="POST" action="{{ route('customers.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data">
                 @csrf
+
+                <label class="part-upload-card customer-upload-card">
+                    <span class="part-upload-preview customer-upload-preview">
+                        <img src="" alt="Selected customer profile preview" class="hidden" data-image-preview="create-customer-profile">
+                        <span data-image-preview-placeholder="create-customer-profile">
+                            <x-icon name="camera" class="h-8 w-8" />
+                        </span>
+                    </span>
+                    <span class="part-upload-content">
+                        <span class="part-upload-title">Choose Customer Profile Photo</span>
+                        <span class="part-upload-note">PNG, JPG, WEBP up to 2MB.</span>
+                    </span>
+                    <input type="file" name="profile_photo" accept="image/*" class="sr-only" data-image-preview-input="create-customer-profile">
+                </label>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
@@ -229,4 +258,158 @@
             </form>
         </div>
     </div>
+
+    @if ($editingCustomer)
+        <div class="app-modal" data-modal="edit-customer-modal">
+            <div class="app-modal-card">
+                <div class="flex items-center justify-between gap-3">
+                    <h3 class="text-2xl font-bold text-slate-900">Edit Customer</h3>
+                    <a href="{{ route('customers', ['customer' => $editingCustomer->id]) }}" class="icon-button" aria-label="Close edit customer">
+                        <x-icon name="x" class="h-4 w-4" />
+                    </a>
+                </div>
+
+                <form method="POST" action="{{ route('customers.update', $editingCustomer) }}" class="mt-6 space-y-4" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+
+                    <label class="part-upload-card customer-upload-card">
+                        <span class="part-upload-preview customer-upload-preview">
+                            @if ($editingCustomer->profile_photo_path)
+                                <img
+                                    src="{{ \Illuminate\Support\Facades\Storage::url($editingCustomer->profile_photo_path) }}"
+                                    alt="{{ $editingCustomer->name }} profile photo preview"
+                                    data-image-preview="edit-customer-profile"
+                                >
+                                <span class="hidden" data-image-preview-placeholder="edit-customer-profile">
+                                    <x-icon name="camera" class="h-8 w-8" />
+                                </span>
+                            @else
+                                <img src="" alt="Selected customer profile preview" class="hidden" data-image-preview="edit-customer-profile">
+                                <span data-image-preview-placeholder="edit-customer-profile">
+                                    <x-icon name="camera" class="h-8 w-8" />
+                                </span>
+                            @endif
+                        </span>
+                        <span class="part-upload-content">
+                            <span class="part-upload-title">Choose customer profile photo</span>
+                            <span class="part-upload-note">Circular preview. PNG, JPG, WEBP up to 2MB.</span>
+                        </span>
+                        <input type="file" name="profile_photo" accept="image/*" class="sr-only" data-image-preview-input="edit-customer-profile">
+                    </label>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="form-field">
+                            <span class="muted-label">Full Name</span>
+                            <input type="text" name="name" value="{{ old('name', $editingCustomer->name) }}" class="input-shell" required>
+                        </label>
+                        <label class="form-field">
+                            <span class="muted-label">Email</span>
+                            <input type="email" name="email" value="{{ old('email', $editingCustomer->email) }}" class="input-shell">
+                        </label>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="form-field">
+                            <span class="muted-label">Phone</span>
+                            <input type="text" name="phone" value="{{ old('phone', $editingCustomer->phone) }}" class="input-shell">
+                        </label>
+                        <label class="form-field">
+                            <span class="muted-label">Address</span>
+                            <input type="text" name="address" value="{{ old('address', $editingCustomer->address) }}" class="input-shell">
+                        </label>
+                    </div>
+
+                    <label class="form-field">
+                        <span class="muted-label">Notes</span>
+                        <textarea name="notes" rows="4" class="input-shell">{{ old('notes', $editingCustomer->notes) }}</textarea>
+                    </label>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                        <a href="{{ route('customers', ['customer' => $editingCustomer->id]) }}" class="ghost-button">Cancel</a>
+                        <button type="submit" class="primary-button">Save Customer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
+
+    @if ($historyCustomer)
+        <div class="app-modal" data-modal="customer-history-modal">
+            <div class="app-modal-card max-w-5xl">
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        @php
+                            $historyInitials = collect(explode(' ', (string) $historyCustomer->name))
+                                ->filter()
+                                ->map(fn (string $part): string => mb_substr($part, 0, 1))
+                                ->take(2)
+                                ->implode('');
+                        @endphp
+                        @if ($historyCustomer->profile_photo_path)
+                            <img
+                                src="{{ \Illuminate\Support\Facades\Storage::url($historyCustomer->profile_photo_path) }}"
+                                alt="{{ $historyCustomer->name }} profile photo"
+                                class="h-16 w-16 rounded-full object-cover"
+                            >
+                        @else
+                            <span class="inline-flex h-16 w-16 items-center justify-center rounded-full bg-slate-900 text-lg font-black text-white">
+                                {{ strtoupper($historyInitials ?: 'CU') }}
+                            </span>
+                        @endif
+                        <div>
+                            <h3 class="text-2xl font-bold tracking-tight text-slate-900">{{ $historyCustomer->name }} History</h3>
+                            <p class="text-sm text-slate-500">{{ $historyCustomer->phone ?: 'No phone' }} &middot; {{ $historyCustomer->email ?: 'No email' }}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <x-badge :tone="$historyCustomer->active_job_orders_count > 0 ? 'warning' : 'success'">
+                            {{ $historyCustomer->active_job_orders_count }} active jobs
+                        </x-badge>
+                        <a href="{{ route('customers', ['customer' => $historyCustomer->id]) }}" class="icon-button" aria-label="Close customer history">
+                            <x-icon name="x" class="h-4 w-4" />
+                        </a>
+                    </div>
+                </div>
+
+                <div class="mt-6 max-h-[65vh] space-y-3 overflow-y-auto pr-1">
+                    @forelse ($historyJobs as $job)
+                        @php
+                            $tone = match ($job->status) {
+                                'completed' => 'success',
+                                'in_progress' => 'neutral',
+                                'cancelled' => 'danger',
+                                default => 'warning',
+                            };
+                        @endphp
+                        <article class="rounded-2xl border border-slate-100 bg-white px-4 py-3">
+                            <div class="flex flex-wrap items-start justify-between gap-3">
+                                <div>
+                                    <p class="font-semibold text-slate-900">{{ $job->order_number }} &middot; {{ $job->vehicle }}</p>
+                                    <p class="mt-1 text-sm text-slate-500">{{ $job->concern }}</p>
+                                    @if ($job->notes)
+                                        <p class="mt-1 text-xs text-slate-400">{{ $job->notes }}</p>
+                                    @endif
+                                </div>
+                                <div class="text-right">
+                                    <x-badge :tone="$tone">{{ str_replace('_', ' ', ucfirst($job->status)) }}</x-badge>
+                                    <p class="mt-2 text-xs font-semibold text-slate-400">
+                                        {{ ($job->completed_at ?: $job->scheduled_for ?: $job->created_at)?->timezone('Asia/Manila')->format('M d, Y') }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-3 flex flex-wrap gap-3 text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">
+                                <span>Service: {{ $job->concern }}</span>
+                                <span>Amount: PHP {{ number_format((float) $job->estimated_cost, 2) }}</span>
+                            </div>
+                        </article>
+                    @empty
+                        <p class="rounded-2xl border border-slate-100 bg-slate-50 px-4 py-4 text-sm text-slate-500">
+                            No job order history for this customer yet.
+                        </p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+    @endif
 @endsection

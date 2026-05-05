@@ -84,14 +84,6 @@ class WorkshopFrontendController extends Controller
         ));
     }
 
-    /**
-     * @return array{
-     *     projectSnapshot:array<int,array{key:string,label:string,value:string,note:string}>,
-     *     workspacePulse:array<int,array{key:string,title:string,value:string,tone:string}>,
-     *     timeWindows:array<int,array{key:string,label:string,value:string,note:string}>,
-     *     landingUpdatedAt:string
-     * }
-     */
     private function buildLandingMetricsPayload(): array
     {
         $nowPh = now('Asia/Manila');
@@ -102,11 +94,6 @@ class WorkshopFrontendController extends Controller
 
         $parts = Part::query()->withCurrentStock()->get();
         $inventorySummary = InventoryMetrics::summarizeParts($parts);
-
-        $completedMonthRevenue = (float) JobOrder::query()
-            ->where('status', JobOrder::STATUS_COMPLETED)
-            ->whereBetween('completed_at', [$monthStartUtc, $monthEndUtc])
-            ->sum('estimated_cost');
 
         $projectSnapshot = [
             [
@@ -130,12 +117,6 @@ class WorkshopFrontendController extends Controller
                 'label' => 'Tracked SKUs',
                 'value' => number_format($inventorySummary['totalSkus']),
                 'note' => 'Inventory records with movement logs',
-            ],
-            [
-                'key' => 'monthly_revenue',
-                'label' => 'Monthly Revenue',
-                'value' => 'PHP '.number_format($completedMonthRevenue, 2),
-                'note' => 'Closed job orders this month',
             ],
         ];
 

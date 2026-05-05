@@ -2,10 +2,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
     const modeButtons = [...document.querySelectorAll('[data-mode]')];
 
-    // Initialize customers filter functionality
     initializeCustomersFilters();
     
-    // Initialize job orders filter functionality
     initializeJobOrdersFilters();
 
     const normalizeTheme = (value) => {
@@ -40,6 +38,8 @@ document.addEventListener('DOMContentLoaded', () => {
 initializeModalControls();
     initializePasswordToggles();
     initializeDashboardSearch();
+    initializeSidebarDateFilters();
+    initializeLiveTables();
     initializeDashboardPolling();
     initializeBillingPolling();
     initializeCustomersPolling();
@@ -50,9 +50,12 @@ initializeModalControls();
     initializeNotificationActions();
     initializeSidebarNavigation();
     initializeLandingBackgroundMotion();
-initializeLandingScrollReveal();
+    initializeLandingScrollReveal();
     initializeLandingSectionTracking();
-    initializeInventorySearch();
+    initializeProfileInitials();
+    initializeImageUploadPreviews();
+    initializeJobOrderCustomerPhotos();
+    initializeRegistrationPopup();
 });
 
 function initializeModalControls() {
@@ -119,6 +122,10 @@ function initializeModalControls() {
             name: trigger.dataset.editPartName ?? '',
             sku: trigger.dataset.editPartSku ?? '',
             category: trigger.dataset.editPartCategory ?? '',
+            mode: trigger.dataset.editPartMode ?? 'piece',
+            unit: trigger.dataset.editPartUnit ?? 'pcs',
+            box_size: trigger.dataset.editPartBoxSize ?? '',
+            allow_fractional: trigger.dataset.editPartAllowFractional ?? '0',
             minimum: trigger.dataset.editPartMinimum ?? '0',
             price: trigger.dataset.editPartPrice ?? '0.00',
             active: trigger.dataset.editPartActive ?? '1',
@@ -130,6 +137,44 @@ function initializeModalControls() {
                 input.value = value;
             }
         });
+
+        const imageUrl = trigger.dataset.editPartImageUrl ?? '';
+        const previewImage = document.querySelector('[data-image-preview="edit-part-image"]');
+        const previewWrapper = document.querySelector('[data-image-preview-wrapper="edit-part-image"]');
+        const previewPlaceholder = document.querySelector('[data-image-preview-placeholder="edit-part-image"]');
+        const previewInput = document.querySelector('[data-image-preview-input="edit-part-image"]');
+
+        if (previewImage instanceof HTMLImageElement) {
+            const existingObjectUrl = previewImage.dataset.objectUrl;
+            if (existingObjectUrl) {
+                URL.revokeObjectURL(existingObjectUrl);
+                delete previewImage.dataset.objectUrl;
+            }
+
+            if (imageUrl) {
+                previewImage.src = imageUrl;
+                previewImage.classList.remove('hidden');
+                if (previewWrapper instanceof HTMLElement) {
+                    previewWrapper.classList.remove('hidden');
+                }
+                if (previewPlaceholder instanceof HTMLElement) {
+                    previewPlaceholder.classList.add('hidden');
+                }
+            } else {
+                previewImage.removeAttribute('src');
+                previewImage.classList.add('hidden');
+                if (previewWrapper instanceof HTMLElement) {
+                    previewWrapper.classList.add('hidden');
+                }
+                if (previewPlaceholder instanceof HTMLElement) {
+                    previewPlaceholder.classList.remove('hidden');
+                }
+            }
+        }
+
+        if (previewInput instanceof HTMLInputElement) {
+            previewInput.value = '';
+        }
     };
 
     const populateMovementForm = (trigger) => {
@@ -148,7 +193,29 @@ function initializeModalControls() {
         if (movementLabel instanceof HTMLElement) {
             const partName = trigger.dataset.movementPartName ?? 'Part';
             const currentStock = trigger.dataset.movementPartStock ?? '0';
-            movementLabel.textContent = `${partName} - Current stock: ${currentStock}`;
+            const unitLabel = trigger.dataset.movementPartUnit ?? 'pcs';
+            movementLabel.textContent = `${partName} - Current stock: ${currentStock} ${unitLabel}`;
+        }
+
+        const mode = trigger.dataset.movementPartMode ?? 'piece';
+        const unitLabel = trigger.dataset.movementPartUnit ?? 'pcs';
+        const unitSelect = movementForm.querySelector('[data-movement-unit-select]');
+        if (unitSelect instanceof HTMLSelectElement) {
+            const options = {
+                piece: [{ value: 'piece', label: unitLabel }],
+                box_piece: [
+                    { value: 'piece', label: unitLabel },
+                    { value: 'box', label: 'box' },
+                ],
+                liquid: [
+                    { value: 'liter', label: unitLabel || 'liter' },
+                    { value: 'milliliter', label: 'milliliter' },
+                ],
+            };
+
+            unitSelect.innerHTML = (options[mode] ?? options.piece)
+                .map((option) => `<option value="${option.value}">${option.label}</option>`)
+                .join('');
         }
     };
 
@@ -207,8 +274,35 @@ function initializePasswordToggles() {
         return;
     }
 
+    const syncPasswordToggle = (button, input) => {
+        const isVisible = input.type === 'text';
+        const showIcon = button.querySelector('[data-password-icon="show"]');
+        const hideIcon = button.querySelector('[data-password-icon="hide"]');
+
+        button.setAttribute('aria-label', isVisible ? 'Hide password' : 'Show password');
+        button.setAttribute('title', isVisible ? 'Hide password' : 'Show password');
+        button.classList.toggle('password-toggle-active', isVisible);
+
+        if (showIcon instanceof Element) {
+            showIcon.classList.toggle('hidden', !isVisible);
+        }
+
+        if (hideIcon instanceof Element) {
+            hideIcon.classList.toggle('hidden', isVisible);
+        }
+    };
+
     toggleButtons.forEach((button) => {
-        button.addEventListener('click', () => {
+        const targetId = button.dataset.target;
+        const input = targetId ? document.getElementById(targetId) : null;
+
+        if (input instanceof HTMLInputElement) {
+            syncPasswordToggle(button, input);
+        }
+
+        button.addEventListener('click', (event) => {
+            event.preventDefault();
+
             const targetId = button.dataset.target;
             if (!targetId) {
                 return;
@@ -221,21 +315,14 @@ function initializePasswordToggles() {
 
             const nextVisibleState = input.type === 'password';
             input.type = nextVisibleState ? 'text' : 'password';
-
-            button.setAttribute('aria-label', nextVisibleState ? 'Hide password' : 'Show password');
-
-            const showIcon = button.querySelector('[data-password-icon="show"]');
-            const hideIcon = button.querySelector('[data-password-icon="hide"]');
-
-            if (showIcon instanceof HTMLElement) {
-                showIcon.classList.toggle('hidden', nextVisibleState);
-            }
-
-            if (hideIcon instanceof HTMLElement) {
-                hideIcon.classList.toggle('hidden', !nextVisibleState);
-            }
+            syncPasswordToggle(button, input);
         });
     });
+}
+
+function getCsrfToken() {
+    const token = document.querySelector('meta[name="csrf-token"]');
+    return token instanceof HTMLMetaElement ? token.content : '';
 }
 
 function initializeDashboardPolling() {
@@ -260,27 +347,28 @@ function initializeDashboardPolling() {
     const lowStockContainer = dashboardRoot.querySelector('[data-chart="low-stock"]');
     const updatedAtNode = dashboardRoot.querySelector('[data-updated-at]');
     const rangeButtons = [...dashboardRoot.querySelectorAll('[data-dashboard-range]')];
-    const rangeStorageKey = 'motox.dashboard.range.days';
-    const allowedTrendRanges = [2, 7, 30, 90, 180, 365];
+    const revenueCards = [...dashboardRoot.querySelectorAll('[data-dashboard-revenue-card]')];
+    const rangeStorageKey = 'motox.dashboard.trend.months';
+    const allowedTrendRanges = [3, 6, 12];
 
     const normalizeTrendRange = (value) => {
         const parsed = Number.parseInt(String(value ?? ''), 10);
-        return allowedTrendRanges.includes(parsed) ? parsed : 7;
+        return allowedTrendRanges.includes(parsed) ? parsed : 3;
     };
 
-    let selectedTrendRange = 7;
+    let selectedTrendRange = normalizeTrendRange(dashboardRoot.dataset.dashboardMonths);
 
-    const setActiveRangeButton = (days) => {
+    const setActiveRangeButton = (months) => {
         rangeButtons.forEach((button) => {
-            const buttonDays = normalizeTrendRange(button.dataset.dashboardRange);
-            button.classList.toggle('budget-range-pill-active', buttonDays === days);
+            const buttonMonths = normalizeTrendRange(button.dataset.dashboardRange);
+            button.classList.toggle('budget-range-pill-active', buttonMonths === months);
         });
     };
 
     try {
-        selectedTrendRange = normalizeTrendRange(localStorage.getItem(rangeStorageKey));
+        selectedTrendRange = normalizeTrendRange(localStorage.getItem(rangeStorageKey) ?? selectedTrendRange);
     } catch (error) {
-        selectedTrendRange = 7;
+        selectedTrendRange = normalizeTrendRange(dashboardRoot.dataset.dashboardMonths);
     }
 
     setActiveRangeButton(selectedTrendRange);
@@ -339,7 +427,7 @@ function initializeDashboardPolling() {
             return `<line class="budget-grid-line-vertical" x1="${x.toFixed(2)}" y1="${padding.top}" x2="${x.toFixed(2)}" y2="${baselineY.toFixed(2)}"></line>`;
         }).join('');
 
-        const focusIndex = Math.max(0, trend.length - 2);
+        const focusIndex = Math.max(0, trend.length - 1);
         const focusIn = inPoints[focusIndex] ?? inPoints[inPoints.length - 1];
         const focusOut = outPoints[focusIndex] ?? outPoints[outPoints.length - 1];
         const focusX = focusIn?.x ?? padding.left;
@@ -367,17 +455,32 @@ function initializeDashboardPolling() {
         const numberFormatter = new Intl.NumberFormat('en-US');
         const formatDelta = (value) => `${value >= 0 ? '+' : ''}${percentageFormatter.format(value)}%`;
 
+        const formatFullDate = (row) => {
+            if (typeof row?.date_label === 'string' && row.date_label.length) {
+                return row.date_label;
+            }
+
+            const focusDate = new Date(`${row?.day ?? ''}T00:00:00`);
+
+            if (Number.isNaN(focusDate.valueOf())) {
+                return row?.label ?? 'Current';
+            }
+
+            const month = focusDate.toLocaleDateString('en-US', { month: 'long' });
+            const weekday = focusDate.toLocaleDateString('en-US', { weekday: 'long' });
+
+            return `${month} ${focusDate.getDate()}, ${focusDate.getFullYear()}, ${weekday}`;
+        };
+
         const focusRow = trend[focusIndex] ?? trend[trend.length - 1];
-        const focusDate = new Date(`${focusRow.day ?? ''}T00:00:00`);
-        const dateLabel = Number.isNaN(focusDate.valueOf())
-            ? (focusRow.label ?? 'Current')
-            : focusDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+        const dateLabel = formatFullDate(focusRow);
 
         const axisLabels = trend.map((row, index) => `
             <span class="budget-axis-label ${index === focusIndex ? 'budget-axis-label-active' : ''}">
                 ${row.label ?? ''}
             </span>
         `).join('');
+        const dateLabelFor = (row) => formatFullDate(row);
 
         trendContainer.style.setProperty('--budget-count', String(Math.max(1, trend.length)));
         trendContainer.innerHTML = `
@@ -399,36 +502,122 @@ function initializeDashboardPolling() {
                     <path class="budget-area-out" d="${toAreaPath(outPoints)}"></path>
                     <polyline class="budget-line budget-line-in" points="${toPolyline(inPoints)}"></polyline>
                     <polyline class="budget-line budget-line-out" points="${toPolyline(outPoints)}"></polyline>
-                    <line class="budget-guide-line" x1="${focusX.toFixed(2)}" y1="${padding.top}" x2="${focusX.toFixed(2)}" y2="${baselineY.toFixed(2)}"></line>
-                    <circle class="budget-point budget-point-in" cx="${(focusIn?.x ?? focusX).toFixed(2)}" cy="${(focusIn?.y ?? baselineY).toFixed(2)}" r="5"></circle>
-                    <circle class="budget-point budget-point-out" cx="${(focusOut?.x ?? focusX).toFixed(2)}" cy="${(focusOut?.y ?? baselineY).toFixed(2)}" r="5"></circle>
+                    <line class="budget-guide-line" data-dashboard-guide x1="${focusX.toFixed(2)}" y1="${padding.top}" x2="${focusX.toFixed(2)}" y2="${baselineY.toFixed(2)}"></line>
+                    ${inPoints.map((point, index) => `<circle class="budget-point budget-point-in budget-point-hoverable" data-dashboard-point="${index}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4.25"></circle>`).join('')}
+                    ${outPoints.map((point, index) => `<circle class="budget-point budget-point-out budget-point-hoverable" data-dashboard-point="${index}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4.25"></circle>`).join('')}
+                    <circle class="budget-point budget-point-in budget-point-focus" data-dashboard-focus-in cx="${(focusIn?.x ?? focusX).toFixed(2)}" cy="${(focusIn?.y ?? baselineY).toFixed(2)}" r="6"></circle>
+                    <circle class="budget-point budget-point-out budget-point-focus" data-dashboard-focus-out cx="${(focusOut?.x ?? focusX).toFixed(2)}" cy="${(focusOut?.y ?? baselineY).toFixed(2)}" r="6"></circle>
                 </svg>
 
-                <article class="budget-tooltip-card" style="left: ${tooltipLeft}%;">
+                <article class="budget-tooltip-card" data-dashboard-tooltip style="left: ${tooltipLeft}%;">
                     <div class="budget-tooltip-head">
-                        <p class="budget-tooltip-date">${dateLabel}</p>
-                        <span class="budget-tooltip-total">${numberFormatter.format(currentIn + currentOut)}</span>
+                        <p class="budget-tooltip-date" data-dashboard-tooltip-date>${dateLabel}</p>
+                        <span class="budget-tooltip-total" data-dashboard-tooltip-total>${focusRow.label ?? 'Current'}</span>
                     </div>
                     <div class="budget-tooltip-divider"></div>
                     <div class="budget-tooltip-row">
                         <div>
-                            <p class="budget-tooltip-amount">${numberFormatter.format(currentIn)}</p>
+                            <p class="budget-tooltip-amount" data-dashboard-tooltip-in>${numberFormatter.format(currentIn)}</p>
                             <p class="budget-tooltip-caption">Stock In</p>
                         </div>
-                        <span class="budget-tooltip-change budget-tooltip-change-in">${formatDelta(deltaIn)}</span>
+                        <span class="budget-tooltip-change budget-tooltip-change-in" data-dashboard-tooltip-in-change>${formatDelta(deltaIn)}</span>
                     </div>
                     <div class="mt-3 budget-tooltip-row">
                         <div>
-                            <p class="budget-tooltip-amount">${numberFormatter.format(currentOut)}</p>
+                            <p class="budget-tooltip-amount" data-dashboard-tooltip-out>${numberFormatter.format(currentOut)}</p>
                             <p class="budget-tooltip-caption">Stock Out</p>
                         </div>
-                        <span class="budget-tooltip-change budget-tooltip-change-out">${formatDelta(deltaOut)}</span>
+                        <span class="budget-tooltip-change budget-tooltip-change-out" data-dashboard-tooltip-out-change>${formatDelta(deltaOut)}</span>
                     </div>
                 </article>
             </div>
 
             <div class="budget-axis-row">${axisLabels}</div>
         `;
+
+        const shell = trendContainer.querySelector('.budget-chart-shell');
+        const guide = trendContainer.querySelector('[data-dashboard-guide]');
+        const focusInNode = trendContainer.querySelector('[data-dashboard-focus-in]');
+        const focusOutNode = trendContainer.querySelector('[data-dashboard-focus-out]');
+        const tooltip = trendContainer.querySelector('[data-dashboard-tooltip]');
+        const tooltipDate = trendContainer.querySelector('[data-dashboard-tooltip-date]');
+        const tooltipTotal = trendContainer.querySelector('[data-dashboard-tooltip-total]');
+        const tooltipIn = trendContainer.querySelector('[data-dashboard-tooltip-in]');
+        const tooltipOut = trendContainer.querySelector('[data-dashboard-tooltip-out]');
+        const tooltipInChange = trendContainer.querySelector('[data-dashboard-tooltip-in-change]');
+        const tooltipOutChange = trendContainer.querySelector('[data-dashboard-tooltip-out-change]');
+        const pointNodes = [...trendContainer.querySelectorAll('[data-dashboard-point]')];
+        const axisNodes = [...trendContainer.querySelectorAll('.budget-axis-label')];
+
+        const setFocusIndex = (index) => {
+            const pointIn = inPoints[index];
+            const pointOut = outPoints[index];
+            const row = trend[index] ?? {};
+            const currentStockIn = seriesIn[index] ?? 0;
+            const currentStockOut = seriesOut[index] ?? 0;
+            const previousStockIn = seriesIn[Math.max(0, index - 1)] ?? 0;
+            const previousStockOut = seriesOut[Math.max(0, index - 1)] ?? 0;
+            const x = pointIn?.x ?? pointOut?.x ?? padding.left;
+
+            if (guide instanceof SVGLineElement) {
+                guide.setAttribute('x1', x.toFixed(2));
+                guide.setAttribute('x2', x.toFixed(2));
+            }
+            if (focusInNode instanceof SVGCircleElement && pointIn) {
+                focusInNode.setAttribute('cx', pointIn.x.toFixed(2));
+                focusInNode.setAttribute('cy', pointIn.y.toFixed(2));
+            }
+            if (focusOutNode instanceof SVGCircleElement && pointOut) {
+                focusOutNode.setAttribute('cx', pointOut.x.toFixed(2));
+                focusOutNode.setAttribute('cy', pointOut.y.toFixed(2));
+            }
+            pointNodes.forEach((node) => {
+                node.classList.toggle('budget-point-active', Number(node.dataset.dashboardPoint) === index);
+            });
+            axisNodes.forEach((node, nodeIndex) => {
+                node.classList.toggle('budget-axis-label-active', nodeIndex === index);
+            });
+            if (tooltip instanceof HTMLElement) {
+                tooltip.style.left = `${Math.min(78, Math.max(22, (x / width) * 100))}%`;
+            }
+            if (tooltipDate instanceof HTMLElement) {
+                tooltipDate.textContent = dateLabelFor(row);
+            }
+            if (tooltipTotal instanceof HTMLElement) {
+                tooltipTotal.textContent = row?.label ?? 'Current';
+            }
+            if (tooltipIn instanceof HTMLElement) {
+                tooltipIn.textContent = numberFormatter.format(currentStockIn);
+            }
+            if (tooltipOut instanceof HTMLElement) {
+                tooltipOut.textContent = numberFormatter.format(currentStockOut);
+            }
+            if (tooltipInChange instanceof HTMLElement) {
+                tooltipInChange.textContent = formatDelta(percentDelta(currentStockIn, previousStockIn));
+            }
+            if (tooltipOutChange instanceof HTMLElement) {
+                tooltipOutChange.textContent = formatDelta(percentDelta(currentStockOut, previousStockOut));
+            }
+        };
+
+        if (shell instanceof HTMLElement && inPoints.length) {
+            shell.addEventListener('pointermove', (event) => {
+                const rect = shell.getBoundingClientRect();
+                const chartX = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
+                const nearestIndex = inPoints.reduce((nearest, point, index) => {
+                    const currentDistance = Math.abs(point.x - chartX);
+                    const nearestDistance = Math.abs(inPoints[nearest].x - chartX);
+
+                    return currentDistance < nearestDistance ? index : nearest;
+                }, 0);
+
+                setFocusIndex(nearestIndex);
+            });
+
+            shell.addEventListener('pointerleave', () => {
+                setFocusIndex(inPoints.length - 1);
+            });
+        }
     };
 
     const renderLowStockChart = (rows) => {
@@ -461,6 +650,26 @@ function initializeDashboardPolling() {
         }).join('');
     };
 
+    const applyRevenueStats = (rows) => {
+        if (!Array.isArray(rows) || !rows.length) {
+            return;
+        }
+
+        rows.forEach((row) => {
+            const period = String(row?.period ?? '');
+            const card = revenueCards.find((node) => node instanceof HTMLElement && node.dataset.dashboardRevenueCard === period);
+
+            if (!(card instanceof HTMLElement)) {
+                return;
+            }
+
+            const valueNode = card.querySelector('[data-dashboard-revenue-value]');
+            if (valueNode instanceof HTMLElement) {
+                valueNode.textContent = String(row?.value ?? 'PHP 0.00');
+            }
+        });
+    };
+
     const applyMetrics = (payload) => {
         if (payload?.kpis) {
             Object.entries(payload.kpis).forEach(([key, value]) => {
@@ -473,9 +682,10 @@ function initializeDashboardPolling() {
 
         renderTrendChart(payload?.trend ?? []);
         renderLowStockChart(payload?.low_stock_by_category ?? []);
+        applyRevenueStats(payload?.revenue_stats ?? []);
 
-        if (typeof payload?.trend_range_days === 'number') {
-            selectedTrendRange = normalizeTrendRange(payload.trend_range_days);
+        if (typeof payload?.trend_range_months === 'number') {
+            selectedTrendRange = normalizeTrendRange(payload.trend_range_months);
             setActiveRangeButton(selectedTrendRange);
         }
 
@@ -487,15 +697,15 @@ function initializeDashboardPolling() {
         }
     };
 
-    const buildMetricsUrl = (days) => {
+    const buildMetricsUrl = (months = selectedTrendRange) => {
         const url = new URL(metricsUrl, window.location.origin);
-        url.searchParams.set('days', String(normalizeTrendRange(days)));
+        url.searchParams.set('months', String(normalizeTrendRange(months)));
         return `${url.pathname}${url.search}`;
     };
 
-    const fetchMetrics = async (days = selectedTrendRange) => {
+    const fetchMetrics = async (months = selectedTrendRange) => {
         try {
-            const response = await fetch(buildMetricsUrl(days), {
+            const response = await fetch(buildMetricsUrl(months), {
                 headers: {
                     Accept: 'application/json',
                 },
@@ -514,17 +724,17 @@ function initializeDashboardPolling() {
 
     rangeButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            const days = normalizeTrendRange(button.dataset.dashboardRange);
-            selectedTrendRange = days;
-            setActiveRangeButton(days);
+            const months = normalizeTrendRange(button.dataset.dashboardRange);
+            selectedTrendRange = months;
+            setActiveRangeButton(months);
 
             try {
-                localStorage.setItem(rangeStorageKey, String(days));
+                localStorage.setItem(rangeStorageKey, String(months));
             } catch (error) {
                 console.warn('Unable to persist dashboard trend range', error);
             }
 
-            fetchMetrics(days);
+            fetchMetrics(months);
         });
     });
 
@@ -540,7 +750,7 @@ function initializeDashboardPolling() {
     fetchMetrics(selectedTrendRange);
     window.setInterval(() => {
         fetchMetrics(selectedTrendRange);
-    }, 10000);
+    }, 5000);
 }
 
 function initializeBillingPolling() {
@@ -560,12 +770,41 @@ function initializeBillingPolling() {
         pending_amount: root.querySelector('[data-billing-kpi="pending_amount"]'),
         total_invoices: root.querySelector('[data-billing-kpi="total_invoices"]'),
     };
+    const periodButtons = [...root.querySelectorAll('[data-billing-period]')];
+    const allowedPeriods = ['all', 'daily', 'weekly', 'monthly', 'yearly'];
+    const storageKey = 'motox.billing.period';
+
+    const normalizePeriod = (value) => {
+        const normalized = normalizePeriodFilter(value);
+        return allowedPeriods.includes(normalized) ? normalized : 'all';
+    };
+
+    let selectedPeriod = 'all';
+    try {
+        selectedPeriod = normalizePeriod(localStorage.getItem(storageKey));
+    } catch (error) {
+        selectedPeriod = 'all';
+    }
+    if (!periodButtons.length) {
+        selectedPeriod = 'all';
+    } else {
+        const activeButton = periodButtons.find((button) => button.classList.contains('budget-range-pill-active'));
+        if (activeButton) {
+            selectedPeriod = normalizePeriod(activeButton.dataset.billingPeriod);
+        }
+    }
 
     const moneyFormatter = new Intl.NumberFormat('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
     });
     const countFormatter = new Intl.NumberFormat('en-US');
+
+    const setActivePeriodButton = (period) => {
+        periodButtons.forEach((button) => {
+            button.classList.toggle('budget-range-pill-active', normalizePeriod(button.dataset.billingPeriod) === period);
+        });
+    };
 
     const applyStats = (stats) => {
         if (!stats || typeof stats !== 'object') {
@@ -586,9 +825,15 @@ function initializeBillingPolling() {
         }
     };
 
-    const fetchMetrics = async () => {
+    const buildUrl = (period) => {
+        const url = new URL(metricsUrl, window.location.origin);
+        url.searchParams.set('period', normalizePeriod(period));
+        return `${url.pathname}${url.search}`;
+    };
+
+    const fetchMetrics = async (period = selectedPeriod) => {
         try {
-            const response = await fetch(metricsUrl, {
+            const response = await fetch(buildUrl(period), {
                 headers: { Accept: 'application/json' },
             });
 
@@ -598,13 +843,45 @@ function initializeBillingPolling() {
 
             const payload = await response.json();
             applyStats(payload?.stats);
+            if (Array.isArray(payload?.invoices) && window.MotoXLiveTables) {
+                window.MotoXLiveTables.replaceRows('billing', payload.invoices);
+            }
         } catch (error) {
             console.warn('Billing metrics polling failed', error);
         }
     };
 
-    fetchMetrics();
-    window.setInterval(fetchMetrics, 12000);
+    periodButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            selectedPeriod = normalizePeriod(button.dataset.billingPeriod);
+            setActivePeriodButton(selectedPeriod);
+            try {
+                localStorage.setItem(storageKey, selectedPeriod);
+            } catch (error) {
+                console.warn('Unable to persist billing period', error);
+            }
+            fetchMetrics(selectedPeriod);
+        });
+    });
+
+    window.addEventListener('motox:date-filter-change', (event) => {
+        if (event.detail?.page !== 'billing') {
+            return;
+        }
+
+        selectedPeriod = normalizePeriod(event.detail?.filter);
+        setActivePeriodButton(selectedPeriod);
+        try {
+            localStorage.setItem(storageKey, selectedPeriod);
+        } catch (error) {
+            console.warn('Unable to persist billing period', error);
+        }
+        fetchMetrics(selectedPeriod);
+    });
+
+    setActivePeriodButton(selectedPeriod);
+    fetchMetrics(selectedPeriod);
+    window.setInterval(fetchMetrics, 2000);
 }
 
 function initializeCustomersPolling() {
@@ -740,6 +1017,9 @@ function initializeReportsRevenueChart() {
     const rangeButtons = reportsRoot instanceof HTMLElement
         ? [...reportsRoot.querySelectorAll('[data-report-range]')]
         : [...document.querySelectorAll('[data-report-range]')];
+    const periodButtons = reportsRoot instanceof HTMLElement
+        ? [...reportsRoot.querySelectorAll('[data-report-period]')]
+        : [...document.querySelectorAll('[data-report-period]')];
     const statusNodes = reportsRoot instanceof HTMLElement
         ? [...reportsRoot.querySelectorAll('[data-report-status]')]
         : [...document.querySelectorAll('[data-report-status]')];
@@ -756,16 +1036,24 @@ function initializeReportsRevenueChart() {
         average: reportsRoot?.querySelector('[data-report-summary="average"]'),
         peak: reportsRoot?.querySelector('[data-report-summary="peak"]'),
     };
+    const updatedAtNode = reportsRoot?.querySelector('[data-reports-updated-at]');
 
     const reportRangeStorageKey = 'motox.reports.range.months';
+    const reportPeriodStorageKey = 'motox.reports.period';
     const allowedRanges = [3, 6, 12];
+    const allowedPeriods = ['all', 'daily', 'weekly', 'monthly', 'yearly'];
     const normalizeRange = (value) => {
         const parsed = Number.parseInt(String(value ?? ''), 10);
         return allowedRanges.includes(parsed) ? parsed : 6;
     };
+    const normalizePeriod = (value) => {
+        const normalized = normalizePeriodFilter(value);
+        return allowedPeriods.includes(normalized) ? normalized : 'all';
+    };
 
     let series = [];
     let selectedMonths = 6;
+    let selectedPeriod = 'all';
 
     try {
         const parsed = JSON.parse(chartContainer.dataset.series ?? '[]');
@@ -782,6 +1070,15 @@ function initializeReportsRevenueChart() {
         selectedMonths = 6;
     }
 
+    try {
+        selectedPeriod = normalizePeriod(localStorage.getItem(reportPeriodStorageKey));
+    } catch (error) {
+        selectedPeriod = 'all';
+    }
+    if (!periodButtons.length) {
+        selectedPeriod = 'all';
+    }
+
     const moneyFormatter = new Intl.NumberFormat('en-US', {
         maximumFractionDigits: 2,
         minimumFractionDigits: 2,
@@ -795,6 +1092,12 @@ function initializeReportsRevenueChart() {
     const setActiveRange = (months) => {
         rangeButtons.forEach((button) => {
             button.classList.toggle('budget-range-pill-active', normalizeRange(button.dataset.reportRange) === months);
+        });
+    };
+
+    const setActivePeriod = (period) => {
+        periodButtons.forEach((button) => {
+            button.classList.toggle('budget-range-pill-active', normalizePeriod(button.dataset.reportPeriod) === period);
         });
     };
 
@@ -870,6 +1173,21 @@ function initializeReportsRevenueChart() {
         const axisLabels = windowedSeries.map((row) => `
             <span class="budget-axis-label">${row?.label ?? ''}</span>
         `).join('');
+        const focusIndex = Math.max(0, points.length - 1);
+        const focusPoint = points[focusIndex] ?? points[points.length - 1];
+        const focusRow = windowedSeries[focusIndex] ?? windowedSeries[windowedSeries.length - 1] ?? {};
+        const focusValue = values[focusIndex] ?? 0;
+        const previousValue = values[Math.max(0, focusIndex - 1)] ?? 0;
+        const tooltipLeft = focusPoint ? Math.min(78, Math.max(22, (focusPoint.x / width) * 100)) : 50;
+        const deltaForIndex = (index) => {
+            const current = values[index] ?? 0;
+            const previous = values[Math.max(0, index - 1)] ?? 0;
+
+            return previous > 0
+                ? ((current - previous) / previous) * 100
+                : (current > 0 ? 100 : 0);
+        };
+        const formatSignedPercent = (value) => `${value >= 0 ? '+' : ''}${percentFormatter.format(value)}%`;
 
         chartContainer.style.setProperty('--budget-count', String(Math.max(1, windowedSeries.length)));
         chartContainer.innerHTML = `
@@ -885,8 +1203,24 @@ function initializeReportsRevenueChart() {
                     ${verticalGrid}
                     <path d="${areaPath}" fill="url(#reportRevenueGradient)"></path>
                     <polyline class="budget-line budget-line-in" points="${linePoints}"></polyline>
-                    ${points.map((point) => `<circle class="budget-point budget-point-in" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4.5"></circle>`).join('')}
+                    ${focusPoint ? `<line class="budget-guide-line" data-report-guide x1="${focusPoint.x.toFixed(2)}" y1="${padding.top}" x2="${focusPoint.x.toFixed(2)}" y2="${baselineY.toFixed(2)}"></line>` : ''}
+                    ${points.map((point, index) => `<circle class="budget-point budget-point-in budget-point-hoverable" data-report-point="${index}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4.5"></circle>`).join('')}
+                    ${focusPoint ? `<circle class="budget-point budget-point-in budget-point-focus" data-report-focus cx="${focusPoint.x.toFixed(2)}" cy="${focusPoint.y.toFixed(2)}" r="6"></circle>` : ''}
                 </svg>
+                <article class="budget-tooltip-card" data-report-tooltip style="left: ${tooltipLeft}%;">
+                    <div class="budget-tooltip-head">
+                        <p class="budget-tooltip-date" data-report-tooltip-date>${focusRow?.date_label ?? focusRow?.label ?? 'Current'}</p>
+                        <span class="budget-tooltip-total" data-report-tooltip-label>${focusRow?.label ?? 'Current'}</span>
+                    </div>
+                    <div class="budget-tooltip-divider"></div>
+                    <div class="budget-tooltip-row">
+                        <div>
+                            <p class="budget-tooltip-amount" data-report-tooltip-amount>PHP ${moneyFormatter.format(focusValue)}</p>
+                            <p class="budget-tooltip-caption">Revenue</p>
+                        </div>
+                        <span class="budget-tooltip-change budget-tooltip-change-in" data-report-tooltip-change>${formatSignedPercent(deltaForIndex(focusIndex))}</span>
+                    </div>
+                </article>
             </div>
             <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
                 <span class="inline-flex items-center gap-2"><i class="budget-legend-dot budget-legend-dot-in"></i>Revenue</span>
@@ -895,6 +1229,71 @@ function initializeReportsRevenueChart() {
             </div>
             <div class="budget-axis-row">${axisLabels}</div>
         `;
+
+        const shell = chartContainer.querySelector('.budget-chart-shell');
+        const guide = chartContainer.querySelector('[data-report-guide]');
+        const focus = chartContainer.querySelector('[data-report-focus]');
+        const tooltip = chartContainer.querySelector('[data-report-tooltip]');
+        const tooltipDate = chartContainer.querySelector('[data-report-tooltip-date]');
+        const tooltipLabel = chartContainer.querySelector('[data-report-tooltip-label]');
+        const tooltipAmount = chartContainer.querySelector('[data-report-tooltip-amount]');
+        const tooltipChange = chartContainer.querySelector('[data-report-tooltip-change]');
+        const pointNodes = [...chartContainer.querySelectorAll('[data-report-point]')];
+
+        const setFocusIndex = (index) => {
+            const point = points[index];
+            const row = windowedSeries[index] ?? {};
+
+            if (!point) {
+                return;
+            }
+
+            if (guide instanceof SVGLineElement) {
+                guide.setAttribute('x1', point.x.toFixed(2));
+                guide.setAttribute('x2', point.x.toFixed(2));
+            }
+            if (focus instanceof SVGCircleElement) {
+                focus.setAttribute('cx', point.x.toFixed(2));
+                focus.setAttribute('cy', point.y.toFixed(2));
+            }
+            pointNodes.forEach((node) => {
+                node.classList.toggle('budget-point-active', Number(node.dataset.reportPoint) === index);
+            });
+            if (tooltip instanceof HTMLElement) {
+                tooltip.style.left = `${Math.min(78, Math.max(22, (point.x / width) * 100))}%`;
+            }
+            if (tooltipDate instanceof HTMLElement) {
+                tooltipDate.textContent = row?.date_label ?? row?.label ?? 'Current';
+            }
+            if (tooltipLabel instanceof HTMLElement) {
+                tooltipLabel.textContent = row?.label ?? 'Current';
+            }
+            if (tooltipAmount instanceof HTMLElement) {
+                tooltipAmount.textContent = `PHP ${moneyFormatter.format(values[index] ?? 0)}`;
+            }
+            if (tooltipChange instanceof HTMLElement) {
+                tooltipChange.textContent = formatSignedPercent(deltaForIndex(index));
+            }
+        };
+
+        if (shell instanceof HTMLElement && points.length) {
+            shell.addEventListener('pointermove', (event) => {
+                const rect = shell.getBoundingClientRect();
+                const chartX = ((event.clientX - rect.left) / Math.max(1, rect.width)) * width;
+                const nearestIndex = points.reduce((nearest, point, index) => {
+                    const currentDistance = Math.abs(point.x - chartX);
+                    const nearestDistance = Math.abs(points[nearest].x - chartX);
+
+                    return currentDistance < nearestDistance ? index : nearest;
+                }, 0);
+
+                setFocusIndex(nearestIndex);
+            });
+
+            shell.addEventListener('pointerleave', () => {
+                setFocusIndex(points.length - 1);
+            });
+        }
     };
 
     const applyReportPayload = (payload) => {
@@ -938,7 +1337,17 @@ function initializeReportsRevenueChart() {
             applyStatusBreakdown(payload.status_breakdown);
         }
 
+        if (Array.isArray(payload?.top_customers) && window.MotoXLiveTables) {
+            window.MotoXLiveTables.replaceRows('reports', payload.top_customers);
+        }
+
         renderSeries(selectedMonths);
+    };
+
+    const buildMetricsUrl = (period) => {
+        const url = new URL(metricsUrl, window.location.origin);
+        url.searchParams.set('period', normalizePeriod(period));
+        return `${url.pathname}${url.search}`;
     };
 
     const fetchMetrics = async () => {
@@ -947,7 +1356,7 @@ function initializeReportsRevenueChart() {
         }
 
         try {
-            const response = await fetch(metricsUrl, {
+            const response = await fetch(buildMetricsUrl(selectedPeriod), {
                 headers: { Accept: 'application/json' },
             });
 
@@ -963,6 +1372,7 @@ function initializeReportsRevenueChart() {
     };
 
     setActiveRange(selectedMonths);
+    setActivePeriod(selectedPeriod);
     renderSeries(selectedMonths);
 
     rangeButtons.forEach((button) => {
@@ -980,10 +1390,172 @@ function initializeReportsRevenueChart() {
         });
     });
 
+    const downloadTrigger = document.querySelector('[data-report-download-trigger]');
+    const downloadMenu = document.querySelector('[data-report-download-menu]');
+    if (downloadTrigger instanceof HTMLButtonElement && downloadMenu instanceof HTMLElement) {
+        downloadTrigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            downloadMenu.classList.toggle('hidden');
+        });
+
+        downloadMenu.addEventListener('click', () => {
+            downloadMenu.classList.add('hidden');
+        });
+
+        document.addEventListener('click', (event) => {
+            const target = event.target;
+            if (!(target instanceof Node)) {
+                return;
+            }
+
+            if (!downloadTrigger.contains(target) && !downloadMenu.contains(target)) {
+                downloadMenu.classList.add('hidden');
+            }
+        });
+    }
+
+    const downloadPngButton = document.querySelector('[data-download-report-png]');
+    if (downloadPngButton instanceof HTMLButtonElement) {
+        downloadPngButton.addEventListener('click', () => {
+            const reportRoot = document.querySelector('[data-report-export-root]');
+            if (!(reportRoot instanceof HTMLElement)) {
+                return;
+            }
+
+            const originalText = downloadPngButton.textContent;
+            downloadPngButton.disabled = true;
+            downloadPngButton.textContent = 'Preparing PNG...';
+
+            window.requestAnimationFrame(() => {
+                exportElementToPng(reportRoot, `motox-report-${selectedPeriod}-${selectedMonths}m.png`)
+                    .catch((error) => {
+                        console.warn('Report PNG export failed', error);
+                    })
+                    .finally(() => {
+                        downloadPngButton.disabled = false;
+                        downloadPngButton.textContent = originalText || 'PNG Report';
+                    });
+            });
+        });
+    }
+
+    periodButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            selectedPeriod = normalizePeriod(button.dataset.reportPeriod);
+            setActivePeriod(selectedPeriod);
+
+            try {
+                localStorage.setItem(reportPeriodStorageKey, selectedPeriod);
+            } catch (error) {
+                console.warn('Unable to persist reports period', error);
+            }
+
+            fetchMetrics();
+        });
+    });
+
+    window.addEventListener('motox:date-filter-change', (event) => {
+        if (event.detail?.page !== 'reports') {
+            return;
+        }
+
+        selectedPeriod = normalizePeriod(event.detail?.filter);
+        setActivePeriod(selectedPeriod);
+        try {
+            localStorage.setItem(reportPeriodStorageKey, selectedPeriod);
+        } catch (error) {
+            console.warn('Unable to persist reports period', error);
+        }
+        fetchMetrics();
+    });
+
     fetchMetrics();
     if (metricsUrl) {
-        window.setInterval(fetchMetrics, 15000);
+        window.setInterval(fetchMetrics, 7000);
     }
+}
+
+async function exportElementToPng(sourceElement, filename) {
+    if (!(sourceElement instanceof HTMLElement)) {
+        return;
+    }
+
+    const sourceRect = sourceElement.getBoundingClientRect();
+    const exportWidth = Math.ceil(Math.max(sourceElement.scrollWidth, sourceRect.width, 900));
+    const exportHeight = Math.ceil(Math.max(sourceElement.scrollHeight, sourceRect.height, 600));
+    const exportClone = sourceElement.cloneNode(true);
+
+    if (!(exportClone instanceof HTMLElement)) {
+        return;
+    }
+
+    const sourceNodes = [sourceElement, ...sourceElement.querySelectorAll('*')];
+    const cloneNodes = [exportClone, ...exportClone.querySelectorAll('*')];
+    cloneNodes.forEach((cloneNode, index) => {
+        const sourceNode = sourceNodes[index];
+        if (!(cloneNode instanceof HTMLElement || cloneNode instanceof SVGElement) || !(sourceNode instanceof Element)) {
+            return;
+        }
+
+        const computed = window.getComputedStyle(sourceNode);
+        for (const property of computed) {
+            cloneNode.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
+        }
+    });
+
+    exportClone.querySelectorAll('[data-report-export-exclude]').forEach((node) => node.remove());
+    exportClone.querySelectorAll('[data-report-download-menu]').forEach((node) => node.remove());
+
+    exportClone.style.width = `${exportWidth}px`;
+    exportClone.style.minHeight = `${exportHeight}px`;
+    exportClone.style.boxSizing = 'border-box';
+    exportClone.style.padding = '32px';
+    exportClone.style.background = document.documentElement.classList.contains('dark') ? '#020617' : '#f7f8fb';
+
+    const wrapper = document.createElement('div');
+    wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+    wrapper.style.width = `${exportWidth}px`;
+    wrapper.style.minHeight = `${exportHeight}px`;
+    wrapper.style.background = exportClone.style.background;
+    wrapper.appendChild(exportClone);
+
+    const serialized = new XMLSerializer().serializeToString(wrapper);
+    const svg = `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${exportWidth}" height="${exportHeight}" viewBox="0 0 ${exportWidth} ${exportHeight}">
+            <foreignObject width="100%" height="100%">${serialized}</foreignObject>
+        </svg>
+    `;
+    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const image = new Image();
+    const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+
+    await new Promise((resolve, reject) => {
+        image.onload = resolve;
+        image.onerror = reject;
+        image.src = url;
+    });
+
+    const canvas = document.createElement('canvas');
+    canvas.width = Math.ceil(exportWidth * scale);
+    canvas.height = Math.ceil(exportHeight * scale);
+    const context = canvas.getContext('2d');
+
+    if (!context) {
+        URL.revokeObjectURL(url);
+        return;
+    }
+
+    context.scale(scale, scale);
+    context.fillStyle = exportClone.style.background;
+    context.fillRect(0, 0, exportWidth, exportHeight);
+    context.drawImage(image, 0, 0, exportWidth, exportHeight);
+    URL.revokeObjectURL(url);
+
+    const link = document.createElement('a');
+    link.download = filename;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
 }
 
 function initializeLandingMetricsPolling() {
@@ -1407,35 +1979,272 @@ function initializeSidebarNavigation() {
 }
 
 function initializeNotificationActions() {
-    const markAsReadButton = document.querySelector('[data-mark-notifications-read]');
+    const panel = document.querySelector('[data-header-menu-panel="notifications"]');
+    const notificationTrigger = document.querySelector('[data-header-menu-trigger="notifications"]');
     const unreadDot = document.querySelector('[data-notification-dot]');
-    const storageKey = 'motox.notifications.read';
+    const markAsReadButton = document.querySelector('[data-mark-notifications-read]');
+    const listRoot = panel instanceof HTMLElement
+        ? panel.querySelector('[data-notification-list]')
+        : null;
 
-    if (!(unreadDot instanceof HTMLElement)) {
+    if (!(panel instanceof HTMLElement) || !(unreadDot instanceof HTMLElement) || !(listRoot instanceof HTMLElement)) {
         return;
     }
 
-    const applyReadState = (isRead) => {
-        unreadDot.classList.toggle('hidden', isRead);
-    };
+    const notificationsUrl = panel.dataset.notificationsUrl;
+    const readAllUrl = panel.dataset.notificationsReadUrl;
+    const deleteTemplate = panel.dataset.notificationsDeleteTemplate || '';
+    let lastUnreadCount = 0;
+    const latestNotificationStorageKey = 'motox.notifications.latest-sounded-id';
+    let lastNotificationId = null;
+    let audioContext = null;
+
+    if (!notificationsUrl) {
+        return;
+    }
 
     try {
-        const isRead = localStorage.getItem(storageKey) === '1';
-        applyReadState(isRead);
+        const storedNotificationId = Number(localStorage.getItem(latestNotificationStorageKey));
+        lastNotificationId = Number.isFinite(storedNotificationId) && storedNotificationId > 0
+            ? storedNotificationId
+            : null;
     } catch (error) {
-        applyReadState(false);
+        lastNotificationId = null;
+    }
+
+    const ensureAudioContext = () => {
+        try {
+            const AudioContext = window.AudioContext || window.webkitAudioContext;
+            if (!AudioContext) {
+                return null;
+            }
+
+            audioContext = audioContext || new AudioContext();
+
+            if (audioContext.state === 'suspended') {
+                audioContext.resume();
+            }
+
+            return audioContext;
+        } catch (error) {
+            console.warn('Notification sound unavailable', error);
+        }
+
+        return null;
+    };
+
+    const unlockNotificationSound = () => {
+        ensureAudioContext();
+        window.removeEventListener('pointerdown', unlockNotificationSound);
+        window.removeEventListener('keydown', unlockNotificationSound);
+    };
+
+    window.addEventListener('pointerdown', unlockNotificationSound, { once: true });
+    window.addEventListener('keydown', unlockNotificationSound, { once: true });
+
+    const playNotificationSound = () => {
+        try {
+            const context = ensureAudioContext();
+            if (!context) {
+                return;
+            }
+
+            const playTone = (frequency, startOffset) => {
+                const gain = context.createGain();
+                const oscillator = context.createOscillator();
+
+                oscillator.type = 'sine';
+                oscillator.frequency.setValueAtTime(frequency, context.currentTime + startOffset);
+                gain.gain.setValueAtTime(0.0001, context.currentTime + startOffset);
+                gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + startOffset + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + startOffset + 0.16);
+                oscillator.connect(gain);
+                gain.connect(context.destination);
+                oscillator.start(context.currentTime + startOffset);
+                oscillator.stop(context.currentTime + startOffset + 0.18);
+            };
+
+            playTone(880, 0);
+            playTone(1175, 0.18);
+        } catch (error) {
+            console.warn('Notification sound unavailable', error);
+        }
+    };
+
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const severityClass = (severity) => {
+        switch (String(severity || '').toLowerCase()) {
+            case 'danger':
+                return 'text-rose-500';
+            case 'warning':
+                return 'text-amber-500';
+            case 'success':
+                return 'text-emerald-500';
+            default:
+                return 'text-sky-500';
+        }
+    };
+
+    const renderItems = (items) => {
+        if (!Array.isArray(items) || !items.length) {
+            listRoot.innerHTML = '<p class="text-xs text-slate-500">No notifications right now.</p>';
+            return;
+        }
+
+        listRoot.innerHTML = items.map((item) => `
+            <div class="header-menu-item">
+                <div class="mt-0.5 ${severityClass(item.severity)}">
+                    <span class="inline-block h-2.5 w-2.5 rounded-full bg-current"></span>
+                </div>
+                <div class="min-w-0 flex-1">
+                    <p class="header-menu-label">${escapeHtml(item.title)}</p>
+                    ${item.body ? `<p class="header-menu-text">${escapeHtml(item.body)}</p>` : ''}
+                    <p class="mt-1 text-[11px] text-slate-400">${escapeHtml(item.created_human || '')}</p>
+                </div>
+                <button type="button" class="notification-delete-button" data-delete-notification="${escapeHtml(item.id)}" aria-label="Delete notification" title="Delete notification">
+                    &times;
+                </button>
+            </div>
+        `).join('');
+    };
+
+    const latestNotificationId = (items) => {
+        if (!Array.isArray(items) || !items.length) {
+            return null;
+        }
+
+        const ids = items.map((item) => Number(item?.id ?? 0)).filter((id) => Number.isFinite(id) && id > 0);
+
+        return ids.length ? Math.max(...ids) : null;
+    };
+
+    const applyPayload = (payload) => {
+        const unreadCount = Number(payload?.unread_count ?? 0);
+        const latestId = latestNotificationId(payload?.items ?? []);
+        const hasNewNotification = latestId !== null
+            && lastNotificationId !== null
+            && latestId > lastNotificationId;
+        const shouldPlaySound = unreadCount > 0 && hasNewNotification;
+
+        if (shouldPlaySound) {
+            playNotificationSound();
+        }
+
+        lastUnreadCount = unreadCount;
+        if (latestId !== null && (lastNotificationId === null || latestId > lastNotificationId)) {
+            lastNotificationId = latestId;
+            try {
+                localStorage.setItem(latestNotificationStorageKey, String(latestId));
+            } catch (error) {
+                console.warn('Unable to persist latest notification id', error);
+            }
+        }
+        unreadDot.classList.toggle('hidden', unreadCount <= 0);
+        renderItems(payload?.items ?? []);
+    };
+
+    const fetchNotifications = async () => {
+        try {
+            const response = await fetch(notificationsUrl, {
+                headers: { Accept: 'application/json' },
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            const payload = await response.json();
+            applyPayload(payload);
+            return payload;
+        } catch (error) {
+            console.warn('Notification polling failed', error);
+        }
+
+        return null;
+    };
+
+    if (notificationTrigger instanceof HTMLElement) {
+        notificationTrigger.addEventListener('click', () => {
+            window.setTimeout(() => {
+                if (!panel.classList.contains('hidden')) {
+                    fetchNotifications();
+                }
+            }, 0);
+        });
     }
 
     if (markAsReadButton instanceof HTMLButtonElement) {
-        markAsReadButton.addEventListener('click', () => {
-            applyReadState(true);
+        markAsReadButton.addEventListener('click', async () => {
+            if (!readAllUrl) {
+                return;
+            }
+
             try {
-                localStorage.setItem(storageKey, '1');
+                const response = await fetch(readAllUrl, {
+                    method: 'POST',
+                    headers: {
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-CSRF-TOKEN': getCsrfToken(),
+                    },
+                });
+
+                if (!response.ok) {
+                    return;
+                }
+
+                listRoot.innerHTML = '<p class="text-xs text-slate-500">No notifications right now.</p>';
+                unreadDot.classList.add('hidden');
+                fetchNotifications();
             } catch (error) {
-                console.warn('Unable to persist notification state', error);
+                console.warn('Failed to mark notifications as read', error);
             }
         });
     }
+
+    listRoot.addEventListener('click', async (event) => {
+        const target = event.target;
+        if (!(target instanceof Element)) {
+            return;
+        }
+
+        const button = target.closest('[data-delete-notification]');
+        if (!(button instanceof HTMLElement) || !deleteTemplate) {
+            return;
+        }
+
+        const id = button.dataset.deleteNotification;
+        if (!id) {
+            return;
+        }
+
+        try {
+            const response = await fetch(deleteTemplate.replace('__ID__', encodeURIComponent(id)), {
+                method: 'DELETE',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRF-TOKEN': getCsrfToken(),
+                },
+            });
+
+            if (!response.ok) {
+                return;
+            }
+
+            fetchNotifications();
+        } catch (error) {
+            console.warn('Failed to delete notification', error);
+        }
+    });
+
+    window.MotoXRefreshNotifications = fetchNotifications;
+    fetchNotifications();
+    window.setInterval(fetchNotifications, 2000);
 }
 
 function initializeCustomersFilters() {
@@ -1444,161 +2253,135 @@ function initializeCustomersFilters() {
     const filterProgressBtn = document.getElementById('filter-progress-btn');
     const dateDropdown = document.getElementById('date-dropdown');
     const progressDropdown = document.getElementById('progress-dropdown');
-    const customerRows = document.querySelectorAll('.customer-row');
+    const customerRows = [...document.querySelectorAll('.customer-row')];
 
-    // Return early if no search input found (not on customers page)
     if (!(searchInput instanceof HTMLInputElement)) {
         return;
     }
 
-    // Live search functionality
-    searchInput.addEventListener('input', function (e) {
-        const searchTerm = e.target.value.toLowerCase();
+    let searchTerm = '';
+    let dateFilter = 'all';
+    let progressFilter = 'all';
 
-        customerRows.forEach(row => {
+    const setButtonLabel = (button, label) => {
+        const span = button?.querySelector('span');
+        if (span) {
+            span.textContent = label;
+        }
+    };
+
+    const applyFilters = () => {
+        const now = new Date();
+
+        customerRows.forEach((row) => {
             const name = row.dataset.name?.toLowerCase() || '';
             const email = row.dataset.email?.toLowerCase() || '';
             const phone = row.dataset.phone?.toLowerCase() || '';
+            const createdAt = row.dataset.createdAt ? new Date(row.dataset.createdAt) : null;
+            const activeJobs = Number.parseInt(row.dataset.activeJobs || '0', 10);
 
-            if (name.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+            const matchesSearch = !searchTerm || name.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm);
+
+            let matchesDate = true;
+            if (dateFilter !== 'all' && createdAt instanceof Date && !Number.isNaN(createdAt.valueOf())) {
+                let from = null;
+                switch (dateFilter) {
+                    case 'today':
+                        from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        break;
+                    case 'week':
+                        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+                        break;
+                    case 'month':
+                        from = new Date(now.getFullYear(), now.getMonth(), 1);
+                        break;
+                    case 'year':
+                        from = new Date(now.getFullYear(), 0, 1);
+                        break;
+                    default:
+                        from = null;
+                }
+
+                if (from) {
+                    matchesDate = createdAt >= from;
+                }
             }
+
+            let matchesProgress = true;
+            if (progressFilter === 'active') {
+                matchesProgress = activeJobs > 0;
+            } else if (progressFilter === 'no-active') {
+                matchesProgress = activeJobs === 0;
+            }
+
+            row.style.display = matchesSearch && matchesDate && matchesProgress ? '' : 'none';
         });
 
         updateVisibleCount();
+    };
+
+    searchInput.addEventListener('input', (event) => {
+        searchTerm = String(event.target?.value ?? '').toLowerCase().trim();
+        applyFilters();
     });
 
-    // Filter by Date dropdown toggle
     if (filterDateBtn instanceof HTMLElement && dateDropdown instanceof HTMLElement) {
-        filterDateBtn.addEventListener('click', function () {
+        filterDateBtn.addEventListener('click', () => {
             dateDropdown.classList.toggle('hidden');
             if (progressDropdown instanceof HTMLElement) {
                 progressDropdown.classList.add('hidden');
             }
         });
 
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', (e) => {
             if (!filterDateBtn.contains(e.target) && !dateDropdown.contains(e.target)) {
                 dateDropdown.classList.add('hidden');
             }
         });
 
-        // Date filter options
-        const dateOptions = dateDropdown.querySelectorAll('[data-date-filter]');
-        dateOptions.forEach(option => {
-            option.addEventListener('click', function () {
-                const filter = this.dataset.dateFilter;
-                applyDateFilter(filter);
+        dateDropdown.querySelectorAll('[data-date-filter]').forEach((option) => {
+            option.addEventListener('click', () => {
+                dateFilter = String(option.dataset.dateFilter || 'all');
+                setButtonLabel(filterDateBtn, option.textContent?.trim() || 'Filter by Date');
                 dateDropdown.classList.add('hidden');
-                const span = filterDateBtn.querySelector('span');
-                if (span) {
-                    span.textContent = this.textContent.trim();
-                }
+                applyFilters();
             });
         });
     }
 
-    // Filter by Progress dropdown toggle
     if (filterProgressBtn instanceof HTMLElement && progressDropdown instanceof HTMLElement) {
-        filterProgressBtn.addEventListener('click', function () {
+        filterProgressBtn.addEventListener('click', () => {
             progressDropdown.classList.toggle('hidden');
             if (dateDropdown instanceof HTMLElement) {
                 dateDropdown.classList.add('hidden');
             }
         });
 
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', (e) => {
             if (!filterProgressBtn.contains(e.target) && !progressDropdown.contains(e.target)) {
                 progressDropdown.classList.add('hidden');
             }
         });
 
-        // Progress filter options
-        const progressOptions = progressDropdown.querySelectorAll('[data-progress-filter]');
-        progressOptions.forEach(option => {
-            option.addEventListener('click', function () {
-                const filter = this.dataset.progressFilter;
-                applyProgressFilter(filter);
+        progressDropdown.querySelectorAll('[data-progress-filter]').forEach((option) => {
+            option.addEventListener('click', () => {
+                progressFilter = String(option.dataset.progressFilter || 'all');
+                setButtonLabel(filterProgressBtn, option.textContent?.trim() || 'Filter by Progress');
                 progressDropdown.classList.add('hidden');
-                const span = filterProgressBtn.querySelector('span');
-                if (span) {
-                    span.textContent = this.textContent.trim();
-                }
+                applyFilters();
             });
         });
     }
 
-    // Date filter logic
-    function applyDateFilter(filter) {
-        const now = new Date();
-        let startDate = null;
-
-        switch (filter) {
-            case 'today':
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                break;
-            case 'week':
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-                break;
-            case 'month':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                break;
-            case 'year':
-                startDate = new Date(now.getFullYear(), 0, 1);
-                break;
-            case 'all':
-            default:
-                customerRows.forEach(row => row.style.display = '');
-                updateVisibleCount();
-                return;
-        }
-
-        customerRows.forEach(row => {
-            const createdAt = row.dataset.createdAt;
-            if (createdAt && startDate) {
-                const customerDate = new Date(createdAt);
-                if (customerDate >= startDate) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            }
-        });
-
-        updateVisibleCount();
-    }
-
-    // Progress filter logic
-    function applyProgressFilter(filter) {
-        customerRows.forEach(row => {
-            const activeJobs = parseInt(row.dataset.activeJobs) || 0;
-
-            switch (filter) {
-                case 'active':
-                    row.style.display = activeJobs > 0 ? '' : 'none';
-                    break;
-                case 'no-active':
-                    row.style.display = activeJobs === 0 ? '' : 'none';
-                    break;
-                case 'all':
-                default:
-                    row.style.display = '';
-            }
-        });
-
-        updateVisibleCount();
-    }
-
-    // Update visible count
     function updateVisibleCount() {
-        const visibleCount = Array.from(customerRows).filter(row => row.style.display !== 'none').length;
+        const visibleCount = customerRows.filter((row) => row.style.display !== 'none').length;
         const countElement = document.getElementById('visible-customers-count');
         if (countElement) {
-            countElement.textContent = visibleCount + ' profiles';
+            countElement.textContent = `${visibleCount} profiles`;
         }
     }
+
+    applyFilters();
 }
 
 function initializeJobOrdersFilters() {
@@ -1607,236 +2390,854 @@ function initializeJobOrdersFilters() {
     const filterProgressBtn = document.getElementById('filter-progress-btn');
     const dateDropdown = document.getElementById('date-dropdown');
     const progressDropdown = document.getElementById('progress-dropdown');
-    const jobOrderRows = document.querySelectorAll('.job-order-row');
+    const jobOrderRows = [...document.querySelectorAll('.job-order-row')];
 
-    // Return early if no search input found (not on job orders page)
     if (!(searchInput instanceof HTMLInputElement)) {
         return;
     }
 
-    // Live search functionality
-    searchInput.addEventListener('input', function (e) {
-        const searchTerm = e.target.value.toLowerCase();
+    let searchTerm = '';
+    let dateFilter = 'all';
+    let progressFilter = 'all';
 
-        jobOrderRows.forEach(row => {
+    const setButtonLabel = (button, label) => {
+        const span = button?.querySelector('span');
+        if (span) {
+            span.textContent = label;
+        }
+    };
+
+    const applyFilters = () => {
+        const now = new Date();
+
+        jobOrderRows.forEach((row) => {
             const orderNumber = row.dataset.orderNumber?.toLowerCase() || '';
             const customer = row.dataset.customer?.toLowerCase() || '';
             const vehicle = row.dataset.vehicle?.toLowerCase() || '';
             const status = row.dataset.status?.toLowerCase() || '';
+            const createdAt = row.dataset.createdAt ? new Date(row.dataset.createdAt) : null;
 
-            if (orderNumber.includes(searchTerm) || customer.includes(searchTerm) || vehicle.includes(searchTerm) || status.includes(searchTerm)) {
-                row.style.display = '';
-            } else {
-                row.style.display = 'none';
+            const matchesSearch = !searchTerm
+                || orderNumber.includes(searchTerm)
+                || customer.includes(searchTerm)
+                || vehicle.includes(searchTerm)
+                || status.includes(searchTerm);
+
+            let matchesDate = true;
+            if (dateFilter !== 'all' && createdAt instanceof Date && !Number.isNaN(createdAt.valueOf())) {
+                let from = null;
+                switch (dateFilter) {
+                    case 'today':
+                        from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                        break;
+                    case 'week':
+                        from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+                        break;
+                    case 'month':
+                        from = new Date(now.getFullYear(), now.getMonth(), 1);
+                        break;
+                    case 'year':
+                        from = new Date(now.getFullYear(), 0, 1);
+                        break;
+                    default:
+                        from = null;
+                }
+
+                if (from) {
+                    matchesDate = createdAt >= from;
+                }
             }
+
+            let matchesProgress = true;
+            if (progressFilter !== 'all') {
+                matchesProgress = status === progressFilter;
+            }
+
+            row.style.display = matchesSearch && matchesDate && matchesProgress ? '' : 'none';
         });
+    };
+
+    searchInput.addEventListener('input', (event) => {
+        searchTerm = String(event.target?.value ?? '').toLowerCase().trim();
+        applyFilters();
     });
 
-    // Filter by Date dropdown toggle
     if (filterDateBtn instanceof HTMLElement && dateDropdown instanceof HTMLElement) {
-        filterDateBtn.addEventListener('click', function () {
+        filterDateBtn.addEventListener('click', () => {
             dateDropdown.classList.toggle('hidden');
             if (progressDropdown instanceof HTMLElement) {
                 progressDropdown.classList.add('hidden');
             }
         });
 
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', (e) => {
             if (!filterDateBtn.contains(e.target) && !dateDropdown.contains(e.target)) {
                 dateDropdown.classList.add('hidden');
             }
         });
 
-        // Date filter options
-        const dateOptions = dateDropdown.querySelectorAll('[data-date-filter]');
-        dateOptions.forEach(option => {
-            option.addEventListener('click', function () {
-                const filterValue = this.dataset.dateFilter;
-                applyDateFilter(filterValue);
+        dateDropdown.querySelectorAll('[data-date-filter]').forEach((option) => {
+            option.addEventListener('click', () => {
+                dateFilter = String(option.dataset.dateFilter || 'all');
+                setButtonLabel(filterDateBtn, option.textContent?.trim() || 'Filter by Date');
                 dateDropdown.classList.add('hidden');
-                const span = filterDateBtn.querySelector('span');
-                if (span) {
-                    span.textContent = this.textContent.trim();
-                }
+                applyFilters();
             });
         });
     }
 
-    // Filter by Progress dropdown toggle
     if (filterProgressBtn instanceof HTMLElement && progressDropdown instanceof HTMLElement) {
-        filterProgressBtn.addEventListener('click', function () {
+        filterProgressBtn.addEventListener('click', () => {
             progressDropdown.classList.toggle('hidden');
             if (dateDropdown instanceof HTMLElement) {
                 dateDropdown.classList.add('hidden');
             }
         });
 
-        document.addEventListener('click', function (e) {
+        document.addEventListener('click', (e) => {
             if (!filterProgressBtn.contains(e.target) && !progressDropdown.contains(e.target)) {
                 progressDropdown.classList.add('hidden');
             }
         });
 
-        // Progress filter options
-        const progressOptions = progressDropdown.querySelectorAll('[data-progress-filter]');
-        progressOptions.forEach(option => {
-            option.addEventListener('click', function () {
-                const filterValue = this.dataset.progressFilter;
-                applyProgressFilter(filterValue);
+        progressDropdown.querySelectorAll('[data-progress-filter]').forEach((option) => {
+            option.addEventListener('click', () => {
+                progressFilter = String(option.dataset.progressFilter || 'all');
+                setButtonLabel(filterProgressBtn, option.textContent?.trim() || 'Filter by Progress');
                 progressDropdown.classList.add('hidden');
-                const span = filterProgressBtn.querySelector('span');
-                if (span) {
-                    span.textContent = this.textContent.trim();
-                }
+                applyFilters();
             });
         });
     }
 
-    // Date filter logic
-    function applyDateFilter(filterValue) {
-        const now = new Date();
-        let startDate = null;
-
-        switch (filterValue) {
-            case 'today':
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                break;
-            case 'week':
-                startDate = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
-                break;
-            case 'month':
-                startDate = new Date(now.getFullYear(), now.getMonth(), 1);
-                break;
-            case 'year':
-                startDate = new Date(now.getFullYear(), 0, 1);
-                break;
-            case 'all':
-            default:
-                jobOrderRows.forEach(row => row.style.display = '');
-                return;
-        }
-
-        jobOrderRows.forEach(row => {
-            const createdAt = row.dataset.createdAt;
-            if (createdAt && startDate) {
-                const orderDate = new Date(createdAt);
-                if (orderDate >= startDate) {
-                    row.style.display = '';
-                } else {
-                    row.style.display = 'none';
-                }
-            }
-        });
-    }
-
-// Progress filter logic
-    function applyProgressFilter(filterValue) {
-        jobOrderRows.forEach(row => {
-            const status = row.dataset.status || '';
-
-            switch (filterValue) {
-                case 'pending':
-                    row.style.display = status === 'pending' ? '' : 'none';
-                    break;
-                case 'in_progress':
-                    row.style.display = status === 'in_progress' ? '' : 'none';
-                    break;
-                case 'completed':
-                    row.style.display = status === 'completed' ? '' : 'none';
-                    break;
-                case 'all':
-                default:
-                    row.style.display = '';
-            }
-        });
-    }
+    applyFilters();
 }
 
-function initializeInventorySearch() {
-    const searchInput = document.getElementById('inventory-search-input');
-    const inventoryRoot = document.querySelector('[data-inventory-search]');
+function initializeSidebarDateFilters() {
+    const triggers = [...document.querySelectorAll('[data-date-filter-trigger]')];
 
-    // Return early if no search input found (not on inventory page)
-    if (!(searchInput instanceof HTMLInputElement)) {
+    if (!triggers.length) {
         return;
     }
 
-    // Get all searchable items
-    const inventoryItems = document.querySelectorAll('[data-inventory-item]');
-    const partsSection = document.querySelector('[data-inventory-results="parts"]');
+    const closeMenus = () => {
+        document.querySelectorAll('[data-date-filter-menu]').forEach((menu) => {
+            if (menu instanceof HTMLElement) {
+                menu.classList.add('hidden');
+            }
+        });
+    };
 
-    // Live search functionality
-    searchInput.addEventListener('input', function (e) {
-        const searchTerm = e.target.value.toLowerCase().trim();
-
-        // If empty search, show all items
-        if (searchTerm === '') {
-            inventoryItems.forEach(row => {
-                row.style.display = '';
-            });
+    triggers.forEach((trigger) => {
+        if (!(trigger instanceof HTMLElement)) {
             return;
         }
 
-        // Filter inventory items
-        inventoryItems.forEach(row => {
-            const partName = row.dataset.partName?.toLowerCase() || '';
-            const partSku = row.dataset.partSku?.toLowerCase() || '';
-            const partCategory = row.dataset.partCategory?.toLowerCase() || '';
+        const page = trigger.dataset.dateFilterTrigger;
+        const menu = document.querySelector(`[data-date-filter-menu="${page}"]`);
+        const label = trigger.querySelector('span');
 
-            // Check if any field contains the search term
-            const matches = partName.includes(searchTerm) ||
-                          partSku.includes(searchTerm) ||
-                          partCategory.includes(searchTerm);
+        if (!(menu instanceof HTMLElement) || !page) {
+            return;
+        }
 
-            row.style.display = matches ? '' : 'none';
+        trigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const wasHidden = menu.classList.contains('hidden');
+            closeMenus();
+            menu.classList.toggle('hidden', !wasHidden);
+        });
+
+        menu.querySelectorAll('[data-date-filter]').forEach((option) => {
+            option.addEventListener('click', () => {
+                const filter = option.dataset.dateFilter || 'all';
+                if (label instanceof HTMLElement) {
+                    label.textContent = option.textContent?.trim() || 'Filter by Date';
+                }
+                menu.classList.add('hidden');
+                window.dispatchEvent(new CustomEvent('motox:date-filter-change', {
+                    detail: { page, filter },
+                }));
+            });
         });
     });
+
+    document.addEventListener('click', closeMenus);
+}
+
+function itemMatchesDate(filter, rawDate) {
+    const normalized = normalizePeriodFilter(filter);
+    if (normalized === 'all') {
+        return true;
+    }
+
+    if (!rawDate) {
+        return false;
+    }
+
+    const itemDate = new Date(rawDate);
+    if (Number.isNaN(itemDate.valueOf())) {
+        return false;
+    }
+
+    const now = new Date();
+    let from = null;
+
+    switch (normalized) {
+        case 'daily':
+            from = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            break;
+        case 'weekly':
+            from = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7);
+            break;
+        case 'monthly':
+            from = new Date(now.getFullYear(), now.getMonth(), 1);
+            break;
+        case 'yearly':
+            from = new Date(now.getFullYear(), 0, 1);
+            break;
+        default:
+            from = null;
+    }
+
+    return from ? itemDate >= from : true;
+}
+
+function normalizePeriodFilter(value) {
+    const normalized = String(value ?? '').trim().toLowerCase();
+    switch (normalized) {
+        case 'general':
+        case 'all':
+        case 'all-time':
+        case 'all_time':
+            return 'all';
+        case 'today':
+        case 'day':
+        case 'daily':
+            return 'daily';
+        case 'week':
+        case 'weekly':
+            return 'weekly';
+        case 'month':
+        case 'monthly':
+            return 'monthly';
+        case 'year':
+        case 'yearly':
+            return 'yearly';
+        default:
+            return 'all';
+    }
 }
 
 function initializeDashboardSearch() {
     const searchInput = document.getElementById('dashboard-search-input');
-    const dashboardRoot = document.querySelector('[data-dashboard-search]');
+    const dashboardItems = [...document.querySelectorAll('[data-dashboard-item]')];
 
-    // Return early if no search input found (not on dashboard page)
-    if (!(searchInput instanceof HTMLInputElement)) {
+    if (!(searchInput instanceof HTMLInputElement) || !dashboardItems.length) {
         return;
     }
 
-    // Get all searchable items
-    const dashboardItems = document.querySelectorAll('[data-dashboard-item]');
-    const lowStockSection = document.querySelector('[data-dashboard-results="low-stock"]');
-    const movementsSection = document.querySelector('[data-dashboard-results="movements"]');
+    let searchTerm = '';
+    let dateFilter = 'all';
 
-    // Live search functionality
-    searchInput.addEventListener('input', function (e) {
-        const searchTerm = e.target.value.toLowerCase().trim();
+    const applyFilters = () => {
+        dashboardItems.forEach((row) => {
+            const haystack = [
+                row.dataset.partName,
+                row.dataset.partSku,
+                row.dataset.partCategory,
+                row.dataset.movementName,
+                row.dataset.movementType,
+                row.dataset.movementReason,
+            ].join(' ').toLowerCase();
 
-        // If empty search, show all items
-        if (searchTerm === '') {
-            dashboardItems.forEach(row => {
-                row.style.display = '';
-            });
+            const matchesSearch = !searchTerm || haystack.includes(searchTerm);
+            const matchesDate = itemMatchesDate(dateFilter, row.dataset.itemDate);
+            row.style.display = matchesSearch && matchesDate ? '' : 'none';
+        });
+    };
+
+    searchInput.addEventListener('input', (event) => {
+        searchTerm = String(event.target?.value ?? '').toLowerCase().trim();
+        applyFilters();
+    });
+
+    window.addEventListener('motox:date-filter-change', (event) => {
+        if (event.detail?.page !== 'dashboard') {
             return;
         }
 
-        // Filter dashboard items
-        dashboardItems.forEach(row => {
-            const partName = row.dataset.partName?.toLowerCase() || '';
-            const partSku = row.dataset.partSku?.toLowerCase() || '';
-            const partCategory = row.dataset.partCategory?.toLowerCase() || '';
-            const movementName = row.dataset.movementName?.toLowerCase() || '';
-            const movementType = row.dataset.movementType?.toLowerCase() || '';
-            const movementReason = row.dataset.movementReason?.toLowerCase() || '';
+        dateFilter = String(event.detail?.filter || 'all');
+        applyFilters();
+    });
 
-            // Check if any field contains the search term
-            const matches = partName.includes(searchTerm) ||
-                          partSku.includes(searchTerm) ||
-                          partCategory.includes(searchTerm) ||
-                          movementName.includes(searchTerm) ||
-                          movementType.includes(searchTerm) ||
-                          movementReason.includes(searchTerm);
+    applyFilters();
+}
 
-            row.style.display = matches ? '' : 'none';
+function initializeLiveTables() {
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const badgeClass = (tone) => {
+        switch (String(tone || '').toLowerCase()) {
+            case 'success':
+                return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            case 'danger':
+                return 'bg-rose-50 text-rose-700 border-rose-100';
+            case 'warning':
+                return 'bg-amber-50 text-amber-700 border-amber-100';
+            default:
+                return 'bg-slate-50 text-slate-700 border-slate-100';
+        }
+    };
+
+    const renderBadge = (label, tone) => `
+        <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold ${badgeClass(tone)}">
+            ${escapeHtml(label)}
+        </span>
+    `;
+
+    const receiptButton = (invoice) => `
+        <button
+            type="button"
+            class="icon-button h-9 w-9"
+            title="Print receipt"
+            aria-label="Print receipt for ${escapeHtml(invoice.invoice_number)}"
+            data-print-receipt
+            data-receipt-invoice="${escapeHtml(invoice.invoice_number)}"
+            data-receipt-order="${escapeHtml(invoice.order_number)}"
+            data-receipt-customer="${escapeHtml(invoice.customer)}"
+            data-receipt-phone="${escapeHtml(invoice.customer_phone || '')}"
+            data-receipt-email="${escapeHtml(invoice.customer_email || '')}"
+            data-receipt-vehicle="${escapeHtml(invoice.vehicle)}"
+            data-receipt-status="${escapeHtml(invoice.status)}"
+            data-receipt-amount="${escapeHtml(invoice.amount_display)}"
+            data-receipt-updated="${escapeHtml(invoice.receipt_updated_display || invoice.updated_display)}"
+            data-receipt-shop="${escapeHtml(invoice.shop_name || 'MotoX')}"
+        >
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 9V4h12v5"></path>
+                <rect x="6" y="14" width="12" height="7" rx="1"></rect>
+                <rect x="3" y="9" width="18" height="7" rx="2"></rect>
+            </svg>
+        </button>
+    `;
+
+    const tableConfigs = {
+        billing: {
+            tbody: document.querySelector('[data-billing-rows]'),
+            input: document.getElementById('billing-search-input'),
+            exportUrl: document.querySelector('[data-billing-export-url]')?.dataset.billingExportUrl || '',
+            emptyColspan: 8,
+            emptyText: 'No billable job orders match the current filters.',
+            filename: 'motox-billing.csv',
+            title: 'MotoX Billing',
+            dateFilter: 'all',
+            rowSelector: '[data-billing-row]',
+            renderRows(rows) {
+                return rows.map((invoice) => {
+                    const search = [
+                        invoice.invoice_number,
+                        invoice.order_number,
+                        invoice.customer,
+                        invoice.vehicle,
+                        invoice.status,
+                    ].join(' ').toLowerCase();
+
+                    return `
+                        <tr data-billing-row data-item-date="${escapeHtml(invoice.updated_at || '')}" data-search="${escapeHtml(search)}">
+                            <td class="font-semibold text-slate-900">${escapeHtml(invoice.invoice_number)}</td>
+                            <td>${escapeHtml(invoice.order_number)}</td>
+                            <td>${escapeHtml(invoice.customer)}</td>
+                            <td>${escapeHtml(invoice.vehicle)}</td>
+                            <td>${renderBadge(invoice.status, invoice.tone)}</td>
+                            <td class="font-semibold text-slate-900">${escapeHtml(invoice.amount_display)}</td>
+                            <td>${escapeHtml(invoice.updated_display)}</td>
+                            <td data-print-skip>${receiptButton(invoice)}</td>
+                        </tr>
+                    `;
+                }).join('');
+            },
+        },
+        reports: {
+            tbody: document.querySelector('[data-reports-rows]'),
+            input: document.getElementById('reports-search-input'),
+            exportUrl: document.querySelector('[data-reports-export-url]')?.dataset.reportsExportUrl || '',
+            emptyColspan: 4,
+            emptyText: 'No customer billing data matches the current filters.',
+            filename: 'motox-reports.csv',
+            title: 'MotoX Reports',
+            dateFilter: 'all',
+            rowSelector: '[data-reports-row]',
+            renderRows(rows) {
+                return rows.map((row) => {
+                    const search = [row.name, row.jobs, row.billed].join(' ').toLowerCase();
+
+                    return `
+                        <tr data-reports-row data-item-date="${escapeHtml(row.latest_job_at || '')}" data-search="${escapeHtml(search)}">
+                            <td class="font-semibold text-slate-900">${escapeHtml(row.name)}</td>
+                            <td>${escapeHtml(row.jobs)}</td>
+                            <td class="font-semibold text-slate-900">${escapeHtml(row.billed)}</td>
+                            <td>${escapeHtml(row.latest_display || '-')}</td>
+                        </tr>
+                    `;
+                }).join('');
+            },
+        },
+    };
+
+    const states = {
+        billing: { search: '', date: 'all' },
+        reports: { search: '', date: 'all' },
+    };
+
+    const getRows = (page) => {
+        const config = tableConfigs[page];
+        return config?.tbody instanceof HTMLElement ? [...config.tbody.querySelectorAll(config.rowSelector)] : [];
+    };
+
+    const ensureEmptyRow = (page) => {
+        const config = tableConfigs[page];
+        if (!(config?.tbody instanceof HTMLElement)) {
+            return;
+        }
+
+        let emptyRow = config.tbody.querySelector('[data-empty-row]');
+        if (!(emptyRow instanceof HTMLTableRowElement)) {
+            config.tbody.insertAdjacentHTML('beforeend', `
+                <tr data-empty-row class="hidden">
+                    <td colspan="${config.emptyColspan}" class="py-10 text-center text-sm text-slate-500">${escapeHtml(config.emptyText)}</td>
+                </tr>
+            `);
+            emptyRow = config.tbody.querySelector('[data-empty-row]');
+        }
+
+        const visibleCount = getRows(page).filter((row) => row.style.display !== 'none').length;
+        emptyRow.classList.toggle('hidden', visibleCount > 0);
+    };
+
+    const applyFilters = (page) => {
+        const state = states[page];
+        const rows = getRows(page);
+
+        rows.forEach((row) => {
+            const matchesSearch = !state.search || String(row.dataset.search || '').includes(state.search);
+            const matchesDate = itemMatchesDate(state.date, row.dataset.itemDate);
+            row.style.display = matchesSearch && matchesDate ? '' : 'none';
         });
+
+        ensureEmptyRow(page);
+    };
+
+    Object.entries(tableConfigs).forEach(([page, config]) => {
+        if (!(config.tbody instanceof HTMLElement)) {
+            return;
+        }
+
+        if (config.input instanceof HTMLInputElement) {
+            config.input.addEventListener('input', (event) => {
+                states[page].search = String(event.target?.value ?? '').toLowerCase().trim();
+                applyFilters(page);
+            });
+        }
+
+        const exportButton = document.querySelector(`[data-export-csv="${page}"]`);
+        if (exportButton instanceof HTMLButtonElement) {
+            exportButton.addEventListener('click', () => exportServerCsv(config));
+        }
+
+        const printButton = document.querySelector(`[data-print-table="${page}"]`);
+        if (printButton instanceof HTMLButtonElement) {
+            printButton.addEventListener('click', () => printVisibleTable(config));
+        }
+
+        applyFilters(page);
+    });
+
+    document.addEventListener('click', (event) => {
+        const button = event.target instanceof Element ? event.target.closest('[data-print-receipt]') : null;
+        if (button instanceof HTMLButtonElement) {
+            printBillingReceipt(button);
+        }
+    });
+
+    window.addEventListener('motox:date-filter-change', (event) => {
+        const page = event.detail?.page;
+        if (!states[page]) {
+            return;
+        }
+
+        states[page].date = String(event.detail?.filter || 'all');
+        if (tableConfigs[page]) {
+            tableConfigs[page].dateFilter = states[page].date;
+        }
+        applyFilters(page);
+    });
+
+    window.MotoXLiveTables = {
+        replaceRows(page, rows) {
+            const config = tableConfigs[page];
+            if (!(config?.tbody instanceof HTMLElement) || !Array.isArray(rows)) {
+                return;
+            }
+
+            config.tbody.innerHTML = rows.length
+                ? config.renderRows(rows)
+                : `<tr data-empty-row><td colspan="${config.emptyColspan}" class="py-10 text-center text-sm text-slate-500">${escapeHtml(config.emptyText)}</td></tr>`;
+
+            applyFilters(page);
+        },
+    };
+}
+
+function visibleTableData(config) {
+    const table = config.tbody?.closest('table');
+    if (!(table instanceof HTMLTableElement)) {
+        return { headers: [], rows: [] };
+    }
+
+    const headers = [...table.querySelectorAll('thead th')]
+        .filter((cell) => !cell.matches('[data-print-skip]'))
+        .map((cell) => cell.textContent.trim());
+    const rows = [...config.tbody.querySelectorAll('tr')]
+        .filter((row) => !row.matches('[data-empty-row]') && row.style.display !== 'none')
+        .map((row) => [...row.children]
+            .filter((cell) => !cell.matches('[data-print-skip]'))
+            .map((cell) => cell.textContent.trim().replace(/\s+/g, ' ')));
+
+    return { headers, rows };
+}
+
+function printBillingReceipt(button) {
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    const data = button.dataset;
+    const printWindow = window.open('', '_blank', 'width=520,height=720');
+
+    if (!printWindow) {
+        window.print();
+        return;
+    }
+
+    const rows = [
+        ['Invoice', data.receiptInvoice],
+        ['Job Order', data.receiptOrder],
+        ['Customer', data.receiptCustomer],
+        ['Phone', data.receiptPhone || '-'],
+        ['Email', data.receiptEmail || '-'],
+        ['Vehicle', data.receiptVehicle],
+        ['Status', data.receiptStatus],
+        ['Updated', data.receiptUpdated],
+    ];
+
+    printWindow.document.write(`
+        <!doctype html>
+        <html>
+            <head>
+                <title>${escapeHtml(data.receiptInvoice || 'MotoX Receipt')}</title>
+                <style>
+                    * { box-sizing: border-box; }
+                    body { margin: 0; background: #f3f4f6; color: #111827; font-family: Arial, sans-serif; padding: 24px; }
+                    .receipt { max-width: 420px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 18px; padding: 24px; }
+                    .brand { font-size: 24px; font-weight: 800; margin: 0; }
+                    .muted { color: #64748b; font-size: 12px; margin: 4px 0 0; }
+                    .total { margin: 22px 0; border-radius: 14px; background: #f8fafc; padding: 16px; }
+                    .total span { display: block; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
+                    .total strong { display: block; margin-top: 6px; font-size: 28px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+                    td { padding: 9px 0; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+                    td:first-child { width: 34%; color: #64748b; }
+                    td:last-child { text-align: right; font-weight: 700; }
+                    .footer { margin-top: 20px; text-align: center; color: #64748b; font-size: 12px; }
+                    @media print {
+                        body { background: white; padding: 0; }
+                        .receipt { border: 0; border-radius: 0; max-width: none; }
+                    }
+                </style>
+            </head>
+            <body>
+                <section class="receipt">
+                    <h1 class="brand">${escapeHtml(data.receiptShop || 'MotoX')}</h1>
+                    <p class="muted">Official customer receipt</p>
+                    <div class="total">
+                        <span>Total Amount</span>
+                        <strong>${escapeHtml(data.receiptAmount || 'PHP 0.00')}</strong>
+                    </div>
+                    <table>
+                        <tbody>
+                            ${rows.map(([label, value]) => `
+                                <tr>
+                                    <td>${escapeHtml(label)}</td>
+                                    <td>${escapeHtml(value || '-')}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                    <p class="footer">Thank you for choosing ${escapeHtml(data.receiptShop || 'MotoX')}.</p>
+                </section>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+function exportVisibleTable(config) {
+    const { headers, rows } = visibleTableData(config);
+    const csvEscape = (value) => `"${String(value ?? '').replaceAll('"', '""')}"`;
+    const csv = [headers, ...rows].map((row) => row.map(csvEscape).join(',')).join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const range = String(config.dateFilter || 'all').replace(/[^a-z0-9-]/gi, '-');
+    link.href = url;
+    link.download = config.filename.replace('.csv', `-${range}.csv`);
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportServerCsv(config) {
+    if (config.exportUrl) {
+        const url = new URL(config.exportUrl, window.location.origin);
+        url.searchParams.set('period', normalizePeriodFilter(config.dateFilter || 'all'));
+        window.location.href = `${url.pathname}${url.search}`;
+        return;
+    }
+
+    exportVisibleTable(config);
+}
+
+function printVisibleTable(config) {
+    const { headers, rows } = visibleTableData(config);
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+    const printWindow = window.open('', '_blank', 'width=960,height=720');
+
+    if (!printWindow) {
+        window.print();
+        return;
+    }
+
+    printWindow.document.write(`
+        <!doctype html>
+        <html>
+            <head>
+                <title>${escapeHtml(config.title)}</title>
+                <style>
+                    body { font-family: Arial, sans-serif; color: #111827; padding: 24px; }
+                    h1 { font-size: 22px; margin: 0 0 16px; }
+                    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+                    th, td { border: 1px solid #d1d5db; padding: 8px; text-align: left; }
+                    th { background: #f3f4f6; text-transform: uppercase; font-size: 10px; letter-spacing: .08em; }
+                </style>
+            </head>
+            <body>
+                <h1>${escapeHtml(config.title)}</h1>
+                <table>
+                    <thead><tr>${headers.map((header) => `<th>${escapeHtml(header)}</th>`).join('')}</tr></thead>
+                    <tbody>${rows.map((row) => `<tr>${row.map((cell) => `<td>${escapeHtml(cell)}</td>`).join('')}</tr>`).join('')}</tbody>
+                </table>
+            </body>
+        </html>
+    `);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+}
+
+function initializeRegistrationPopup() {
+    const successNode = document.querySelector('[data-registration-success]');
+    if (!(successNode instanceof HTMLElement)) {
+        return;
+    }
+
+    const message = successNode.dataset.registrationSuccess;
+    if (!message) {
+        return;
+    }
+
+    const normalized = message.toLowerCase();
+    if (!normalized.includes('successfully registered')) {
+        return;
+    }
+
+    window.setTimeout(() => {
+        window.alert(message);
+    }, 80);
+}
+
+function initializeProfileInitials() {
+    const input = document.querySelector('[data-profile-name-input]');
+    const initialsNode = document.querySelector('[data-profile-avatar-initials]');
+
+    if (!(input instanceof HTMLInputElement) || !(initialsNode instanceof HTMLElement)) {
+        return;
+    }
+
+    const updateInitials = () => {
+        const initials = input.value
+            .split(/\s+/)
+            .filter(Boolean)
+            .slice(0, 2)
+            .map((part) => part.charAt(0).toUpperCase())
+            .join('');
+
+        initialsNode.textContent = initials || 'MX';
+    };
+
+    input.addEventListener('input', updateInitials);
+    updateInitials();
+}
+
+function initializeImageUploadPreviews() {
+    const inputs = [...document.querySelectorAll('[data-image-preview-input]')];
+
+    if (!inputs.length) {
+        return;
+    }
+
+    inputs.forEach((input) => {
+        if (!(input instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const key = input.dataset.imagePreviewInput;
+        if (!key) {
+            return;
+        }
+
+        const previewImage = document.querySelector(`[data-image-preview="${key}"]`);
+        const previewWrapper = document.querySelector(`[data-image-preview-wrapper="${key}"]`);
+        const previewPlaceholder = document.querySelector(`[data-image-preview-placeholder="${key}"]`);
+        const profileFallback = key === 'profile-avatar'
+            ? document.querySelector('[data-profile-avatar-initials]')
+            : null;
+
+        if (!(previewImage instanceof HTMLImageElement)) {
+            return;
+        }
+
+        const hidePreview = () => {
+            const existingObjectUrl = previewImage.dataset.objectUrl;
+            if (existingObjectUrl) {
+                URL.revokeObjectURL(existingObjectUrl);
+                delete previewImage.dataset.objectUrl;
+            }
+
+            previewImage.removeAttribute('src');
+            previewImage.classList.add('hidden');
+            if (previewWrapper instanceof HTMLElement) {
+                previewWrapper.classList.add('hidden');
+            }
+            if (previewPlaceholder instanceof HTMLElement) {
+                previewPlaceholder.classList.remove('hidden');
+            }
+            if (profileFallback instanceof HTMLElement) {
+                profileFallback.classList.remove('hidden');
+            }
+        };
+
+        const showPreview = (file) => {
+            const existingObjectUrl = previewImage.dataset.objectUrl;
+            if (existingObjectUrl) {
+                URL.revokeObjectURL(existingObjectUrl);
+            }
+
+            const objectUrl = URL.createObjectURL(file);
+            previewImage.src = objectUrl;
+            previewImage.dataset.objectUrl = objectUrl;
+            previewImage.classList.remove('hidden');
+
+            if (previewWrapper instanceof HTMLElement) {
+                previewWrapper.classList.remove('hidden');
+            }
+            if (previewPlaceholder instanceof HTMLElement) {
+                previewPlaceholder.classList.add('hidden');
+            }
+            if (profileFallback instanceof HTMLElement) {
+                profileFallback.classList.add('hidden');
+            }
+        };
+
+        input.addEventListener('change', () => {
+            const file = input.files?.[0];
+            if (!file || !file.type.startsWith('image/')) {
+                hidePreview();
+                return;
+            }
+
+            showPreview(file);
+        });
+    });
+}
+
+function initializeJobOrderCustomerPhotos() {
+    const selects = [...document.querySelectorAll('[data-customer-photo-select]')];
+
+    selects.forEach((select) => {
+        if (!(select instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        const key = select.dataset.customerPhotoSelect;
+        if (!key) {
+            return;
+        }
+
+        const previewImage = document.querySelector(`[data-image-preview="${key}"]`);
+        const placeholder = document.querySelector(`[data-image-preview-placeholder="${key}"]`);
+        const uploadCard = document.querySelector(`[data-walk-in-upload="${key}"]`);
+        const fileInput = document.querySelector(`[data-image-preview-input="${key}"]`);
+
+        if (!(previewImage instanceof HTMLImageElement)) {
+            return;
+        }
+
+        const sync = () => {
+            const option = select.selectedOptions[0];
+            const photoUrl = option?.dataset.photoUrl || '';
+            const isWalkIn = !select.value;
+
+            if (uploadCard instanceof HTMLElement) {
+                uploadCard.classList.toggle('joborder-upload-existing-customer', !isWalkIn);
+            }
+
+            if (fileInput instanceof HTMLInputElement) {
+                fileInput.disabled = !isWalkIn;
+            }
+
+            if (photoUrl) {
+                previewImage.src = photoUrl;
+                previewImage.classList.remove('hidden');
+                if (placeholder instanceof HTMLElement) {
+                    placeholder.classList.add('hidden');
+                }
+                return;
+            }
+
+            if (!isWalkIn) {
+                previewImage.removeAttribute('src');
+                previewImage.classList.add('hidden');
+                if (placeholder instanceof HTMLElement) {
+                    placeholder.classList.remove('hidden');
+                }
+            }
+        };
+
+        select.addEventListener('change', sync);
+        sync();
     });
 }

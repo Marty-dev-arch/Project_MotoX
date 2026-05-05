@@ -1,5 +1,11 @@
 @import 'tailwindcss';
 
+@property --border-angle {
+    syntax: '<angle>';
+    inherits: false;
+    initial-value: 0deg;
+}
+
 @source '../../app/**/*.php';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 @source '../../storage/framework/views/*.php';
@@ -149,6 +155,10 @@
         @apply mt-3 flex items-start gap-3 rounded-2xl bg-slate-50/80 p-3;
     }
 
+    .notification-delete-button {
+        @apply inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-lg leading-none text-slate-400 transition hover:bg-white hover:text-rose-600 focus:outline-none focus:ring-0;
+    }
+
     .header-menu-label {
         @apply text-sm font-semibold text-slate-800;
     }
@@ -267,6 +277,40 @@
     .sidebar-brand-link {
         @apply max-w-[190px];
         color: rgb(194 65 12);
+    }
+
+    .sidebar-brand-icon {
+        @apply relative inline-flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-2xl text-white;
+        background:
+            linear-gradient(145deg, #0f172a 0%, #1f2937 48%, #ea580c 100%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.22),
+            0 16px 30px -22px rgba(194, 65, 12, 0.72);
+        transition:
+            transform 220ms ease,
+            box-shadow 220ms ease;
+    }
+
+    .sidebar-brand-icon::before,
+    .landing-brand-icon::before {
+        content: '';
+        position: absolute;
+        inset: -45% 42% 35% -35%;
+        background: rgb(255 255 255 / 0.26);
+        transform: rotate(28deg);
+    }
+
+    .sidebar-brand-icon svg,
+    .landing-brand-icon svg {
+        position: relative;
+        z-index: 1;
+    }
+
+    .sidebar-brand-link:hover .sidebar-brand-icon {
+        transform: translateY(-1px) rotate(-3deg);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.25),
+            0 18px 34px -21px rgba(194, 65, 12, 0.82);
     }
 
     .sidebar-subtitle {
@@ -398,6 +442,160 @@
         @apply w-full rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3 text-sm text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-brand-300 focus:bg-white focus:ring-4 focus:ring-brand-100/70;
     }
 
+    .profile-edit-card {
+        @apply mx-auto w-full max-w-[520px] border border-white/70 bg-white px-5 py-5 text-slate-900;
+        border-radius: 1.75rem;
+        box-shadow: 0 22px 55px -35px rgba(15, 23, 42, 0.32);
+    }
+
+    .profile-edit-title {
+        @apply text-lg font-bold text-slate-900;
+    }
+
+    .profile-avatar-wrap {
+        @apply mt-10 flex justify-center;
+    }
+
+    .shop-avatar-panel {
+        @apply flex flex-col items-center px-2 py-1;
+    }
+
+    .profile-avatar-control {
+        @apply relative block h-32 w-32 cursor-pointer rounded-full;
+    }
+
+    .profile-avatar-image,
+    .profile-avatar-fallback {
+        @apply h-32 w-32 rounded-full object-cover;
+    }
+
+    .profile-avatar-fallback {
+        @apply flex items-center justify-center text-5xl font-medium text-white;
+        background: #cf382c;
+    }
+
+    .profile-avatar-camera {
+        @apply absolute bottom-2 right-1 inline-flex h-7 w-7 items-center justify-center rounded-full border text-white;
+        border-color: rgb(255 255 255 / 0.9);
+        background: rgb(15 23 42 / 0.95);
+        box-shadow: 0 12px 25px -18px rgba(15, 23, 42, 0.6);
+    }
+
+    .part-upload-card {
+        @apply flex cursor-pointer items-center gap-4 rounded-[28px] border border-slate-200/80 bg-white px-5 py-5 transition duration-200 hover:-translate-y-0.5 hover:border-brand-200 hover:bg-slate-50;
+        box-shadow: 0 18px 42px -34px rgba(15, 23, 42, 0.35);
+    }
+
+    .part-upload-preview {
+        @apply flex h-24 w-24 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-slate-100 text-slate-400;
+        overflow: hidden;
+    }
+
+    .part-upload-preview img {
+        @apply h-full w-full rounded-full object-cover;
+    }
+
+    .customer-upload-card {
+        @apply mx-auto max-w-[520px];
+    }
+
+    .customer-upload-preview {
+        @apply h-28 w-28;
+    }
+
+    .joborder-upload-existing-customer {
+        cursor: default;
+        border-color: rgb(16 185 129 / 0.28);
+        background: rgb(240 253 244 / 0.72);
+    }
+
+    .part-upload-content {
+        @apply flex min-w-0 flex-col gap-1;
+    }
+
+    .part-upload-title {
+        @apply text-base font-bold text-slate-900;
+    }
+
+    .part-upload-note {
+        @apply text-sm text-slate-500;
+    }
+
+    .profile-edit-fields {
+        @apply mt-9 space-y-2;
+    }
+
+    .profile-edit-field {
+        @apply block rounded-2xl border border-slate-200/80 bg-slate-50 px-4 py-3;
+    }
+
+    .profile-edit-field span {
+        @apply block text-xs font-semibold text-slate-500;
+    }
+
+    .profile-edit-field input {
+        @apply mt-1 w-full border-0 bg-transparent p-0 text-sm font-semibold text-slate-900 outline-none placeholder:text-slate-400 focus:ring-0;
+    }
+
+    .profile-edit-note {
+        @apply mt-3 text-center text-xs text-slate-500;
+    }
+
+    .profile-edit-actions {
+        @apply mt-5 flex items-center justify-end gap-3;
+    }
+
+    .profile-cancel-button {
+        @apply inline-flex h-9 items-center rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 hover:text-slate-900;
+    }
+
+    .profile-save-button {
+        @apply inline-flex h-9 items-center rounded-full bg-slate-900 px-5 text-sm font-semibold text-white transition hover:bg-slate-800;
+    }
+
+    .page-filter-toolbar {
+        @apply flex w-full flex-wrap items-center gap-3 xl:w-auto xl:justify-end;
+    }
+
+    .page-search-shell {
+        @apply flex h-11 min-w-[250px] flex-1 items-center gap-3 rounded-full border border-slate-200/80 bg-white px-4 text-sm text-slate-700 xl:min-w-[320px] xl:flex-none;
+        box-shadow: 0 18px 45px -35px rgba(15, 23, 42, 0.35);
+    }
+
+    .page-search-shell input {
+        @apply min-w-0 flex-1 border-0 bg-transparent p-0 text-sm outline-none placeholder:text-slate-400 focus:ring-0;
+    }
+
+    .page-filter-button,
+    .page-export-button {
+        @apply inline-flex h-11 items-center gap-2 rounded-2xl border border-slate-200/80 bg-white px-4 text-sm font-semibold text-slate-600 transition hover:border-brand-200 hover:bg-brand-50 hover:text-brand-700;
+        box-shadow: 0 12px 30px -24px rgba(15, 23, 42, 0.3);
+    }
+
+    .dashboard-revenue-card {
+        transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background-color 180ms ease,
+            box-shadow 180ms ease;
+    }
+
+    .dashboard-revenue-card:hover {
+        transform: translateY(-2px);
+        border-color: rgb(251 146 60 / 0.35);
+        background: rgb(255 247 237 / 0.72);
+        box-shadow: 0 18px 34px -30px rgba(194, 65, 12, 0.38);
+    }
+
+    .page-filter-menu {
+        @apply absolute left-0 top-[calc(100%+0.45rem)] z-20 w-44 overflow-hidden rounded-2xl border border-slate-200 bg-white py-1;
+        box-shadow: 0 16px 40px -30px rgba(15, 23, 42, 0.35);
+    }
+
+    .page-filter-menu button {
+        @apply block w-full px-4 py-2 text-left text-sm font-medium text-slate-600 hover:bg-slate-50 hover:text-slate-900;
+    }
+
     .section-nav-link {
         @apply inline-flex items-center rounded-2xl border border-transparent bg-slate-50/90 px-4 py-3 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-900;
     }
@@ -411,6 +609,7 @@
         isolation: isolate;
         min-height: 100vh;
         --landing-scroll-progress: 0;
+        scroll-behavior: smooth;
         background: linear-gradient(180deg, #eef2f7 0%, #e6ebf2 100%);
     }
 
@@ -422,15 +621,11 @@
         pointer-events: none;
         background:
             radial-gradient(
-                circle at calc(12% + (var(--landing-scroll-progress) * 32%)) calc(6% + (var(--landing-scroll-progress) * 16%)),
-                rgba(251, 146, 60, 0.28),
-                transparent 43%
-            ),
-            radial-gradient(
                 circle at calc(86% - (var(--landing-scroll-progress) * 24%)) calc(18% + (var(--landing-scroll-progress) * 40%)),
-                rgba(59, 130, 246, 0.18),
+                rgba(59, 130, 246, 0.16),
                 transparent 42%
             ),
+            radial-gradient(circle at 8% 14%, rgba(249, 115, 22, 0.2), transparent 36%),
             linear-gradient(180deg, #f3f6fa 0%, #e8edf4 54%, #dbe3ed 100%);
     }
 
@@ -443,30 +638,86 @@
         background: linear-gradient(
             180deg,
             rgba(255, 255, 255, 0.68) 0%,
-            rgba(255, 255, 255, 0.38) 48%,
-            rgba(255, 255, 255, 0.16) 100%
+            rgba(255, 255, 255, 0.36) 48%,
+            rgba(255, 255, 255, 0.14) 100%
         );
     }
 
+    .landing-page .text-slate-900 {
+        color: rgb(15 23 42);
+    }
+
+    .landing-page .text-slate-800,
+    .landing-page .text-slate-700,
+    .landing-page .text-slate-600 {
+        color: rgb(71 85 105);
+    }
+
+    .landing-page .text-slate-500 {
+        color: rgb(100 116 139);
+    }
+
+    .landing-page .ghost-button {
+        border-color: rgb(226 232 240 / 0.9);
+        background: rgb(255 255 255 / 0.85);
+        color: rgb(71 85 105);
+    }
+
+    .landing-page .ghost-button:hover {
+        border-color: rgb(251 146 60 / 0.42);
+        background: rgb(255 247 237 / 0.9);
+        color: rgb(194 65 12);
+    }
+
+    .landing-page .landing-login-button:hover {
+        border-color: rgb(203 213 225 / 0.95);
+        background: rgb(255 255 255 / 0.9);
+        color: rgb(15 23 42);
+    }
+
     .landing-header {
-        @apply flex items-center justify-between gap-4 rounded-[28px] border border-white/80 bg-white/78 px-5 py-4 sm:px-6;
+        @apply sticky top-4 z-30 flex items-center justify-between gap-4 rounded-[28px] border px-5 py-3 sm:px-6;
+        border-color: rgb(255 255 255 / 0.8);
+        background: rgb(255 255 255 / 0.78);
         box-shadow: 0 20px 45px -40px rgba(15, 23, 42, 0.4);
+        backdrop-filter: blur(18px);
     }
 
     .landing-brand {
-        @apply inline-flex items-center gap-2.5 text-slate-900;
+        @apply inline-flex items-center gap-3 text-slate-900;
     }
 
     .landing-brand-icon {
-        @apply inline-flex h-8 w-8 items-center justify-center rounded-xl bg-brand-100 text-brand-700;
+        @apply relative inline-flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl text-white;
+        background:
+            linear-gradient(145deg, #0f172a 0%, #334155 46%, #f97316 100%);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.24),
+            0 16px 34px -24px rgba(194, 65, 12, 0.75);
+        transition:
+            transform 220ms ease,
+            box-shadow 220ms ease,
+            filter 220ms ease;
     }
 
     .landing-brand-name {
         @apply text-3xl font-black tracking-tight;
+        background: linear-gradient(135deg, #0f172a 0%, #c2410c 82%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
+    }
+
+    .landing-brand:hover .landing-brand-icon {
+        transform: translateY(-1px) rotate(-3deg);
+        filter: saturate(1.08);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.26),
+            0 20px 38px -22px rgba(194, 65, 12, 0.82);
     }
 
     .landing-nav {
-        @apply hidden items-center gap-10 text-base font-medium text-slate-600 lg:flex;
+        @apply hidden items-center gap-8 text-sm font-black uppercase text-slate-500 lg:flex;
     }
 
     .landing-nav a {
@@ -512,7 +763,7 @@
     }
 
     .landing-hero-grid {
-        @apply grid gap-9 p-6 lg:grid-cols-[1.15fr_0.85fr] lg:items-center lg:p-10;
+        @apply grid gap-7 p-5 lg:grid-cols-[1.08fr_0.92fr] lg:items-center lg:p-8;
     }
 
     .landing-hero-tag {
@@ -551,7 +802,7 @@
     }
 
     .landing-kpi-grid {
-        @apply grid gap-3 sm:grid-cols-2;
+        @apply grid gap-3 sm:grid-cols-3;
     }
 
     .landing-kpi-card {
@@ -580,7 +831,7 @@
     }
 
     .landing-hero-visual {
-        @apply relative mx-auto w-full max-w-[520px];
+        @apply relative mx-auto w-full max-w-[560px];
     }
 
     .landing-hero-photo-shell {
@@ -591,22 +842,86 @@
             box-shadow 340ms ease;
     }
 
+    .landing-image-slider {
+        position: relative;
+        padding: 0;
+        background: rgb(255 255 255 / 0.72);
+    }
+
+    .landing-slider-track {
+        display: flex;
+        width: 100%;
+    }
+
+    .landing-slider-track .landing-hero-photo {
+        flex: 0 0 100%;
+        border-radius: 1.75rem;
+    }
+
+    .landing-slider-dots {
+        @apply absolute bottom-5 right-6 flex items-center gap-2;
+    }
+
+    .landing-slider-dots span {
+        @apply h-2 w-8 rounded-full bg-white/40;
+    }
+
+    .landing-slider-dots span:first-child {
+        animation: landing-dot-one 11s ease-in-out infinite;
+    }
+
+    .landing-slider-dots span:last-child {
+        animation: landing-dot-two 11s ease-in-out infinite;
+    }
+
+    @keyframes landing-slider {
+        0%,
+        44% {
+            transform: translateX(0);
+        }
+        54%,
+        100% {
+            transform: translateX(-50%);
+        }
+    }
+
+    @keyframes landing-dot-one {
+        0%,
+        44% {
+            background: rgb(255 255 255);
+        }
+        54%,
+        100% {
+            background: rgb(255 255 255 / 0.35);
+        }
+    }
+
+    @keyframes landing-dot-two {
+        0%,
+        44% {
+            background: rgb(255 255 255 / 0.35);
+        }
+        54%,
+        100% {
+            background: rgb(255 255 255);
+        }
+    }
+
     .landing-hero-photo-shell:hover {
         transform: translateY(-4px);
         box-shadow: 0 28px 52px -32px rgba(15, 23, 42, 0.5);
     }
 
     .landing-hero-photo {
-        @apply h-[430px] w-full rounded-3xl object-cover;
+        @apply h-[340px] w-full rounded-3xl object-cover;
         transform-origin: center;
-        animation: landing-photo-float 9s ease-in-out infinite;
         transition:
             transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
             filter 420ms ease;
     }
 
     .landing-hero-photo-shell:hover .landing-hero-photo {
-        transform: scale(1.05);
+        transform: none;
         filter: saturate(1.08) contrast(1.02);
     }
 
@@ -683,16 +998,16 @@
     }
 
     .landing-section {
-        @apply rounded-[32px] border border-white/72 bg-white/66 p-6 sm:p-8 lg:p-10;
+        @apply rounded-[32px] border border-white/72 bg-white/66 p-5 sm:p-6 lg:p-8;
         box-shadow: 0 20px 45px -40px rgba(15, 23, 42, 0.4);
     }
 
     .landing-feature-grid {
-        @apply grid gap-5 md:grid-cols-2 xl:grid-cols-3;
+        @apply grid gap-4 md:grid-cols-2 xl:grid-cols-3;
     }
 
     .landing-feature-card {
-        @apply rounded-[24px] border border-slate-200/70 bg-white/90 p-6;
+        @apply rounded-[24px] border border-slate-200/70 bg-white/90 p-5;
         box-shadow: 0 18px 34px -30px rgba(15, 23, 42, 0.34);
         transition:
             transform 200ms ease,
@@ -707,11 +1022,11 @@
     }
 
     .landing-pricing-grid {
-        @apply grid gap-4 md:grid-cols-2 xl:grid-cols-3;
+        @apply grid gap-4 md:grid-cols-3;
     }
 
     .landing-pricing-card {
-        @apply rounded-[24px] border border-slate-200/70 bg-white/92 p-6;
+        @apply rounded-[24px] border border-slate-200/70 bg-white/92 p-5;
         box-shadow: 0 18px 32px -30px rgba(15, 23, 42, 0.32);
         transition:
             transform 200ms ease,
@@ -745,7 +1060,7 @@
     }
 
     .landing-photo-panel {
-        @apply relative min-h-[460px] overflow-hidden rounded-[30px] border border-white/70;
+        @apply relative min-h-[360px] overflow-hidden rounded-[30px] border border-white/70;
         box-shadow: 0 24px 52px -42px rgba(15, 23, 42, 0.52);
         transition:
             transform 280ms ease,
@@ -783,8 +1098,12 @@
     }
 
     .landing-footer {
-        @apply flex flex-wrap items-center justify-between gap-5 rounded-[28px] border border-white/80 bg-white/74 px-6 py-5;
-        box-shadow: 0 20px 45px -40px rgba(15, 23, 42, 0.4);
+        @apply relative flex flex-col gap-10 rounded-[34px] border px-6 py-9 sm:px-8 lg:px-12;
+        border-color: rgb(255 255 255 / 0.8);
+        background:
+            radial-gradient(circle at 0 100%, rgb(249 115 22 / 0.12), transparent 34%),
+            rgb(255 255 255 / 0.78);
+        box-shadow: 0 24px 60px -40px rgba(15, 23, 42, 0.45);
     }
 
     .landing-footer-links {
@@ -792,11 +1111,11 @@
     }
 
     .landing-footer-links a {
-        @apply transition hover:text-slate-700;
+        @apply transition hover:text-slate-900;
     }
 
     .landing-cta {
-        @apply flex flex-col gap-7 rounded-[32px] border border-white/80 bg-white/76 p-6 sm:p-8 lg:flex-row lg:items-end lg:justify-between lg:p-10;
+        @apply grid gap-6 rounded-[32px] border border-white/80 bg-white/76 p-6 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center lg:p-8;
         box-shadow: 0 22px 46px -42px rgba(15, 23, 42, 0.45);
     }
 
@@ -805,11 +1124,77 @@
     }
 
     .landing-cta-actions {
-        @apply flex flex-wrap items-center gap-3;
+        @apply flex items-center justify-start gap-3 lg:justify-end;
     }
 
     .landing-footer-copy {
-        @apply text-sm text-slate-500;
+        @apply text-sm leading-7 text-slate-500;
+    }
+
+    .landing-footer-main {
+        @apply max-w-md space-y-5;
+    }
+
+    .landing-footer-bottom {
+        @apply flex w-full flex-wrap items-center justify-between gap-5 border-t pt-7 pr-20;
+        border-color: rgb(255 255 255 / 0.82);
+    }
+
+    .landing-social-links {
+        @apply flex items-center gap-3;
+    }
+
+    .landing-social-links a {
+        @apply inline-flex h-10 w-10 items-center justify-center rounded-full border text-slate-500 transition hover:-translate-y-0.5 hover:text-brand-700;
+        border-color: rgb(226 232 240 / 0.9);
+        background: rgb(255 255 255 / 0.86);
+    }
+
+    .landing-back-top {
+        @apply fixed bottom-6 right-8 z-30 inline-flex h-14 w-14 items-center justify-center rounded-full text-white transition hover:-translate-y-1;
+        background: linear-gradient(135deg, #fb923c, #ea580c);
+        box-shadow: 0 20px 40px -22px rgba(234, 88, 12, 0.8);
+    }
+
+    .landing-get-started-button {
+        @apply relative min-w-[190px] overflow-hidden whitespace-nowrap text-center text-base font-black uppercase tracking-[0.18em];
+        transition:
+            transform 220ms cubic-bezier(0.22, 1, 0.36, 1),
+            box-shadow 220ms ease,
+            filter 220ms ease;
+    }
+
+    .landing-get-started-button:hover {
+        transform: scale(1.08) translateY(-2px);
+        filter: saturate(1.08);
+        box-shadow: 0 24px 45px -22px rgba(202, 138, 4, 0.7);
+    }
+
+    .landing-get-started-button::before {
+        content: '';
+        position: absolute;
+        inset: -2px;
+        border-radius: inherit;
+        padding: 2px;
+        background: conic-gradient(
+            from var(--border-angle, 0deg),
+            transparent 0 46%,
+            rgb(250 204 21) 54%,
+            rgb(255 255 255) 62%,
+            rgb(250 204 21) 70%,
+            transparent 82%
+        );
+        animation: landing-border-spin 1.8s linear infinite;
+        -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+        -webkit-mask-composite: xor;
+        mask-composite: exclude;
+        pointer-events: none;
+    }
+
+    @keyframes landing-border-spin {
+        to {
+            --border-angle: 360deg;
+        }
     }
 
     .auth-page-shell {
@@ -835,7 +1220,17 @@
     }
 
     .auth-aside .landing-brand-icon {
-        @apply bg-brand-500/20 text-brand-200;
+        background:
+            linear-gradient(145deg, rgb(255 255 255 / 0.2), rgb(251 146 60 / 0.42)),
+            linear-gradient(145deg, #0f172a 0%, #f97316 100%);
+        color: rgb(255 247 237);
+    }
+
+    .auth-aside .landing-brand-name {
+        background: linear-gradient(135deg, #ffffff 0%, #fed7aa 86%);
+        -webkit-background-clip: text;
+        background-clip: text;
+        color: transparent;
     }
 
     .auth-aside-title {
@@ -861,8 +1256,22 @@
     .auth-panel {
         @apply w-full border bg-white/88 p-7 sm:p-10 lg:p-12;
         border-radius: 2rem;
-        border-color: rgb(255 255 255 / 0.78);
-        box-shadow: 0 24px 55px -42px rgba(15, 23, 42, 0.45);
+        border-color: rgb(255 255 255 / 0.88);
+        background:
+            linear-gradient(145deg, rgb(255 255 255 / 0.96), rgb(248 250 252 / 0.9));
+        box-shadow: 0 28px 65px -40px rgba(15, 23, 42, 0.5);
+        transition:
+            transform 220ms ease,
+            border-color 220ms ease,
+            box-shadow 220ms ease;
+    }
+
+    .auth-panel:hover {
+        transform: translateY(-2px);
+        border-color: rgb(250 204 21 / 0.7);
+        box-shadow:
+            0 30px 70px -40px rgba(15, 23, 42, 0.56),
+            0 0 0 4px rgba(250, 204, 21, 0.1);
     }
 
     .auth-mark {
@@ -880,6 +1289,26 @@
 
     .auth-input-wrap {
         @apply relative rounded-2xl border border-transparent bg-slate-200/82 px-5 py-3.5 sm:py-4;
+        transition:
+            transform 180ms ease,
+            border-color 180ms ease,
+            background-color 180ms ease,
+            box-shadow 180ms ease;
+    }
+
+    .auth-input-wrap:hover {
+        transform: translateY(-1px);
+        border-color: rgb(226 232 240 / 0.95);
+        background: rgb(241 245 249 / 0.92);
+        box-shadow: 0 12px 24px -24px rgba(15, 23, 42, 0.34);
+    }
+
+    .auth-input-wrap:focus-within {
+        border-color: rgb(250 204 21 / 0.86);
+        background: rgb(255 255 255 / 0.95);
+        box-shadow:
+            0 0 0 3px rgba(250, 204, 21, 0.24),
+            0 18px 30px -25px rgba(161, 98, 7, 0.42);
     }
 
     .auth-input-wrap > svg {
@@ -909,16 +1338,59 @@
         box-shadow: 0 12px 30px -22px rgba(15, 23, 42, 0.25);
     }
 
+    .google-login-btn:hover {
+        background: rgb(255 255 255);
+        box-shadow: 0 16px 32px -24px rgba(15, 23, 42, 0.32);
+    }
+
     .google-login-btn svg {
         @apply h-5 w-5;
     }
 
     .password-toggle {
-        @apply absolute right-3 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-slate-500 transition hover:bg-white/70 hover:text-slate-700;
+        @apply absolute right-2.5 top-1/2 inline-flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full text-slate-800 transition duration-200 hover:bg-white hover:text-slate-950 focus:outline-none focus:ring-2 focus:ring-brand-300/50;
+    }
+
+    .password-toggle-active {
+        background: rgb(255 255 255 / 0.92);
+        color: rgb(15 23 42);
+        box-shadow: 0 10px 22px -18px rgba(15, 23, 42, 0.55);
     }
 
     .password-toggle-icon {
-        @apply h-4 w-4;
+        @apply h-5 w-5;
+        transition:
+            opacity 150ms ease,
+            transform 150ms ease;
+    }
+
+    .auth-consent {
+        @apply inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-500 transition;
+    }
+
+    .auth-consent:hover {
+        color: rgb(15 23 42);
+    }
+
+    .auth-consent-dot {
+        @apply inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition;
+        border-color: rgb(251 146 60 / 0.72);
+        background: rgb(255 255 255 / 0.85);
+        box-shadow: inset 0 0 0 4px rgb(255 255 255 / 0.95);
+    }
+
+    .auth-consent input:checked + .auth-consent-dot {
+        border-color: rgb(249 115 22);
+        background: linear-gradient(135deg, rgb(251 146 60), rgb(234 88 12));
+        box-shadow: 0 0 0 3px rgb(251 146 60 / 0.12);
+    }
+
+    .auth-consent a {
+        @apply font-black text-brand-700 transition;
+    }
+
+    .auth-consent a:hover {
+        color: rgb(194 65 12);
     }
 
     .auth-alert {
@@ -1017,7 +1489,7 @@
     }
 
     .budget-range-pill {
-        @apply rounded-xl px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:text-slate-800;
+        @apply rounded-xl px-3 py-1.5 text-sm font-semibold text-slate-500 transition duration-200 hover:-translate-y-0.5 hover:text-slate-800;
     }
 
     .budget-range-pill-active {
@@ -1025,8 +1497,47 @@
         box-shadow: 0 12px 24px -16px rgba(15, 23, 42, 0.28);
     }
 
+    .month-range-pills {
+        @apply grid w-full max-w-[780px] grid-cols-3 gap-1 rounded-3xl p-1.5 sm:grid-cols-4 lg:grid-cols-6 xl:grid-cols-12;
+    }
+
+    .month-range-pills .budget-range-pill {
+        @apply flex min-h-10 items-center justify-center px-2 text-xs;
+    }
+
+    .month-pill-short {
+        @apply hidden;
+    }
+
+    @media (max-width: 640px) {
+        .month-pill-full {
+            display: none;
+        }
+
+        .month-pill-short {
+            display: inline;
+        }
+    }
+
     .budget-chart-shell {
         @apply relative overflow-hidden rounded-2xl border border-slate-200/80 bg-white p-3 sm:p-4;
+        cursor: crosshair;
+        background:
+            linear-gradient(180deg, rgb(255 255 255 / 0.98), rgb(248 250 252 / 0.94)),
+            radial-gradient(circle at 88% 12%, rgb(14 116 144 / 0.1), transparent 34%);
+        box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.88);
+        transition:
+            border-color 220ms ease,
+            box-shadow 220ms ease,
+            transform 220ms ease;
+    }
+
+    .budget-chart-shell:hover {
+        transform: translateY(-1px);
+        border-color: rgb(125 211 252 / 0.72);
+        box-shadow:
+            inset 0 1px 0 rgb(255 255 255 / 0.9),
+            0 20px 44px -36px rgba(14, 116, 144, 0.38);
     }
 
     .budget-chart-svg {
@@ -1072,11 +1583,29 @@
         stroke: rgb(148 163 184 / 0.6);
         stroke-width: 1;
         stroke-dasharray: 4 4;
+        transition:
+            x1 120ms ease,
+            x2 120ms ease;
     }
 
     .budget-point {
         stroke: white;
         stroke-width: 2.5;
+        transition:
+            cx 120ms ease,
+            cy 120ms ease,
+            r 120ms ease,
+            opacity 120ms ease;
+    }
+
+    .budget-point-hoverable {
+        opacity: 0.62;
+    }
+
+    .budget-point-active,
+    .budget-point-focus {
+        opacity: 1;
+        filter: drop-shadow(0 8px 10px rgba(15, 23, 42, 0.18));
     }
 
     .budget-point-in {
@@ -1088,9 +1617,13 @@
     }
 
     .budget-tooltip-card {
-        @apply pointer-events-none absolute top-5 z-10 w-[260px] max-w-[85%] rounded-2xl border border-slate-200/90 bg-white/95 p-4;
+        @apply pointer-events-none absolute top-5 z-10 w-[300px] max-w-[88%] rounded-2xl border border-slate-200/90 bg-white/95 p-4;
         transform: translateX(-50%);
         box-shadow: 0 18px 35px -24px rgba(15, 23, 42, 0.35);
+        transition:
+            left 130ms ease,
+            transform 130ms ease,
+            box-shadow 160ms ease;
     }
 
     .budget-tooltip-head {
@@ -1332,6 +1865,59 @@
         background: linear-gradient(180deg, #020617 0%, #0f172a 100%);
     }
 
+    .dark .auth-page-shell {
+        background:
+            radial-gradient(circle at top, rgba(249, 115, 22, 0.12), transparent 42%),
+            radial-gradient(circle at 82% 18%, rgba(59, 130, 246, 0.12), transparent 36%),
+            linear-gradient(180deg, #020617 0%, #0f172a 100%);
+    }
+
+    .dark .auth-panel {
+        border-color: rgb(51 65 85 / 0.86);
+        background:
+            linear-gradient(145deg, rgb(15 23 42 / 0.96), rgb(2 6 23 / 0.9));
+        box-shadow: 0 30px 70px -42px rgba(2, 6, 23, 0.95);
+    }
+
+    .dark .auth-panel:hover {
+        border-color: rgb(251 146 60 / 0.36);
+        box-shadow:
+            0 32px 72px -44px rgba(2, 6, 23, 0.98),
+            0 0 0 3px rgba(251, 146, 60, 0.08);
+    }
+
+    .dark .auth-aside {
+        border-color: rgb(51 65 85 / 0.75);
+        background:
+            radial-gradient(circle at top left, rgba(249, 115, 22, 0.16), transparent 42%),
+            rgb(15 23 42 / 0.96);
+    }
+
+    .dark .auth-mark {
+        background: rgb(30 41 59);
+        color: rgb(251 146 60);
+    }
+
+    .dark .auth-consent {
+        color: rgb(148 163 184);
+    }
+
+    .dark .auth-consent:hover {
+        color: rgb(226 232 240);
+    }
+
+    .dark .auth-consent-dot {
+        border-color: rgb(251 146 60 / 0.58);
+        background: rgb(15 23 42);
+        box-shadow: inset 0 0 0 4px rgb(15 23 42);
+    }
+
+    .dark .auth-consent input:checked + .auth-consent-dot {
+        border-color: rgb(251 146 60);
+        background: linear-gradient(135deg, rgb(251 146 60), rgb(234 88 12));
+        box-shadow: 0 0 0 3px rgb(251 146 60 / 0.16);
+    }
+
     .dark .bg-sidebar {
         background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
     }
@@ -1346,6 +1932,84 @@
         border-color: rgb(51 65 85 / 0.85);
         background: rgb(15 23 42 / 0.9);
         box-shadow: 0 18px 45px -35px rgba(2, 6, 23, 0.95);
+    }
+
+    .dark .bg-slate-100\/90 {
+        background-color: rgb(2 6 23 / 0.92) !important;
+    }
+
+    .dark .page-search-shell,
+    .dark .page-filter-button,
+    .dark .page-export-button,
+    .dark .page-filter-menu,
+    .dark #date-dropdown,
+    .dark #progress-dropdown,
+    .dark .budget-range-pills,
+    .dark .budget-chart-shell,
+    .dark .budget-tooltip-card,
+    .dark .report-trend-pill,
+    .dark .app-modal-card,
+    .dark .auth-input-wrap,
+    .dark .part-upload-card {
+        border-color: rgb(51 65 85 / 0.85);
+        background: rgb(15 23 42 / 0.92);
+        color: rgb(226 232 240);
+        box-shadow: 0 18px 45px -35px rgba(2, 6, 23, 0.95);
+    }
+
+    .dark .part-upload-preview {
+        border-color: rgb(51 65 85 / 0.85);
+        background: rgb(30 41 59);
+        color: rgb(148 163 184);
+    }
+
+    .dark #date-dropdown button,
+    .dark #progress-dropdown button {
+        color: rgb(203 213 225);
+    }
+
+    .dark #date-dropdown button:hover,
+    .dark #progress-dropdown button:hover {
+        background: rgb(30 41 59);
+        color: rgb(248 250 252);
+    }
+
+    .dark .page-search-shell input {
+        color: rgb(226 232 240);
+    }
+
+    .dark .page-filter-menu button {
+        color: rgb(203 213 225);
+    }
+
+    .dark .page-filter-menu button:hover {
+        background: rgb(30 41 59);
+        color: rgb(248 250 252);
+    }
+
+    .dark .soft-table thead,
+    .dark .table-heading {
+        background: rgb(15 23 42 / 0.96);
+    }
+
+    .dark .soft-table tbody tr:hover,
+    .dark .soft-table tbody tr {
+        border-color: rgb(51 65 85 / 0.75);
+    }
+
+    .dark .soft-table tbody tr:hover {
+        background: rgb(30 41 59 / 0.78);
+    }
+
+    .dark .soft-table tbody td {
+        color: rgb(203 213 225);
+    }
+
+    .dark .rounded-2xl.border.border-slate-100,
+    .dark .rounded-2xl.border.border-slate-100.bg-white,
+    .dark .rounded-2xl.border.border-slate-100.bg-slate-50\/80 {
+        border-color: rgb(51 65 85 / 0.75);
+        background-color: rgb(15 23 42 / 0.74);
     }
 
     .dark .icon-button {
@@ -1494,6 +2158,23 @@
         @apply text-slate-200 hover:text-brand-300;
     }
 
+    .dark .landing-page .landing-login-button:hover {
+        border-color: rgb(71 85 105 / 0.9);
+        background: rgb(15 23 42 / 0.92);
+        color: rgb(248 250 252);
+    }
+
+    .dark .landing-social-links a {
+        border-color: rgb(51 65 85 / 0.86);
+        background: rgb(15 23 42 / 0.9);
+        color: rgb(203 213 225);
+    }
+
+    .dark .landing-art-quote {
+        border-color: rgb(51 65 85 / 0.75);
+        background: rgb(15 23 42 / 0.9);
+    }
+
     .dark .landing-plan-copy,
     .dark .landing-kpi-note,
     .dark .landing-footer-copy {
@@ -1502,6 +2183,21 @@
 
     .dark .input-shell {
         @apply border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400 focus:border-brand-300 focus:bg-slate-900 focus:ring-brand-400/30;
+    }
+
+    .dark .password-toggle {
+        @apply text-slate-200 hover:bg-slate-800 hover:text-white focus:ring-brand-400/40;
+    }
+
+    .dark .password-toggle-active {
+        background: rgb(30 41 59 / 0.95);
+        color: rgb(248 250 252);
+        box-shadow: 0 10px 22px -18px rgba(2, 6, 23, 0.85);
+    }
+
+    .dark .ghost-button,
+    .dark .google-login-btn {
+        @apply border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white;
     }
 
     .dark .toggle-pill {
@@ -1586,6 +2282,28 @@
             animation: none !important;
             transition: none !important;
             transform: none !important;
+        }
+    }
+
+    @media (max-width: 640px) {
+        .page-filter-toolbar {
+            @apply items-stretch;
+        }
+
+        .page-search-shell,
+        .page-filter-toolbar > .relative,
+        .page-filter-button,
+        .page-export-button {
+            @apply w-full;
+        }
+
+        .page-filter-button,
+        .page-export-button {
+            @apply justify-center;
+        }
+
+        .page-filter-menu {
+            @apply right-0 left-auto w-full;
         }
     }
 }

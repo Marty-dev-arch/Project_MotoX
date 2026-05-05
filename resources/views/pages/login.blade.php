@@ -41,7 +41,7 @@
                 <p class="mt-3 text-center text-base text-slate-500 sm:text-lg">Sign in with your registered MotoX account.</p>
 
                 @if (session('status'))
-                    <div class="mt-7 rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-emerald-700">
+                    <div class="mt-7 rounded-2xl border border-emerald-200/80 bg-emerald-50/90 px-4 py-3 text-emerald-700" data-registration-success="{{ session('status') }}">
                         <p class="font-semibold">{{ session('status') }}</p>
                     </div>
                 @endif
@@ -80,13 +80,23 @@
                                 data-target="login-password"
                                 aria-label="Show password"
                             >
-                                <x-icon name="eye" class="password-toggle-icon" data-password-icon="show" />
-                                <x-icon name="eye-off" class="password-toggle-icon hidden" data-password-icon="hide" />
+                                <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
+                                <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                             </button>
                         </div>
                     </label>
 
-                    <div class="flex justify-end">
+                    <div class="flex items-center justify-between gap-4">
+                        <label class="inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+                            <input
+                                type="checkbox"
+                                name="remember"
+                                value="1"
+                                class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-200"
+                                @checked(old('remember'))
+                            >
+                            <span>Remember Me</span>
+                        </label>
                         <a href="{{ route('password.request') }}" class="text-sm font-semibold text-slate-500 transition hover:text-brand-700">Forgot password?</a>
                     </div>
 

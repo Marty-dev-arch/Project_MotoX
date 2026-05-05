@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsPageData;
+use App\Support\SystemNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -16,7 +17,7 @@ class SettingsController extends Controller
     public function index(Request $request): View
     {
         $user = $request->user();
-        $shop = $user->shop;
+        $shop = $user->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         return view('pages.settings', $this->buildPageData('settings', [
@@ -25,6 +26,7 @@ class SettingsController extends Controller
             'searchPlaceholder' => 'Search setting...',
             'profile' => [
                 'owner_name' => $shop->owner_name ?: $user->name,
+                'username' => $user->username ?: str($user->email)->before('@')->toString(),
                 'email' => $user->email,
                 'contact_number' => $shop->contact_number,
                 'shop_name' => $shop->name,
@@ -46,11 +48,18 @@ class SettingsController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $user = $request->user();
-        $shop = $user->shop;
+        $shop = $user->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $validated = $request->validate([
             'owner_name' => ['required', 'string', 'max:120'],
+            'username' => [
+                'required',
+                'string',
+                'max:60',
+                'regex:/^[A-Za-z0-9_.-]+$/',
+                Rule::unique('users', 'username')->ignore($user->id),
+            ],
             'shop_name' => ['required', 'string', 'max:120'],
             'email' => [
                 'required',
@@ -80,6 +89,7 @@ class SettingsController extends Controller
 
         $user->update([
             'name' => trim($validated['owner_name']),
+            'username' => strtolower(trim($validated['username'])),
             'email' => strtolower(trim($validated['email'])),
             'avatar_path' => $avatarPath,
         ]);
@@ -95,6 +105,15 @@ class SettingsController extends Controller
             'notify_job_order_updates' => (bool) ($validated['notify_job_order_updates'] ?? false),
             'notify_billing_updates' => (bool) ($validated['notify_billing_updates'] ?? false),
         ]);
+
+        SystemNotifier::notifyUser(
+            $user,
+            $shop,
+            'settings.updated',
+            'Settings Updated',
+            'Your shop profile and preferences were saved.',
+            'success',
+        );
 
         return redirect()
             ->route('settings')

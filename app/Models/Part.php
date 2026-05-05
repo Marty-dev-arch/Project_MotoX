@@ -11,7 +11,20 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-#[Fillable(['shop_id', 'sku', 'name', 'category', 'image_path', 'minimum_stock', 'unit_price', 'is_active'])]
+#[Fillable([
+    'shop_id',
+    'sku',
+    'name',
+    'category',
+    'image_path',
+    'stock_mode',
+    'unit_label',
+    'pieces_per_box',
+    'allow_fractional_quantity',
+    'minimum_stock',
+    'unit_price',
+    'is_active',
+])]
 class Part extends Model
 {
     use HasFactory;
@@ -20,21 +33,23 @@ class Part extends Model
     protected function casts(): array
     {
         return [
-            'minimum_stock' => 'integer',
+            'minimum_stock' => 'decimal:3',
             'unit_price' => 'decimal:2',
             'is_active' => 'boolean',
+            'pieces_per_box' => 'decimal:3',
+            'allow_fractional_quantity' => 'boolean',
         ];
     }
 
     protected function currentStock(): Attribute
     {
         return Attribute::make(
-            get: function (mixed $value, array $attributes): int {
+            get: function (mixed $value, array $attributes): float {
                 if ($value !== null) {
-                    return (int) $value;
+                    return (float) $value;
                 }
 
-                return (int) ($attributes['current_stock'] ?? 0);
+                return (float) ($attributes['current_stock'] ?? 0);
             },
         );
     }
@@ -81,5 +96,19 @@ class Part extends Model
     {
         return $this->hasMany(StockMovement::class);
     }
-}
 
+    public function usesBoxConversion(): bool
+    {
+        return $this->stock_mode === 'box_piece' && (float) ($this->pieces_per_box ?? 0) > 0;
+    }
+
+    public function usesLiquidMode(): bool
+    {
+        return $this->stock_mode === 'liquid';
+    }
+
+    public function defaultUnitLabel(): string
+    {
+        return trim((string) $this->unit_label) !== '' ? $this->unit_label : 'pcs';
+    }
+}

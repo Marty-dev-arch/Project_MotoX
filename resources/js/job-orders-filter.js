@@ -6,12 +6,10 @@ document.addEventListener('DOMContentLoaded', function () {
     const progressDropdown = document.getElementById('progress-dropdown');
     const jobOrderRows = document.querySelectorAll('.job-order-row');
 
-    // Return early if no search input found (not on job orders page)
     if (!(searchInput instanceof HTMLInputElement)) {
         return;
     }
 
-    // Live search functionality
     searchInput.addEventListener('input', function (e) {
         const searchTerm = e.target.value.toLowerCase();
 
@@ -31,7 +29,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateVisibleCount();
     });
 
-    // Filter by Date dropdown toggle
     if (filterDateBtn instanceof HTMLElement && dateDropdown instanceof HTMLElement) {
         filterDateBtn.addEventListener('click', function () {
             dateDropdown.classList.toggle('hidden');
@@ -46,7 +43,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Date filter options
         const dateOptions = dateDropdown.querySelectorAll('[data-date-filter]');
         dateOptions.forEach(option => {
             option.addEventListener('click', function () {
@@ -61,7 +57,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Filter by Progress dropdown toggle
     if (filterProgressBtn instanceof HTMLElement && progressDropdown instanceof HTMLElement) {
         filterProgressBtn.addEventListener('click', function () {
             progressDropdown.classList.toggle('hidden');
@@ -76,7 +71,6 @@ document.addEventListener('DOMContentLoaded', function () {
             }
         });
 
-        // Progress filter options
         const progressOptions = progressDropdown.querySelectorAll('[data-progress-filter]');
         progressOptions.forEach(option => {
             option.addEventListener('click', function () {
@@ -91,7 +85,6 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    // Date filter logic
     function applyDateFilter(filterValue) {
         const now = new Date();
         let startDate = null;
@@ -131,14 +124,12 @@ document.addEventListener('DOMContentLoaded', function () {
         updateVisibleCount();
     }
 
-    // Progress filter logic
     function applyProgressFilter(filterValue) {
         jobOrderRows.forEach(row => {
             const status = row.dataset.status || '';
 
             switch (filterValue) {
                 case 'active':
-                    // Show orders with in_progress status
                     if (status === 'in_progress') {
                         row.style.display = '';
                     } else {
@@ -146,7 +137,6 @@ document.addEventListener('DOMContentLoaded', function () {
                     }
                     break;
                 case 'no-active':
-                    // Show orders that are not in_progress (completed, cancelled, pending)
                     if (status !== 'in_progress') {
                         row.style.display = '';
                     } else {
@@ -162,7 +152,6 @@ document.addEventListener('DOMContentLoaded', function () {
         updateVisibleCount();
     }
 
-    // Update visible count
     function updateVisibleCount() {
         const visibleCount = Array.from(jobOrderRows).filter(row => row.style.display !== 'none').length;
         const countElement = document.getElementById('visible-joborders-count');

@@ -1,19 +1,49 @@
 @extends('layouts.app')
 
 @section('content')
-    <section class="space-y-8" data-dashboard-metrics-url="{{ $dashboardMetricsUrl }}">
+    <section
+        class="space-y-8"
+        data-dashboard-metrics-url="{{ $dashboardMetricsUrl }}"
+        data-dashboard-months="{{ $dashboardTrendMonths }}"
+    >
         @if (session('status'))
             <div class="auth-alert">
                 <p class="font-semibold">{{ session('status') }}</p>
             </div>
         @endif
 
-<div class="space-y-2">
-            <h1 class="text-4xl font-black tracking-tight text-slate-900">{{ $heading }}</h1>
-            <p class="text-base text-slate-500">{{ $subheading }}</p>
+        <div class="flex flex-wrap items-start justify-between gap-5">
+            <div class="space-y-2">
+                <h1 class="text-4xl font-black tracking-tight text-slate-900">{{ $heading }}</h1>
+                <p class="text-base text-slate-500">{{ $subheading }}</p>
+            </div>
+
+            <div class="page-filter-toolbar">
+                <label class="page-search-shell">
+                    <x-icon name="search" class="h-4 w-4 text-slate-400" />
+                    <input
+                        type="text"
+                        id="dashboard-search-input"
+                        placeholder="Search part, sku, category..."
+                    >
+                </label>
+
+                <div class="relative">
+                    <button type="button" class="page-filter-button" data-date-filter-trigger="dashboard">
+                        <x-icon name="calendar" class="h-4 w-4" />
+                        <span>Filter by Date</span>
+                        <x-icon name="chevron-down" class="h-4 w-4" />
+                    </button>
+                    <div class="page-filter-menu hidden" data-date-filter-menu="dashboard">
+                        <button type="button" data-date-filter="all">All Time</button>
+                        <button type="button" data-date-filter="today">Today</button>
+                        <button type="button" data-date-filter="week">This Week</button>
+                        <button type="button" data-date-filter="month">This Month</button>
+                        <button type="button" data-date-filter="year">This Year</button>
+                    </div>
+                </div>
+            </div>
         </div>
-
-
 
         <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             @foreach ($stats as $index => $stat)
@@ -34,6 +64,25 @@
             @endforeach
         </div>
 
+        <section class="panel-card p-5 sm:p-6">
+            <div class="flex flex-wrap items-end justify-between gap-3">
+                <div>
+                    <h2 class="text-2xl font-bold text-slate-900">Revenue Snapshot</h2>
+                    <p class="mt-1 text-sm text-slate-500">Actual completed job-order revenue by operating window.</p>
+                </div>
+                <a href="{{ route('reports') }}" class="text-sm font-semibold text-brand-600 transition hover:text-brand-700">Open Reports</a>
+            </div>
+            <div class="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-4" data-dashboard-revenue-list>
+                @foreach ($revenueStats as $row)
+                    <article class="dashboard-revenue-card rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-4" data-dashboard-revenue-card="{{ $row['period'] }}">
+                        <p class="muted-label">{{ $row['label'] }}</p>
+                        <p class="mt-2 text-2xl font-black tracking-tight text-slate-900" data-dashboard-revenue-value>{{ $row['value'] }}</p>
+                        <p class="mt-1 text-xs text-slate-500">{{ $row['caption'] }}</p>
+                    </article>
+                @endforeach
+            </div>
+        </section>
+
         <div class="grid gap-6 xl:grid-cols-[1.4fr_1fr]">
             <section class="panel-card budget-card p-5 sm:p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
@@ -46,12 +95,16 @@
                     </div>
 
                     <div class="flex flex-wrap items-center gap-3">
-                        <div class="budget-range-pills">
-                            <button type="button" class="budget-range-pill" data-dashboard-range="2">2D</button>
-                            <button type="button" class="budget-range-pill budget-range-pill-active" data-dashboard-range="7">7D</button>
-                            <button type="button" class="budget-range-pill" data-dashboard-range="30">30D</button>
-                            <button type="button" class="budget-range-pill" data-dashboard-range="90">90D</button>
-                            <button type="button" class="budget-range-pill" data-dashboard-range="365">365D</button>
+                        <div class="budget-range-pills" aria-label="Choose chart range">
+                            @foreach ($dashboardTrendRanges as $range)
+                                <button
+                                    type="button"
+                                    @class(['budget-range-pill', 'budget-range-pill-active' => $range['active']])
+                                    data-dashboard-range="{{ $range['months'] }}"
+                                >
+                                    {{ $range['label'] }}
+                                </button>
+                            @endforeach
                         </div>
                         <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400" data-updated-at>Updated now</span>
                     </div>
@@ -103,7 +156,7 @@
 
                 <div class="mt-5 space-y-3" data-dashboard-results="low-stock">
                     @forelse ($lowStockParts as $part)
-                        <article class="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3" data-dashboard-item data-part-name="{{ $part->name }}" data-part-sku="{{ $part->sku }}" data-part-category="{{ $part->category }}">
+                        <article class="rounded-2xl border border-slate-100 bg-slate-50/80 px-4 py-3" data-dashboard-item data-item-date="{{ optional($part->updated_at)->toIso8601String() }}" data-part-name="{{ $part->name }}" data-part-sku="{{ $part->sku }}" data-part-category="{{ $part->category }}">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="font-semibold text-slate-900">{{ $part->name }}</p>
@@ -130,14 +183,16 @@
                             $delta = $movement->delta();
                             $tone = $delta > 0 ? 'success' : ($delta < 0 ? 'danger' : 'accent');
                         @endphp
-                        <article class="rounded-2xl border border-slate-100 bg-white px-4 py-3" data-dashboard-item data-movement-name="{{ $movement->part?->name ?? '' }}" data-movement-type="{{ $movement->type }}" data-movement-reason="{{ $movement->reason ?? '' }}">
+                        <article class="rounded-2xl border border-slate-100 bg-white px-4 py-3" data-dashboard-item data-item-date="{{ optional($movement->moved_at)->toIso8601String() }}" data-movement-name="{{ $movement->part?->name ?? '' }}" data-movement-type="{{ $movement->type }}" data-movement-reason="{{ $movement->reason ?? '' }}">
                             <div class="flex items-center justify-between gap-3">
                                 <div>
                                     <p class="font-semibold text-slate-900">{{ $movement->part?->name ?? 'Part Removed' }}</p>
                                     <p class="text-sm text-slate-500">{{ ucfirst($movement->type) }} &middot; {{ $movement->reason ?: 'Stock update' }}</p>
                                 </div>
                                 <div class="text-right">
-                                    <x-badge :tone="$tone">{{ $delta >= 0 ? '+' : '' }}{{ $delta }}</x-badge>
+                                    <x-badge :tone="$tone">
+                                        {{ $delta >= 0 ? '+' : '' }}{{ rtrim(rtrim(number_format((float) $delta, 3, '.', ''), '0'), '.') }}
+                                    </x-badge>
                                     <p class="mt-1 text-xs text-slate-400">{{ \App\Support\InventoryMetrics::formatMovementTime($movement->moved_at) }}</p>
                                 </div>
                             </div>

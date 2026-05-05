@@ -38,26 +38,20 @@
             </article>
         </div>
 
-         <!-- Search & Filter -->
-        <div class="flex flex-wrap gap-3">
-            <div class="relative flex-1 min-w-[200px]">
-                <label class="search-shell flex items-center flex-1 max-w-md gap-2">
-    <span class="text-slate-400 flex items-center">
-        <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-            <circle cx="11" cy="11" r="8"/>
-            <path d="m21 21-4.35-4.35"/>
-        </svg>
-    </span>
-
-    <input
-        type="text"
-        id="joborder-search-input"
-        placeholder="Search order, customer, vehicle..."
-        class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-    >
-</label>
+        <div class="flex flex-wrap justify-end gap-3">
+            <div class="relative w-full md:w-[360px]">
+                <span class="absolute inset-y-0 left-4 flex items-center text-slate-400">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+                    </svg>
+</span>
+                <input
+                    type="text"
+                    id="joborder-search-input"
+                    placeholder="Search order, customer, vehicle..."
+                    class="input-shell w-full pl-11"
+                />
             </div>
-           <!-- Filter by Date Dropdown -->
             <div class="relative">
                 <button type="button" id="filter-date-btn" class="ghost-button flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -82,7 +76,6 @@
                 </div>
             </div>
 
-            <!-- Filter by Progress Dropdown -->
             <div class="relative">
                 <button type="button" id="filter-progress-btn" class="ghost-button flex items-center gap-2">
                     <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -106,7 +99,6 @@
             </div>
         </div>
 
-{{-- Job Order List (full width) --}}
         <section class="table-shell">
             <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                 <div>
@@ -137,24 +129,41 @@
                             @php
                                 $tone = match ($order->status) {
                                     'completed' => 'success',
-                                    'in_progress' => 'accent',
+                                    'in_progress' => 'neutral',
                                     'cancelled' => 'danger',
                                     default => 'warning',
                                 };
                                 $isSelected = $selectedOrder?->id === $order->id;
 @endphp
-                            <tr class="job-order-row {{ $isSelected ? 'bg-brand-50/40' : '' }}" data-order-number="{{ $order->order_number }}" data-customer="{{ $order->customer?->name ?? 'Walk-in Customer' }}" data-vehicle="{{ $order->vehicle }}" data-status="{{ $order->status }}" data-created-at="{{ $order->created_at?->toIso8601String() }}">
+                            <tr class="job-order-row" data-order-number="{{ $order->order_number }}" data-customer="{{ $order->customer?->name ?? 'Walk-in Customer' }}" data-vehicle="{{ $order->vehicle }}" data-status="{{ $order->status }}" data-created-at="{{ $order->created_at?->toIso8601String() }}">
                                 <td class="font-semibold text-slate-900">{{ $order->order_number }}</td>
-                                <td>{{ $order->customer?->name ?? 'Walk-in Customer' }}</td>
+                                <td>
+                                    @php
+                                        $customerName = $order->customer?->name ?? 'Walk-in Customer';
+                                        $customerInitials = collect(explode(' ', $customerName))
+                                            ->filter()
+                                            ->map(fn (string $part): string => mb_substr($part, 0, 1))
+                                            ->take(2)
+                                            ->implode('');
+                                        $profilePhotoPath = $order->customer_id
+                                            ? $order->customer?->profile_photo_path
+                                            : $order->walk_in_profile_photo_path;
+                                    @endphp
+                                    <div class="flex items-center gap-3">
+                                        @if ($profilePhotoPath)
+                                            <img src="{{ \Illuminate\Support\Facades\Storage::url($profilePhotoPath) }}" alt="{{ $customerName }} profile" class="h-10 w-10 rounded-full object-cover">
+                                        @else
+                                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">{{ strtoupper($customerInitials ?: 'WI') }}</span>
+                                        @endif
+                                        <span>{{ $customerName }}</span>
+                                    </div>
+                                </td>
                                 <td>{{ $order->vehicle }}</td>
                                 <td><x-badge :tone="$tone">{{ str_replace('_', ' ', ucfirst($order->status)) }}</x-badge></td>
                                 <td>PHP {{ number_format((float) $order->estimated_cost, 2) }}</td>
                                 <td>{{ $order->scheduled_for?->format('M d, Y') ?? '-' }}</td>
                                 <td>
                                     <div class="flex justify-end gap-2">
-                                        <a href="{{ route('job-orders', ['order' => $order->id]) }}" class="icon-button" aria-label="View job order">
-                                            <x-icon name="file" class="h-4 w-4" />
-                                        </a>
                                         <a href="{{ route('job-orders', ['edit' => $order->id, 'order' => $order->id]) }}" class="icon-button" aria-label="Edit job order">
                                             <x-icon name="pencil" class="h-4 w-4" />
                                         </a>
@@ -178,8 +187,7 @@
             </div>
 </section>
 
-    <!-- Create Job Order Modal -->
-<div class="app-modal hidden" data-modal="create-joborder-modal">
+<div class="app-modal {{ $isCreating ? '' : 'hidden' }}" data-modal="create-joborder-modal">
         <div class="app-modal-card">
             <div class="flex items-center justify-between gap-3">
                 <h3 class="text-2xl font-bold text-slate-900">Create Job Order</h3>
@@ -188,17 +196,31 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('job-orders.store') }}" class="mt-6 space-y-4">
+            <form method="POST" action="{{ route('job-orders.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data">
                 @csrf
 
                 <label class="form-field">
                     <span class="muted-label">Customer</span>
-                    <select name="customer_id" class="input-shell">
+                    <select name="customer_id" class="input-shell" data-customer-photo-select="create-joborder-profile">
                         <option value="">Walk-in Customer</option>
                         @foreach ($customers as $customer)
-                            <option value="{{ $customer->id }}">{{ $customer->name }}</option>
+                            <option value="{{ $customer->id }}" data-photo-url="{{ $customer->profile_photo_path ? \Illuminate\Support\Facades\Storage::url($customer->profile_photo_path) : '' }}">{{ $customer->name }}</option>
                         @endforeach
                     </select>
+                </label>
+
+                <label class="part-upload-card customer-upload-card" data-walk-in-upload="create-joborder-profile">
+                    <span class="part-upload-preview customer-upload-preview">
+                        <img src="" alt="Job order customer profile preview" class="hidden" data-image-preview="create-joborder-profile">
+                        <span data-image-preview-placeholder="create-joborder-profile">
+                            <x-icon name="camera" class="h-8 w-8" />
+                        </span>
+                    </span>
+                    <span class="part-upload-content">
+                        <span class="part-upload-title">Choose Customer Profile Photo</span>
+                        <span class="part-upload-note">PNG, JPG, WEBP up to 2MB.Select an existing customer to use their saved profile photo, or upload one for walk-in.</span>
+                    </span>
+                    <input type="file" name="walk_in_profile_photo" accept="image/*" class="sr-only" data-image-preview-input="create-joborder-profile">
                 </label>
 
                 <div class="grid gap-4 md:grid-cols-2">
@@ -245,6 +267,102 @@
             </form>
         </div>
     </div>
+
+    @if ($editingOrder)
+        <div class="app-modal" data-modal="edit-joborder-modal">
+            <div class="app-modal-card">
+                <div class="flex items-center justify-between gap-3">
+                    <h3 class="text-2xl font-bold text-slate-900">Edit Job Order</h3>
+                    <a href="{{ route('job-orders', ['order' => $editingOrder->id]) }}" class="icon-button" aria-label="Close edit job order">
+                        <x-icon name="x" class="h-4 w-4" />
+                    </a>
+                </div>
+
+                <form method="POST" action="{{ route('job-orders.update', $editingOrder) }}" class="mt-6 space-y-4" enctype="multipart/form-data">
+                    @csrf
+                    @method('PUT')
+
+                    <label class="form-field">
+                        <span class="muted-label">Customer</span>
+                        <select name="customer_id" class="input-shell" data-customer-photo-select="edit-joborder-profile">
+                            <option value="">Walk-in Customer</option>
+                            @foreach ($customers as $customer)
+                                <option value="{{ $customer->id }}" data-photo-url="{{ $customer->profile_photo_path ? \Illuminate\Support\Facades\Storage::url($customer->profile_photo_path) : '' }}" @selected((string) old('customer_id', $editingOrder->customer_id) === (string) $customer->id)>{{ $customer->name }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+
+                    <label class="part-upload-card customer-upload-card" data-walk-in-upload="edit-joborder-profile">
+                        <span class="part-upload-preview customer-upload-preview">
+                            @php
+                                $editPhotoPath = $editingOrder->customer_id
+                                    ? $editingOrder->customer?->profile_photo_path
+                                    : $editingOrder->walk_in_profile_photo_path;
+                            @endphp
+                            @if ($editPhotoPath)
+                                <img src="{{ \Illuminate\Support\Facades\Storage::url($editPhotoPath) }}" alt="Job order customer profile preview" data-image-preview="edit-joborder-profile">
+                                <span class="hidden" data-image-preview-placeholder="edit-joborder-profile">
+                                    <x-icon name="camera" class="h-8 w-8" />
+                                </span>
+                            @else
+                                <img src="" alt="Job order customer profile preview" class="hidden" data-image-preview="edit-joborder-profile">
+                                <span data-image-preview-placeholder="edit-joborder-profile">
+                                    <x-icon name="camera" class="h-8 w-8" />
+                                </span>
+                            @endif
+                        </span>
+                        <span class="part-upload-content">
+                            <span class="part-upload-title">Walk-in customer profile photo</span>
+                            <span class="part-upload-note">Selected customer photos appear automatically. Upload only for walk-in customers.</span>
+                        </span>
+                        <input type="file" name="walk_in_profile_photo" accept="image/*" class="sr-only" data-image-preview-input="edit-joborder-profile">
+                    </label>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="form-field">
+                            <span class="muted-label">Vehicle</span>
+                            <input type="text" name="vehicle" value="{{ old('vehicle', $editingOrder->vehicle) }}" class="input-shell" required>
+                        </label>
+                        <label class="form-field">
+                            <span class="muted-label">Status</span>
+                            <select name="status" class="input-shell" required>
+                                @foreach ($statusOptions as $status)
+                                    <option value="{{ $status }}" @selected(old('status', $editingOrder->status) === $status)>{{ str_replace('_', ' ', ucfirst($status)) }}</option>
+                                @endforeach
+                            </select>
+                        </label>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="form-field">
+                            <span class="muted-label">Concern</span>
+                            <input type="text" name="concern" value="{{ old('concern', $editingOrder->concern) }}" class="input-shell" required>
+                        </label>
+                        <label class="form-field">
+                            <span class="muted-label">Estimated Cost (PHP)</span>
+                            <input type="number" step="0.01" min="0" name="estimated_cost" value="{{ old('estimated_cost', number_format((float) $editingOrder->estimated_cost, 2, '.', '')) }}" class="input-shell" required>
+                        </label>
+                    </div>
+
+                    <div class="grid gap-4 md:grid-cols-2">
+                        <label class="form-field">
+                            <span class="muted-label">Scheduled For</span>
+                            <input type="date" name="scheduled_for" value="{{ old('scheduled_for', $editingOrder->scheduled_for?->format('Y-m-d')) }}" class="input-shell">
+                        </label>
+                        <label class="form-field">
+                            <span class="muted-label">Notes</span>
+                            <textarea name="notes" rows="1" class="input-shell">{{ old('notes', $editingOrder->notes) }}</textarea>
+                        </label>
+                    </div>
+
+                    <div class="flex justify-end gap-3 pt-2">
+                        <a href="{{ route('job-orders', ['order' => $editingOrder->id]) }}" class="ghost-button">Cancel</a>
+                        <button type="submit" class="primary-button">Save Job Order</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    @endif
 
     </section>
 @endsection
