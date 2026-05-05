@@ -13,17 +13,7 @@
             <p class="text-base text-slate-500">{{ $subheading }}</p>
         </div>
 
-        <div class="flex items-center gap-4">
-            <label class="search-shell flex items-center flex-1 max-w-md gap-2" data-dashboard-search>
-                <x-icon name="search" class="h-5 w-5 text-slate-400" />
-                <input
-                    type="text"
-                    id="dashboard-search-input"
-                    placeholder="Search part, sku, category..."
-                    class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
-                >
-            </label>
-        </div>
+
 
         <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             @foreach ($stats as $index => $stat)

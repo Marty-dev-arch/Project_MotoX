@@ -50,8 +50,9 @@ initializeModalControls();
     initializeNotificationActions();
     initializeSidebarNavigation();
     initializeLandingBackgroundMotion();
-    initializeLandingScrollReveal();
+initializeLandingScrollReveal();
     initializeLandingSectionTracking();
+    initializeInventorySearch();
 });
 
 function initializeModalControls() {
@@ -1749,6 +1750,47 @@ function initializeJobOrdersFilters() {
             }
         });
     }
+}
+
+function initializeInventorySearch() {
+    const searchInput = document.getElementById('inventory-search-input');
+    const inventoryRoot = document.querySelector('[data-inventory-search]');
+
+    // Return early if no search input found (not on inventory page)
+    if (!(searchInput instanceof HTMLInputElement)) {
+        return;
+    }
+
+    // Get all searchable items
+    const inventoryItems = document.querySelectorAll('[data-inventory-item]');
+    const partsSection = document.querySelector('[data-inventory-results="parts"]');
+
+    // Live search functionality
+    searchInput.addEventListener('input', function (e) {
+        const searchTerm = e.target.value.toLowerCase().trim();
+
+        // If empty search, show all items
+        if (searchTerm === '') {
+            inventoryItems.forEach(row => {
+                row.style.display = '';
+            });
+            return;
+        }
+
+        // Filter inventory items
+        inventoryItems.forEach(row => {
+            const partName = row.dataset.partName?.toLowerCase() || '';
+            const partSku = row.dataset.partSku?.toLowerCase() || '';
+            const partCategory = row.dataset.partCategory?.toLowerCase() || '';
+
+            // Check if any field contains the search term
+            const matches = partName.includes(searchTerm) ||
+                          partSku.includes(searchTerm) ||
+                          partCategory.includes(searchTerm);
+
+            row.style.display = matches ? '' : 'none';
+        });
+    });
 }
 
 function initializeDashboardSearch() {

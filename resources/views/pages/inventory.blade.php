@@ -25,6 +25,16 @@
             </button>
         </div>
 
+        <label class="search-shell flex items-center flex-1 max-w-2xl gap-2 mb-6" data-inventory-search>
+            <x-icon name="search" class="h-5 w-5 text-slate-400" />
+            <input
+                type="text"
+                id="inventory-search-input"
+                placeholder="Search part, sku, category..."
+                class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
+            >
+        </label>
+
         <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-4">
             @foreach ($stats as $stat)
                 <x-kpi-card
@@ -92,13 +102,9 @@
             </section>
         </div>
 
-        <section class="table-shell">
-            <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
-                <div>
-                    <h3 class="text-2xl font-bold tracking-tight text-slate-900">Spare Parts Ledger</h3>
-                    <p class="text-sm text-slate-500">Create, edit, move stock, and monitor minimum levels in one place.</p>
-                </div>
-            </div>
+        <section class="table-shell" data-inventory-results="parts">
+<div class="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div class="flex flex-col gap-4">
 
             <div class="overflow-x-auto">
                 <table class="soft-table">
@@ -116,14 +122,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        @forelse ($parts as $part)
+@forelse ($parts as $part)
                             @php
                                 $isLow = $part->current_stock < $part->minimum_stock;
                                 $isOut = $part->current_stock <= 0;
                                 $tone = $isOut ? 'danger' : ($isLow ? 'warning' : 'success');
                                 $status = $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock');
                             @endphp
-                            <tr>
+                            <tr data-inventory-item data-part-name="{{ $part->name }}" data-part-sku="{{ $part->sku }}" data-part-category="{{ $part->category }}">
                                 <td>
                                     @if ($part->image_path)
                                         <img src="{{ Storage::url($part->image_path) }}" alt="{{ $part->name }}" class="h-12 w-12 rounded-lg object-cover">
