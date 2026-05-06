@@ -14,6 +14,12 @@
             </div>
         @endif
 
+        @if ($errors->any() && ! $errors->has('inventory'))
+            <div class="auth-alert">
+                <p class="font-semibold">{{ $errors->first() }}</p>
+            </div>
+        @endif
+
         <div class="flex flex-wrap items-start justify-between gap-4">
             <div>
                 <h1 class="text-4xl font-black tracking-tight text-slate-900">{{ $heading }}</h1>
@@ -109,6 +115,8 @@
                             $isOut = (float) $part->current_stock <= 0;
                             $current = rtrim(rtrim(number_format((float) $part->current_stock, 3, '.', ''), '0'), '.');
                             $minimum = rtrim(rtrim(number_format((float) $part->minimum_stock, 3, '.', ''), '0'), '.');
+                            $displayUnitLabel = in_array($part->unit_label, $unitLabelChoices, true) ? $part->unit_label : 'pcs';
+                            $editStockMode = in_array($part->stock_mode, ['piece', 'box_piece', 'liquid'], true) ? $part->stock_mode : 'piece';
                         @endphp
                         <article class="detail-card">
                             <div class="flex items-start justify-between gap-3">
@@ -118,7 +126,7 @@
                                 </div>
                                 <x-badge :tone="$isOut ? 'danger' : 'warning'">{{ $isOut ? 'Sold out' : 'Low' }}</x-badge>
                             </div>
-                            <p class="mt-4 text-sm font-semibold text-slate-700">{{ $current }} / {{ $minimum }} {{ $part->unit_label }}</p>
+                            <p class="mt-4 text-sm font-semibold text-slate-700">{{ $current }} / {{ $minimum }} {{ $displayUnitLabel }}</p>
                             <button
                                 type="button"
                                 class="ghost-button mt-4 w-full justify-center"
@@ -126,8 +134,8 @@
                                 data-movement-part-id="{{ $part->id }}"
                                 data-movement-part-name="{{ $part->name }}"
                                 data-movement-part-stock="{{ $part->current_stock }}"
-                                data-movement-part-mode="{{ $part->stock_mode }}"
-                                data-movement-part-unit="{{ $part->unit_label }}"
+                                data-movement-part-mode="{{ $editStockMode }}"
+                                data-movement-part-unit="{{ $displayUnitLabel }}"
                             >
                                 <x-icon name="plus" class="h-4 w-4" />
                                 <span>Restock</span>
@@ -170,18 +178,23 @@
                                 $tone = $isOut ? 'danger' : ($isLow ? 'warning' : 'success');
                                 $status = $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock');
                                 $stockDisplay = rtrim(rtrim(number_format((float) $part->current_stock, 3, '.', ''), '0'), '.');
+                                $displayUnitLabel = in_array($part->unit_label, $unitLabelChoices, true) ? $part->unit_label : 'pcs';
+                                $editStockMode = in_array($part->stock_mode, ['piece', 'box_piece', 'liquid'], true) ? $part->stock_mode : 'piece';
                                 $conversion = (float) ($part->pieces_per_box ?? 0);
                                 $stockBreakdown = null;
+                                $partImageUrl = $part->image_path && Storage::disk('public')->exists($part->image_path)
+                                    ? Storage::url($part->image_path)
+                                    : null;
                                 if ($part->stock_mode === 'box_piece' && $conversion > 0) {
                                     $wholeBoxes = floor((float) $part->current_stock / $conversion);
                                     $loosePieces = round((float) $part->current_stock - ($wholeBoxes * $conversion), 3);
-                                    $stockBreakdown = "{$wholeBoxes} box".($wholeBoxes == 1 ? '' : 'es')." + ".rtrim(rtrim(number_format($loosePieces, 3, '.', ''), '0'), '.').' '.$part->unit_label;
+                                    $stockBreakdown = "{$wholeBoxes} box".($wholeBoxes == 1 ? '' : 'es')." + ".rtrim(rtrim(number_format($loosePieces, 3, '.', ''), '0'), '.').' '.$displayUnitLabel;
                                 }
                             @endphp
                             <tr>
                                 <td>
-                                    @if ($part->image_path)
-                                        <img src="{{ Storage::url($part->image_path) }}" alt="{{ $part->name }}" class="h-12 w-12 rounded-full object-cover">
+                                    @if ($partImageUrl)
+                                        <img src="{{ $partImageUrl }}" alt="{{ $part->name }}" class="h-12 w-12 rounded-full object-cover" loading="lazy" decoding="async">
                                     @else
                                         <div class="h-12 w-12 rounded-full bg-slate-100 flex items-center justify-center">
                                             <x-icon name="image" class="h-6 w-6 text-slate-400" />
@@ -197,21 +210,19 @@
                                 <td>{{ $part->sku }}</td>
                                 <td>{{ $part->category }}</td>
                                 <td class="font-semibold text-slate-900">
-                                    {{ $stockDisplay }} {{ $part->unit_label }}
+                                    {{ $stockDisplay }} {{ $displayUnitLabel }}
                                     @if ($stockBreakdown)
                                         <span class="block text-xs font-medium text-slate-500">{{ $stockBreakdown }}</span>
                                     @endif
                                 </td>
                                 <td>{{ rtrim(rtrim(number_format((float) $part->minimum_stock, 3, '.', ''), '0'), '.') }}</td>
-                                <td>{{ $part->unit_label }}</td>
+                                <td>{{ $displayUnitLabel }}</td>
                                 <td class="font-semibold text-slate-900">
                                     PHP {{ number_format((float) $part->unit_price, 2) }}
                                     @if ($part->stock_mode === 'box_piece')
                                         <span class="block text-xs text-slate-500">per box</span>
-                                    @elseif ($part->stock_mode === 'liquid')
-                                        <span class="block text-xs text-slate-500">per {{ $part->unit_label }}</span>
                                     @else
-                                        <span class="block text-xs text-slate-500">per {{ $part->unit_label }}</span>
+                                        <span class="block text-xs text-slate-500">per {{ $displayUnitLabel }}</span>
                                     @endif
                                 </td>
                                 <td><x-badge :tone="$tone">{{ $status }}</x-badge></td>
@@ -221,39 +232,40 @@
                                             type="button"
                                             class="icon-button"
                                             aria-label="Add movement"
+                                            title="Add movement"
                                             data-open-modal="movement-modal"
                                             data-movement-part-id="{{ $part->id }}"
                                             data-movement-part-name="{{ $part->name }}"
                                             data-movement-part-stock="{{ $part->current_stock }}"
-                                            data-movement-part-mode="{{ $part->stock_mode }}"
-                                            data-movement-part-unit="{{ $part->unit_label }}"
+                                            data-movement-part-mode="{{ $editStockMode }}"
+                                            data-movement-part-unit="{{ $displayUnitLabel }}"
                                         >
                                             <x-icon name="trend" class="h-4 w-4" />
                                         </button>
                                         <button
                                             type="button"
                                             class="icon-button"
-                                            aria-label="Edit part"
+                                            aria-label="Edit inventory"
+                                            title="Edit inventory"
                                             data-open-modal="edit-part-modal"
                                             data-edit-part-id="{{ $part->id }}"
                                             data-edit-part-name="{{ $part->name }}"
                                             data-edit-part-sku="{{ $part->sku }}"
                                             data-edit-part-category="{{ $part->category }}"
-                                            data-edit-part-mode="{{ $part->stock_mode }}"
-                                            data-edit-part-unit="{{ $part->unit_label }}"
+                                            data-edit-part-mode="{{ $editStockMode }}"
+                                            data-edit-part-unit="{{ $displayUnitLabel }}"
                                             data-edit-part-box-size="{{ rtrim(rtrim(number_format((float) ($part->pieces_per_box ?? 0), 3, '.', ''), '0'), '.') }}"
-                                            data-edit-part-allow-fractional="{{ $part->allow_fractional_quantity ? '1' : '0' }}"
                                             data-edit-part-minimum="{{ $part->minimum_stock }}"
                                             data-edit-part-price="{{ number_format((float) $part->unit_price, 2, '.', '') }}"
                                             data-edit-part-active="{{ $part->is_active ? '1' : '0' }}"
-                                            data-edit-part-image-url="{{ $part->image_path ? Storage::url($part->image_path) : '' }}"
+                                            data-edit-part-image-url="{{ $partImageUrl ?? '' }}"
                                         >
                                             <x-icon name="pencil" class="h-4 w-4" />
                                         </button>
                                         <form method="POST" action="{{ route('inventory.parts.destroy', $part) }}" onsubmit="return confirm('Delete this part?');">
                                             @csrf
                                             @method('DELETE')
-                                            <button type="submit" class="icon-button" aria-label="Delete part">
+                                            <button type="submit" class="icon-button" aria-label="Delete part" title="Delete part">
                                                 <x-icon name="trash" class="h-4 w-4" />
                                             </button>
                                         </form>
@@ -280,7 +292,7 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('inventory.parts.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('inventory.parts.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data" data-inventory-action-form>
                 @csrf
                 <input type="hidden" name="form_context" value="create">
 
@@ -307,7 +319,7 @@
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Stock Mode</span>
-                        <select name="stock_mode" class="input-shell" required>
+                        <select name="stock_mode" class="input-shell" data-stock-mode-select required>
                             <option value="piece" selected>Piece</option>
                             <option value="box_piece">Box</option>
                             <option value="liquid">Liquid</option>
@@ -315,25 +327,22 @@
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Unit Label</span>
-                        <input type="text" name="unit_label" class="input-shell" value="pcs" required>
+                        <select name="unit_label" class="input-shell" data-unit-label-select required>
+                            @foreach ($unitLabelChoices as $unitLabel)
+                                <option value="{{ $unitLabel }}" @selected(old('unit_label', 'pcs') === $unitLabel)>{{ $unitLabel }}</option>
+                            @endforeach
+                        </select>
                     </label>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-3">
+                <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
                         <span class="muted-label">Pieces per Box</span>
-                        <input type="number" name="pieces_per_box" min="0.001" step="0.001" class="input-shell" placeholder="10 pieces">
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Allow Fractional Quantity</span>
-                        <select name="allow_fractional_quantity" class="input-shell">
-                            <option value="0" selected>No</option>
-                            <option value="1">Yes</option>
-                        </select>
+                        <input type="number" name="pieces_per_box" min="1" step="1" class="input-shell" placeholder="10 pieces">
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Minimum Stock</span>
-                        <input type="number" name="minimum_stock" min="0" step="0.001" class="input-shell" value="0" required>
+                        <input type="number" name="minimum_stock" min="0" step="1" class="input-shell" value="0" required>
                     </label>
                 </div>
 
@@ -387,6 +396,7 @@
                 class="mt-6 space-y-4"
                 enctype="multipart/form-data"
                 data-edit-form
+                data-inventory-action-form
                 data-action-template="{{ route('inventory.parts.update', ['part' => '__PART_ID__']) }}"
             >
                 @csrf
@@ -411,7 +421,7 @@
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Stock Mode</span>
-                        <select name="stock_mode" class="input-shell" data-edit-field="mode" required>
+                        <select name="stock_mode" class="input-shell" data-edit-field="mode" data-stock-mode-select required>
                             <option value="piece">Piece</option>
                             <option value="box_piece">Box</option>
                             <option value="liquid">Liquid</option>
@@ -419,25 +429,22 @@
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Unit Label</span>
-                        <input type="text" name="unit_label" class="input-shell" data-edit-field="unit" required>
+                        <select name="unit_label" class="input-shell" data-edit-field="unit" data-unit-label-select required>
+                            @foreach ($unitLabelChoices as $unitLabel)
+                                <option value="{{ $unitLabel }}">{{ $unitLabel }}</option>
+                            @endforeach
+                        </select>
                     </label>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-3">
+                <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
                         <span class="muted-label">Pieces per Box</span>
-                        <input type="number" name="pieces_per_box" min="0.001" step="0.001" class="input-shell" data-edit-field="box_size" placeholder="10 pieces">
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Allow Fractional Quantity</span>
-                        <select name="allow_fractional_quantity" class="input-shell" data-edit-field="allow_fractional">
-                            <option value="0">No</option>
-                            <option value="1">Yes</option>
-                        </select>
+                        <input type="number" name="pieces_per_box" min="1" step="1" class="input-shell" data-edit-field="box_size" placeholder="10 pieces">
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Minimum Stock</span>
-                        <input type="number" name="minimum_stock" min="0" step="0.001" class="input-shell" data-edit-field="minimum" required>
+                        <input type="number" name="minimum_stock" min="0" step="1" class="input-shell" data-edit-field="minimum" required>
                     </label>
                 </div>
 
@@ -493,6 +500,7 @@
                 action="#"
                 class="mt-6 space-y-4"
                 data-movement-form
+                data-inventory-action-form
                 data-action-template="{{ route('inventory.parts.movements.store', ['part' => '__PART_ID__']) }}"
             >
                 @csrf
@@ -504,12 +512,11 @@
                         <select name="type" class="input-shell" required>
                             <option value="in">Stock In (+)</option>
                             <option value="out">Stock Out (-)</option>
-                            <option value="adjust">Adjustment (+/-)</option>
                         </select>
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Quantity</span>
-                        <input type="number" name="quantity" class="input-shell" value="1" step="0.001" required>
+                        <input type="number" name="quantity" class="input-shell" value="1" step="1" required>
                     </label>
                 </div>
 
@@ -517,7 +524,7 @@
                     <label class="form-field">
                         <span class="muted-label">Quantity Unit</span>
                         <select name="quantity_unit" class="input-shell" data-movement-unit-select>
-                            <option value="piece">Piece</option>
+                            <option value="piece">Pieces</option>
                             <option value="box">Box</option>
                             <option value="liter">Liter</option>
                         </select>

@@ -71,6 +71,7 @@ class InventoryController extends Controller
                     'Engine Parts', 'Electrical Parts', 'Transmission & Drive Parts', 
                     'Brake & Suspension Parts', 'Body & Frame Parts'
                 ],
+            'unitLabelChoices' => $this->unitLabelChoices(),
         ]));
     }
 
@@ -79,16 +80,19 @@ class InventoryController extends Controller
         $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
+        $request->merge([
+            'unit_label' => $this->normalizeUnitLabel((string) $request->input('unit_label', '')),
+        ]);
+
         $validated = $request->validate([
             'sku' => ['required', 'string', 'max:50', Rule::unique('parts', 'sku')->where(fn ($query) => $query->where('shop_id', $shop->id))],
             'name' => ['required', 'string', 'max:140'],
             'category' => ['required', 'string', 'max:100'],
-            'stock_mode' => ['required', Rule::in(['piece', 'box_piece', 'liquid'])],
-            'unit_label' => ['required', 'string', 'max:20'],
-            'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'numeric', 'min:0.001', 'max:1000000'],
-            'allow_fractional_quantity' => ['nullable', 'boolean'],
+            'stock_mode' => ['required', Rule::in($this->stockModeChoices())],
+            'unit_label' => ['required', 'string', 'max:20', Rule::in($this->unitLabelChoices())],
+            'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'integer', 'min:1', 'max:1000000'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'minimum_stock' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'minimum_stock' => ['required', 'integer', 'min:0', 'max:100000'],
             'unit_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'is_active' => ['nullable', 'boolean'],
         ]);
@@ -104,10 +108,9 @@ class InventoryController extends Controller
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
             'stock_mode' => $validated['stock_mode'],
-            'unit_label' => trim((string) $validated['unit_label']),
+            'unit_label' => $this->normalizeUnitLabel($validated['unit_label']),
             'pieces_per_box' => $validated['stock_mode'] === 'box_piece' ? (float) ($validated['pieces_per_box'] ?? 0) : null,
-            'allow_fractional_quantity' => $validated['stock_mode'] === 'liquid'
-                || (bool) ($validated['allow_fractional_quantity'] ?? false),
+            'allow_fractional_quantity' => false,
             'image_path' => $imagePath,
             'minimum_stock' => $validated['minimum_stock'],
             'unit_price' => $validated['unit_price'],
@@ -133,6 +136,10 @@ class InventoryController extends Controller
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
 
+        $request->merge([
+            'unit_label' => $this->normalizeUnitLabel((string) $request->input('unit_label', '')),
+        ]);
+
         $validated = $request->validate([
             'sku' => [
                 'required',
@@ -144,12 +151,11 @@ class InventoryController extends Controller
             ],
             'name' => ['required', 'string', 'max:140'],
             'category' => ['required', 'string', 'max:100'],
-            'stock_mode' => ['required', Rule::in(['piece', 'box_piece', 'liquid'])],
-            'unit_label' => ['required', 'string', 'max:20'],
-            'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'numeric', 'min:0.001', 'max:1000000'],
-            'allow_fractional_quantity' => ['nullable', 'boolean'],
+            'stock_mode' => ['required', Rule::in($this->stockModeChoices())],
+            'unit_label' => ['required', 'string', 'max:20', Rule::in($this->unitLabelChoices())],
+            'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'integer', 'min:1', 'max:1000000'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'minimum_stock' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'minimum_stock' => ['required', 'integer', 'min:0', 'max:100000'],
             'unit_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
             'is_active' => ['nullable', 'boolean'],
         ]);
@@ -168,10 +174,9 @@ class InventoryController extends Controller
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
             'stock_mode' => $validated['stock_mode'],
-            'unit_label' => trim((string) $validated['unit_label']),
+            'unit_label' => $this->normalizeUnitLabel($validated['unit_label']),
             'pieces_per_box' => $validated['stock_mode'] === 'box_piece' ? (float) ($validated['pieces_per_box'] ?? 0) : null,
-            'allow_fractional_quantity' => $validated['stock_mode'] === 'liquid'
-                || (bool) ($validated['allow_fractional_quantity'] ?? false),
+            'allow_fractional_quantity' => false,
             'image_path' => $imagePath,
             'minimum_stock' => $validated['minimum_stock'],
             'unit_price' => $validated['unit_price'],
@@ -204,19 +209,28 @@ class InventoryController extends Controller
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
 
-        if ($part->movements()->exists()) {
-            return redirect()
-                ->route('inventory')
-                ->withErrors([
-                    'inventory' => 'Part cannot be deleted because it has stock movement history.',
-                ]);
-        }
+        $deletedPartId = $part->id;
+        $deletedPartName = $part->name;
+        $deletedMovementCount = $part->movements()->count();
 
         if ($part->image_path) {
             Storage::disk('public')->delete($part->image_path);
         }
 
         $part->delete();
+
+        SystemNotifier::notifyShop(
+            $shop,
+            'part.deleted',
+            'Part Deleted',
+            sprintf(
+                '%s was removed from inventory%s.',
+                $deletedPartName,
+                $deletedMovementCount > 0 ? sprintf(' with %s stock movement record%s', number_format($deletedMovementCount), $deletedMovementCount === 1 ? '' : 's') : ''
+            ),
+            'warning',
+            ['part_id' => $deletedPartId],
+        );
 
         return redirect()->route('inventory')->with('status', 'Part deleted.');
     }
@@ -229,8 +243,8 @@ class InventoryController extends Controller
         $currentStock = $this->currentStockForPart($shop->id, $part->id);
 
         $validator = Validator::make($request->all(), [
-            'type' => ['required', Rule::in([StockMovement::TYPE_IN, StockMovement::TYPE_OUT, StockMovement::TYPE_ADJUST])],
-            'quantity' => ['required', 'numeric', 'min:-100000', 'max:100000'],
+            'type' => ['required', Rule::in([StockMovement::TYPE_IN, StockMovement::TYPE_OUT])],
+            'quantity' => ['required', 'integer', 'min:1', 'max:100000'],
             'quantity_unit' => ['nullable', Rule::in(['piece', 'box', 'liter', 'milliliter'])],
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
@@ -242,10 +256,7 @@ class InventoryController extends Controller
             $rawQty = InventoryUnits::toBaseQuantity($part, $inputQuantity, $quantityUnit);
 
             try {
-                InventoryUnits::assertValidSellQuantity(
-                    $part,
-                    $type === StockMovement::TYPE_ADJUST ? abs($rawQty) : $rawQty
-                );
+                InventoryUnits::assertValidSellQuantity($part, $rawQty);
             } catch (\Illuminate\Validation\ValidationException $exception) {
                 foreach ($exception->errors() as $fieldErrors) {
                     foreach ($fieldErrors as $error) {
@@ -257,11 +268,6 @@ class InventoryController extends Controller
 
             if (in_array($type, [StockMovement::TYPE_IN, StockMovement::TYPE_OUT], true) && $rawQty <= 0) {
                 $validator->errors()->add('quantity', 'Quantity must be greater than zero for stock in/out.');
-                return;
-            }
-
-            if ($type === StockMovement::TYPE_ADJUST && $rawQty === 0) {
-                $validator->errors()->add('quantity', 'Adjustment quantity cannot be zero.');
                 return;
             }
 
@@ -327,6 +333,21 @@ class InventoryController extends Controller
             StockMovement::TYPE_IN, StockMovement::TYPE_OUT => abs($quantity),
             default => $quantity,
         };
+    }
+
+    private function unitLabelChoices(): array
+    {
+        return ['pcs', 'liter'];
+    }
+
+    private function stockModeChoices(): array
+    {
+        return ['piece', 'box_piece', 'liquid'];
+    }
+
+    private function normalizeUnitLabel(string $unitLabel): string
+    {
+        return strtolower(trim($unitLabel));
     }
 
     private function shopPart(Part $part, int $shopId): Part

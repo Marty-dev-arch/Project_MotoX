@@ -41,7 +41,7 @@
                     </button>
                     <div class="page-filter-menu hidden" data-report-download-menu>
                         <button type="button" data-export-csv="reports">CSV File</button>
-                        <button type="button" data-download-report-png>PNG Report</button>
+                        <button type="button" data-download-report-png>Report Chart PNG</button>
                     </div>
                 </div>
             </div>
@@ -71,8 +71,8 @@
         <div class="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
             <section class="panel-card p-5 sm:p-6">
                 <div>
-                    <h2 class="text-2xl font-bold text-slate-900">Monthly Revenue Trend</h2>
-                    <p class="mt-1 text-sm text-slate-500">Last 12 months based on completed job orders.</p>
+                    <h2 class="text-2xl font-bold text-slate-900">Graphical Chart Revenue Flow</h2>
+                    <p class="mt-1 text-sm text-slate-500">movement monitor based on completed job orders.</p>
                 </div>
 
                 <div class="mt-4 budget-range-pills">
@@ -134,7 +134,7 @@
         <section class="table-shell">
             <div class="border-b border-slate-100 px-5 py-4">
                 <h2 class="text-2xl font-bold tracking-tight text-slate-900">Top Customers by Billing</h2>
-                <p class="text-sm text-slate-500">Live ranking from recorded job orders.</p>
+                <p class="text-sm text-slate-500">movement ranking from recorded job orders.</p>
             </div>
 
             <div class="overflow-x-auto">

@@ -12,6 +12,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
+            'no-cache' => \App\Http\Middleware\PreventAuthenticatedPageCache::class,
             'role' => \App\Http\Middleware\RequireRole::class,
         ]);
     })

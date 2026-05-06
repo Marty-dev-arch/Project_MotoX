@@ -1,6 +1,17 @@
 @extends('layouts.auth')
 
 @section('content')
+    <div class="landing-refresh-loader" data-landing-loader aria-live="polite">
+        <div class="landing-refresh-loader-card">
+            <span class="landing-refresh-mark">
+                <x-icon name="car" class="h-7 w-7" />
+            </span>
+            <span class="landing-refresh-brand">MotoX</span>
+            <span class="landing-refresh-text"> please wait. Loading.... </span>
+            <span class="landing-refresh-progress"><span></span></span>
+        </div>
+    </div>
+
     <div id="top" class="landing-page" data-landing-metrics-url="{{ $landingMetricsUrl }}">
         <div class="mx-auto w-full max-w-[1600px] px-3 py-4 sm:px-5 lg:px-6">
             <header class="landing-header">
@@ -69,6 +80,8 @@
                                     src="{{ asset('images/landing/motorcycle-repair.jpg') }}"
                                     alt="Technician repairing a motorcycle engine"
                                     class="landing-hero-photo"
+                                    fetchpriority="high"
+                                    decoding="async"
                                 >
                             </div>
                         </div>
@@ -187,6 +200,8 @@
                             src="https://repairsmith-prod-wordpress.s3.amazonaws.com/2022/11/mechanic-working-on-engine.jpg"
                             alt="Mechanic working on an engine"
                             class="landing-photo"
+                            loading="lazy"
+                            decoding="async"
                         >
                         <div class="landing-art-quote">
                             <p class="text-2xl font-bold tracking-tight text-slate-900">"From service bay to invoice, every detail stays traceable."</p>

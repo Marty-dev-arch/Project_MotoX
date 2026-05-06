@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-initializeModalControls();
+    initializeModalControls();
+    initializeInventoryFormGuards();
     initializePasswordToggles();
     initializeDashboardSearch();
     initializeSidebarDateFilters();
@@ -46,8 +47,11 @@ initializeModalControls();
     initializeJobOrdersPolling();
     initializeReportsRevenueChart();
     initializeLandingMetricsPolling();
+    initializeLandingRefreshLoader();
     initializeHeaderMenus();
     initializeNotificationActions();
+    initializeSystemActionNotificationSound();
+    initializeLogoutLoading();
     initializeSidebarNavigation();
     initializeLandingBackgroundMotion();
     initializeLandingScrollReveal();
@@ -105,6 +109,51 @@ function initializeModalControls() {
     const movementForm = document.querySelector('[data-movement-form]');
     const movementLabel = document.querySelector('[data-movement-label]');
 
+    const defaultUnitLabelForMode = (mode) => {
+        switch (mode) {
+            case 'box_piece':
+                return 'pcs';
+            case 'liquid':
+                return 'liter';
+            default:
+                return 'pcs';
+        }
+    };
+
+    const normalizeInventoryStockMode = (mode) => ['piece', 'box_piece', 'liquid'].includes(mode) ? mode : 'piece';
+
+    const syncInventoryUnitLabel = (form, preserveExisting = false) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        const stockMode = form.querySelector('[data-stock-mode-select]');
+        const unitLabel = form.querySelector('[data-unit-label-select]');
+        const piecesPerBox = form.querySelector('input[name="pieces_per_box"]');
+
+        if (!(stockMode instanceof HTMLSelectElement) || !(unitLabel instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        if (piecesPerBox instanceof HTMLInputElement) {
+            const isBoxMode = stockMode.value === 'box_piece';
+            piecesPerBox.required = isBoxMode;
+            piecesPerBox.disabled = !isBoxMode;
+            if (!isBoxMode) {
+                piecesPerBox.value = '';
+            }
+        }
+
+        const allowedValues = [...unitLabel.options].map((option) => option.value);
+        const currentValueIsAllowed = allowedValues.includes(unitLabel.value);
+
+        if (preserveExisting && currentValueIsAllowed) {
+            return;
+        }
+
+        unitLabel.value = defaultUnitLabelForMode(stockMode.value);
+    };
+
     const populateEditForm = (trigger) => {
         if (!(editForm instanceof HTMLFormElement)) {
             return;
@@ -122,10 +171,9 @@ function initializeModalControls() {
             name: trigger.dataset.editPartName ?? '',
             sku: trigger.dataset.editPartSku ?? '',
             category: trigger.dataset.editPartCategory ?? '',
-            mode: trigger.dataset.editPartMode ?? 'piece',
+            mode: normalizeInventoryStockMode(trigger.dataset.editPartMode),
             unit: trigger.dataset.editPartUnit ?? 'pcs',
             box_size: trigger.dataset.editPartBoxSize ?? '',
-            allow_fractional: trigger.dataset.editPartAllowFractional ?? '0',
             minimum: trigger.dataset.editPartMinimum ?? '0',
             price: trigger.dataset.editPartPrice ?? '0.00',
             active: trigger.dataset.editPartActive ?? '1',
@@ -137,6 +185,8 @@ function initializeModalControls() {
                 input.value = value;
             }
         });
+
+        syncInventoryUnitLabel(editForm, true);
 
         const imageUrl = trigger.dataset.editPartImageUrl ?? '';
         const previewImage = document.querySelector('[data-image-preview="edit-part-image"]');
@@ -202,10 +252,10 @@ function initializeModalControls() {
         const unitSelect = movementForm.querySelector('[data-movement-unit-select]');
         if (unitSelect instanceof HTMLSelectElement) {
             const options = {
-                piece: [{ value: 'piece', label: unitLabel }],
+                piece: [{ value: 'piece', label: 'Pieces' }],
                 box_piece: [
-                    { value: 'piece', label: unitLabel },
-                    { value: 'box', label: 'box' },
+                    { value: 'box', label: 'Box' },
+                    { value: 'piece', label: 'Pieces' },
                 ],
                 liquid: [
                     { value: 'liter', label: unitLabel || 'liter' },
@@ -218,6 +268,20 @@ function initializeModalControls() {
                 .join('');
         }
     };
+
+    document.querySelectorAll('[data-stock-mode-select]').forEach((select) => {
+        if (!(select instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        const form = select.closest('form');
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        select.addEventListener('change', () => syncInventoryUnitLabel(form));
+        syncInventoryUnitLabel(form, true);
+    });
 
     document.querySelectorAll('[data-open-modal]').forEach((button) => {
         button.addEventListener('click', () => {
@@ -264,6 +328,71 @@ function initializeModalControls() {
         if (event.key === 'Escape') {
             closeAllModals();
         }
+    });
+}
+
+function initializeInventoryFormGuards() {
+    const forms = [...document.querySelectorAll('[data-inventory-action-form]')];
+
+    if (!forms.length) {
+        return;
+    }
+
+    forms.forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        form.addEventListener('submit', (event) => {
+            const rawAction = form.getAttribute('action') ?? '';
+            if (rawAction === '#' || rawAction.includes('__PART_ID__') || form.action.includes('__PART_ID__')) {
+                event.preventDefault();
+                window.alert('Please choose a part before submitting this inventory action.');
+                return;
+            }
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton instanceof HTMLButtonElement) {
+                submitButton.disabled = true;
+                submitButton.dataset.originalText = submitButton.textContent ?? '';
+                submitButton.textContent = 'Saving...';
+            }
+        });
+    });
+}
+
+function initializeLogoutLoading() {
+    const logoutForm = document.querySelector('[data-logout-form]');
+    const logoutButton = document.querySelector('[data-logout-button]');
+    const logoutOverlay = document.querySelector('[data-logout-overlay]');
+    let logoutSubmitting = false;
+
+    if (!(logoutForm instanceof HTMLFormElement)) {
+        return;
+    }
+
+    logoutForm.addEventListener('submit', (event) => {
+        if (logoutSubmitting) {
+            return;
+        }
+
+        event.preventDefault();
+        logoutSubmitting = true;
+
+        if (logoutButton instanceof HTMLButtonElement) {
+            logoutButton.disabled = true;
+            logoutButton.setAttribute('aria-busy', 'true');
+            logoutButton.classList.add('logout-button-active');
+        }
+
+        if (logoutOverlay instanceof HTMLElement) {
+            logoutOverlay.classList.remove('hidden');
+            logoutOverlay.setAttribute('aria-hidden', 'false');
+        }
+
+        window.setTimeout(() => {
+            logoutForm.submit();
+        }, 3000);
     });
 }
 
@@ -323,6 +452,15 @@ function initializePasswordToggles() {
 function getCsrfToken() {
     const token = document.querySelector('meta[name="csrf-token"]');
     return token instanceof HTMLMetaElement ? token.content : '';
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
 }
 
 function initializeDashboardPolling() {
@@ -477,7 +615,7 @@ function initializeDashboardPolling() {
 
         const axisLabels = trend.map((row, index) => `
             <span class="budget-axis-label ${index === focusIndex ? 'budget-axis-label-active' : ''}">
-                ${row.label ?? ''}
+                ${escapeHtml(row.label ?? '')}
             </span>
         `).join('');
         const dateLabelFor = (row) => formatFullDate(row);
@@ -511,8 +649,8 @@ function initializeDashboardPolling() {
 
                 <article class="budget-tooltip-card" data-dashboard-tooltip style="left: ${tooltipLeft}%;">
                     <div class="budget-tooltip-head">
-                        <p class="budget-tooltip-date" data-dashboard-tooltip-date>${dateLabel}</p>
-                        <span class="budget-tooltip-total" data-dashboard-tooltip-total>${focusRow.label ?? 'Current'}</span>
+                        <p class="budget-tooltip-date" data-dashboard-tooltip-date>${escapeHtml(dateLabel)}</p>
+                        <span class="budget-tooltip-total" data-dashboard-tooltip-total>${escapeHtml(focusRow.label ?? 'Current')}</span>
                     </div>
                     <div class="budget-tooltip-divider"></div>
                     <div class="budget-tooltip-row">
@@ -639,11 +777,11 @@ function initializeDashboardPolling() {
             return `
                 <article>
                     <div class="mb-2 flex items-center justify-between">
-                        <p class="text-sm font-semibold text-slate-800">${row.category ?? 'Unknown'}</p>
+                        <p class="text-sm font-semibold text-slate-800">${escapeHtml(row.category ?? 'Unknown')}</p>
                         <p class="text-sm font-bold text-brand-700">${count}</p>
                     </div>
-                    <div class="h-2.5 w-full rounded-full bg-slate-100">
-                        <div class="h-full rounded-full bg-brand-500" style="width: ${width}%"></div>
+                    <div class="low-stock-meter">
+                        <div class="low-stock-meter-fill" style="width: ${width}%"></div>
                     </div>
                 </article>
             `;
@@ -1171,7 +1309,7 @@ function initializeReportsRevenueChart() {
         }).join('');
 
         const axisLabels = windowedSeries.map((row) => `
-            <span class="budget-axis-label">${row?.label ?? ''}</span>
+            <span class="budget-axis-label">${escapeHtml(row?.label ?? '')}</span>
         `).join('');
         const focusIndex = Math.max(0, points.length - 1);
         const focusPoint = points[focusIndex] ?? points[points.length - 1];
@@ -1209,8 +1347,8 @@ function initializeReportsRevenueChart() {
                 </svg>
                 <article class="budget-tooltip-card" data-report-tooltip style="left: ${tooltipLeft}%;">
                     <div class="budget-tooltip-head">
-                        <p class="budget-tooltip-date" data-report-tooltip-date>${focusRow?.date_label ?? focusRow?.label ?? 'Current'}</p>
-                        <span class="budget-tooltip-total" data-report-tooltip-label>${focusRow?.label ?? 'Current'}</span>
+                        <p class="budget-tooltip-date" data-report-tooltip-date>${escapeHtml(focusRow?.date_label ?? focusRow?.label ?? 'Current')}</p>
+                        <span class="budget-tooltip-total" data-report-tooltip-label>${escapeHtml(focusRow?.label ?? 'Current')}</span>
                     </div>
                     <div class="budget-tooltip-divider"></div>
                     <div class="budget-tooltip-row">
@@ -1417,17 +1555,22 @@ function initializeReportsRevenueChart() {
     const downloadPngButton = document.querySelector('[data-download-report-png]');
     if (downloadPngButton instanceof HTMLButtonElement) {
         downloadPngButton.addEventListener('click', () => {
-            const reportRoot = document.querySelector('[data-report-export-root]');
-            if (!(reportRoot instanceof HTMLElement)) {
-                return;
-            }
-
             const originalText = downloadPngButton.textContent;
             downloadPngButton.disabled = true;
             downloadPngButton.textContent = 'Preparing PNG...';
 
             window.requestAnimationFrame(() => {
-                exportElementToPng(reportRoot, `motox-report-${selectedPeriod}-${selectedMonths}m.png`)
+                exportReportRevenueChartToPng({
+                    filename: `motox-report-chart-${selectedPeriod}-${selectedMonths}m.png`,
+                    months: selectedMonths,
+                    period: selectedPeriod,
+                    series: series.slice(-selectedMonths),
+                    summary: {
+                        latest: summaryNodes.latest instanceof HTMLElement ? summaryNodes.latest.textContent : '',
+                        average: summaryNodes.average instanceof HTMLElement ? summaryNodes.average.textContent : '',
+                        peak: summaryNodes.peak instanceof HTMLElement ? summaryNodes.peak.textContent : '',
+                    },
+                })
                     .catch((error) => {
                         console.warn('Report PNG export failed', error);
                     })
@@ -1475,87 +1618,249 @@ function initializeReportsRevenueChart() {
     }
 }
 
-async function exportElementToPng(sourceElement, filename) {
-    if (!(sourceElement instanceof HTMLElement)) {
-        return;
-    }
-
-    const sourceRect = sourceElement.getBoundingClientRect();
-    const exportWidth = Math.ceil(Math.max(sourceElement.scrollWidth, sourceRect.width, 900));
-    const exportHeight = Math.ceil(Math.max(sourceElement.scrollHeight, sourceRect.height, 600));
-    const exportClone = sourceElement.cloneNode(true);
-
-    if (!(exportClone instanceof HTMLElement)) {
-        return;
-    }
-
-    const sourceNodes = [sourceElement, ...sourceElement.querySelectorAll('*')];
-    const cloneNodes = [exportClone, ...exportClone.querySelectorAll('*')];
-    cloneNodes.forEach((cloneNode, index) => {
-        const sourceNode = sourceNodes[index];
-        if (!(cloneNode instanceof HTMLElement || cloneNode instanceof SVGElement) || !(sourceNode instanceof Element)) {
-            return;
-        }
-
-        const computed = window.getComputedStyle(sourceNode);
-        for (const property of computed) {
-            cloneNode.style.setProperty(property, computed.getPropertyValue(property), computed.getPropertyPriority(property));
-        }
-    });
-
-    exportClone.querySelectorAll('[data-report-export-exclude]').forEach((node) => node.remove());
-    exportClone.querySelectorAll('[data-report-download-menu]').forEach((node) => node.remove());
-
-    exportClone.style.width = `${exportWidth}px`;
-    exportClone.style.minHeight = `${exportHeight}px`;
-    exportClone.style.boxSizing = 'border-box';
-    exportClone.style.padding = '32px';
-    exportClone.style.background = document.documentElement.classList.contains('dark') ? '#020617' : '#f7f8fb';
-
-    const wrapper = document.createElement('div');
-    wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
-    wrapper.style.width = `${exportWidth}px`;
-    wrapper.style.minHeight = `${exportHeight}px`;
-    wrapper.style.background = exportClone.style.background;
-    wrapper.appendChild(exportClone);
-
-    const serialized = new XMLSerializer().serializeToString(wrapper);
-    const svg = `
-        <svg xmlns="http://www.w3.org/2000/svg" width="${exportWidth}" height="${exportHeight}" viewBox="0 0 ${exportWidth} ${exportHeight}">
-            <foreignObject width="100%" height="100%">${serialized}</foreignObject>
-        </svg>
-    `;
-    const blob = new Blob([svg], { type: 'image/svg+xml;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const image = new Image();
+async function exportReportRevenueChartToPng({ filename, months, period, series, summary }) {
+    const rows = Array.isArray(series) ? series : [];
+    const width = 1400;
+    const height = 820;
     const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
-
-    await new Promise((resolve, reject) => {
-        image.onload = resolve;
-        image.onerror = reject;
-        image.src = url;
-    });
-
     const canvas = document.createElement('canvas');
-    canvas.width = Math.ceil(exportWidth * scale);
-    canvas.height = Math.ceil(exportHeight * scale);
-    const context = canvas.getContext('2d');
+    canvas.width = Math.ceil(width * scale);
+    canvas.height = Math.ceil(height * scale);
 
+    const context = canvas.getContext('2d');
     if (!context) {
-        URL.revokeObjectURL(url);
         return;
     }
 
     context.scale(scale, scale);
-    context.fillStyle = exportClone.style.background;
-    context.fillRect(0, 0, exportWidth, exportHeight);
-    context.drawImage(image, 0, 0, exportWidth, exportHeight);
-    URL.revokeObjectURL(url);
+    context.fillStyle = '#f7f8fb';
+    context.fillRect(0, 0, width, height);
+
+    fillRoundedRect(context, 48, 48, width - 96, height - 96, 28, '#ffffff');
+    context.strokeStyle = '#e2e8f0';
+    context.lineWidth = 1;
+    strokeRoundedRect(context, 48, 48, width - 96, height - 96, 28);
+
+    context.fillStyle = '#0f172a';
+    context.font = '800 42px Manrope, Arial, sans-serif';
+    context.fillText('Monthly Revenue Trend', 92, 124);
+
+    context.fillStyle = '#64748b';
+    context.font = '600 20px Manrope, Arial, sans-serif';
+    context.fillText(`${periodLabel(period)} - ${months}-month window`, 92, 160);
+
+    context.textAlign = 'right';
+    context.fillStyle = '#0f766e';
+    context.font = '800 26px Manrope, Arial, sans-serif';
+    context.fillText('MotoX Reports', width - 92, 126);
+    context.fillStyle = '#94a3b8';
+    context.font = '600 16px Manrope, Arial, sans-serif';
+    context.fillText(new Date().toLocaleString('en-US', {
+        dateStyle: 'medium',
+        timeStyle: 'short',
+    }), width - 92, 158);
+    context.textAlign = 'left';
+
+    const chart = {
+        x: 112,
+        y: 228,
+        width: width - 224,
+        height: 360,
+    };
+    const values = rows.map((row) => Math.max(0, Number(row?.value || 0)));
+    const maxValue = Math.max(1, ...values);
+    const moneyFormatter = new Intl.NumberFormat('en-US', {
+        maximumFractionDigits: 2,
+        minimumFractionDigits: 2,
+    });
+
+    context.strokeStyle = '#e2e8f0';
+    context.lineWidth = 1;
+    context.fillStyle = '#64748b';
+    context.font = '600 15px Manrope, Arial, sans-serif';
+
+    for (let index = 0; index <= 5; index += 1) {
+        const y = chart.y + ((chart.height / 5) * index);
+        const value = maxValue - ((maxValue / 5) * index);
+        context.beginPath();
+        context.moveTo(chart.x, y);
+        context.lineTo(chart.x + chart.width, y);
+        context.stroke();
+        context.fillText(`PHP ${compactCurrency(value)}`, chart.x, y - 8);
+    }
+
+    if (!rows.length) {
+        context.fillStyle = '#64748b';
+        context.font = '700 24px Manrope, Arial, sans-serif';
+        context.textAlign = 'center';
+        context.fillText('No monthly revenue data available yet.', width / 2, chart.y + chart.height / 2);
+        context.textAlign = 'left';
+    } else {
+        const stepX = rows.length > 1 ? chart.width / (rows.length - 1) : 0;
+        const points = values.map((value, index) => ({
+            x: chart.x + (stepX * index),
+            y: chart.y + ((1 - (value / maxValue)) * chart.height),
+        }));
+
+        const areaGradient = context.createLinearGradient(0, chart.y, 0, chart.y + chart.height);
+        areaGradient.addColorStop(0, 'rgba(14, 116, 144, 0.26)');
+        areaGradient.addColorStop(1, 'rgba(14, 116, 144, 0.03)');
+
+        context.beginPath();
+        context.moveTo(points[0].x, chart.y + chart.height);
+        points.forEach((point) => context.lineTo(point.x, point.y));
+        context.lineTo(points[points.length - 1].x, chart.y + chart.height);
+        context.closePath();
+        context.fillStyle = areaGradient;
+        context.fill();
+
+        context.beginPath();
+        points.forEach((point, index) => {
+            if (index === 0) {
+                context.moveTo(point.x, point.y);
+                return;
+            }
+
+            context.lineTo(point.x, point.y);
+        });
+        context.strokeStyle = '#0e7490';
+        context.lineWidth = 5;
+        context.lineJoin = 'round';
+        context.lineCap = 'round';
+        context.stroke();
+
+        points.forEach((point) => {
+            context.beginPath();
+            context.arc(point.x, point.y, 7, 0, Math.PI * 2);
+            context.fillStyle = '#ffffff';
+            context.fill();
+            context.strokeStyle = '#0e7490';
+            context.lineWidth = 4;
+            context.stroke();
+        });
+
+        const focusIndex = points.length - 1;
+        const focusPoint = points[focusIndex];
+        const focusRow = rows[focusIndex] ?? {};
+        const focusValue = values[focusIndex] ?? 0;
+        const tooltipX = Math.min(chart.x + chart.width - 260, Math.max(chart.x + 16, focusPoint.x - 130));
+        const tooltipY = Math.max(chart.y + 20, focusPoint.y - 132);
+
+        fillRoundedRect(context, tooltipX, tooltipY, 260, 104, 18, '#0f172a');
+        context.fillStyle = '#cbd5e1';
+        context.font = '700 14px Manrope, Arial, sans-serif';
+        drawClampedText(context, focusRow?.date_label ?? focusRow?.label ?? 'Current', tooltipX + 18, tooltipY + 30, 224);
+        context.fillStyle = '#ffffff';
+        context.font = '800 25px Manrope, Arial, sans-serif';
+        drawClampedText(context, `PHP ${moneyFormatter.format(focusValue)}`, tooltipX + 18, tooltipY + 66, 224);
+        context.fillStyle = '#67e8f9';
+        context.font = '700 14px Manrope, Arial, sans-serif';
+        context.fillText('Revenue', tooltipX + 18, tooltipY + 88);
+
+        context.fillStyle = '#475569';
+        context.font = '700 16px Manrope, Arial, sans-serif';
+        context.textAlign = 'center';
+        rows.forEach((row, index) => {
+            const point = points[index];
+            drawClampedText(context, row?.label ?? '', point.x, chart.y + chart.height + 42, 74);
+        });
+        context.textAlign = 'left';
+    }
+
+    const summaryRows = [
+        ['Latest Month', summary?.latest || '-'],
+        ['12-Month Average', summary?.average || '-'],
+        ['Peak Month', summary?.peak || '-'],
+    ];
+    const cardWidth = (width - 224 - 32) / 3;
+    summaryRows.forEach(([label, value], index) => {
+        const x = 112 + (index * (cardWidth + 16));
+        const y = 650;
+        fillRoundedRect(context, x, y, cardWidth, 96, 18, '#f8fafc');
+        context.strokeStyle = '#e2e8f0';
+        context.lineWidth = 1;
+        strokeRoundedRect(context, x, y, cardWidth, 96, 18);
+        context.fillStyle = '#64748b';
+        context.font = '800 13px Manrope, Arial, sans-serif';
+        context.fillText(label.toUpperCase(), x + 20, y + 34);
+        context.fillStyle = '#0f172a';
+        context.font = '800 25px Manrope, Arial, sans-serif';
+        drawClampedText(context, value, x + 20, y + 68, cardWidth - 40);
+    });
 
     const link = document.createElement('a');
     link.download = filename;
     link.href = canvas.toDataURL('image/png');
     link.click();
+}
+
+function periodLabel(value) {
+    const labels = {
+        all: 'All time',
+        daily: 'Daily',
+        weekly: 'Weekly',
+        monthly: 'Monthly',
+        yearly: 'Yearly',
+    };
+
+    return labels[normalizePeriodFilter(value)] ?? labels.all;
+}
+
+function compactCurrency(value) {
+    const amount = Number(value || 0);
+
+    if (amount >= 1000000) {
+        return `${(amount / 1000000).toFixed(1)}M`;
+    }
+
+    if (amount >= 1000) {
+        return `${(amount / 1000).toFixed(1)}K`;
+    }
+
+    return amount.toFixed(0);
+}
+
+function drawClampedText(context, value, x, y, maxWidth) {
+    const text = String(value ?? '');
+
+    if (context.measureText(text).width <= maxWidth) {
+        context.fillText(text, x, y);
+        return;
+    }
+
+    let truncated = text;
+    while (truncated.length > 4 && context.measureText(`${truncated}...`).width > maxWidth) {
+        truncated = truncated.slice(0, -1);
+    }
+
+    context.fillText(`${truncated}...`, x, y);
+}
+
+function fillRoundedRect(context, x, y, width, height, radius, fillStyle) {
+    roundedRectPath(context, x, y, width, height, radius);
+    context.fillStyle = fillStyle;
+    context.fill();
+}
+
+function strokeRoundedRect(context, x, y, width, height, radius) {
+    roundedRectPath(context, x, y, width, height, radius);
+    context.stroke();
+}
+
+function roundedRectPath(context, x, y, width, height, radius) {
+    const normalizedRadius = Math.min(radius, width / 2, height / 2);
+
+    context.beginPath();
+    context.moveTo(x + normalizedRadius, y);
+    context.lineTo(x + width - normalizedRadius, y);
+    context.quadraticCurveTo(x + width, y, x + width, y + normalizedRadius);
+    context.lineTo(x + width, y + height - normalizedRadius);
+    context.quadraticCurveTo(x + width, y + height, x + width - normalizedRadius, y + height);
+    context.lineTo(x + normalizedRadius, y + height);
+    context.quadraticCurveTo(x, y + height, x, y + height - normalizedRadius);
+    context.lineTo(x, y + normalizedRadius);
+    context.quadraticCurveTo(x, y, x + normalizedRadius, y);
+    context.closePath();
 }
 
 function initializeLandingMetricsPolling() {
@@ -1621,6 +1926,40 @@ function initializeLandingMetricsPolling() {
 
     fetchMetrics();
     window.setInterval(fetchMetrics, 15000);
+}
+
+function initializeLandingRefreshLoader() {
+    const loader = document.querySelector('[data-landing-loader]');
+    const landingRoot = document.querySelector('.landing-page');
+
+    if (!(loader instanceof HTMLElement) || !(landingRoot instanceof HTMLElement)) {
+        return;
+    }
+
+    document.body.classList.add('landing-is-loading');
+
+    const hideLoader = () => {
+        loader.classList.add('landing-refresh-loader-hidden');
+        document.body.classList.remove('landing-is-loading');
+
+        window.setTimeout(() => {
+            loader.remove();
+        }, 420);
+    };
+
+    const minimumDelay = 650;
+    const startedAt = performance.now();
+    const finish = () => {
+        const elapsed = performance.now() - startedAt;
+        window.setTimeout(hideLoader, Math.max(0, minimumDelay - elapsed));
+    };
+
+    if (document.readyState === 'complete') {
+        finish();
+        return;
+    }
+
+    window.addEventListener('load', finish, { once: true });
 }
 
 function initializeLandingBackgroundMotion() {
@@ -1982,6 +2321,10 @@ function initializeNotificationActions() {
     const panel = document.querySelector('[data-header-menu-panel="notifications"]');
     const notificationTrigger = document.querySelector('[data-header-menu-trigger="notifications"]');
     const unreadDot = document.querySelector('[data-notification-dot]');
+    const unreadCountBadge = document.querySelector('[data-notification-count-badge]');
+    const unreadCountLabel = panel instanceof HTMLElement
+        ? panel.querySelector('[data-notification-count-label]')
+        : null;
     const markAsReadButton = document.querySelector('[data-mark-notifications-read]');
     const listRoot = panel instanceof HTMLElement
         ? panel.querySelector('[data-notification-list]')
@@ -1996,8 +2339,13 @@ function initializeNotificationActions() {
     const deleteTemplate = panel.dataset.notificationsDeleteTemplate || '';
     let lastUnreadCount = 0;
     const latestNotificationStorageKey = 'motox.notifications.latest-sounded-id';
+    const notificationSignalsStorageKey = 'motox.notifications.signals';
+    const notificationSoundUnlockStorageKey = 'motox.notifications.sound-unlocked';
     let lastNotificationId = null;
+    let knownNotificationSignals = new Map();
     let audioContext = null;
+    let hasFetchedNotifications = false;
+    let pendingNotificationSounds = 0;
 
     if (!notificationsUrl) {
         return;
@@ -2012,6 +2360,15 @@ function initializeNotificationActions() {
         lastNotificationId = null;
     }
 
+    try {
+        const storedSignals = JSON.parse(localStorage.getItem(notificationSignalsStorageKey) || '{}');
+        if (storedSignals && typeof storedSignals === 'object' && !Array.isArray(storedSignals)) {
+            knownNotificationSignals = new Map(Object.entries(storedSignals).map(([id, signal]) => [Number(id), String(signal)]));
+        }
+    } catch (error) {
+        knownNotificationSignals = new Map();
+    }
+
     const ensureAudioContext = () => {
         try {
             const AudioContext = window.AudioContext || window.webkitAudioContext;
@@ -2020,9 +2377,12 @@ function initializeNotificationActions() {
             }
 
             audioContext = audioContext || new AudioContext();
-
-            if (audioContext.state === 'suspended') {
-                audioContext.resume();
+            if (audioContext.state === 'running') {
+                try {
+                    sessionStorage.setItem(notificationSoundUnlockStorageKey, '1');
+                } catch (error) {
+                    console.warn('Unable to persist notification sound state', error);
+                }
             }
 
             return audioContext;
@@ -2033,20 +2393,32 @@ function initializeNotificationActions() {
         return null;
     };
 
-    const unlockNotificationSound = () => {
-        ensureAudioContext();
-        window.removeEventListener('pointerdown', unlockNotificationSound);
-        window.removeEventListener('keydown', unlockNotificationSound);
-    };
-
-    window.addEventListener('pointerdown', unlockNotificationSound, { once: true });
-    window.addEventListener('keydown', unlockNotificationSound, { once: true });
-
-    const playNotificationSound = () => {
+    const playNotificationSound = (repeatCount = 1) => {
         try {
             const context = ensureAudioContext();
             if (!context) {
                 return;
+            }
+
+            if (context.state === 'suspended') {
+                pendingNotificationSounds = Math.min(4, pendingNotificationSounds + Math.max(1, repeatCount));
+                context.resume().then(() => {
+                    if (pendingNotificationSounds > 0) {
+                        const queuedSounds = pendingNotificationSounds;
+                        pendingNotificationSounds = 0;
+                        playNotificationSound(queuedSounds);
+                    }
+                }).catch((error) => {
+                    console.warn('Notification sound unavailable', error);
+                });
+                return;
+            }
+
+            pendingNotificationSounds = 0;
+            try {
+                sessionStorage.setItem(notificationSoundUnlockStorageKey, '1');
+            } catch (error) {
+                console.warn('Unable to persist notification sound state', error);
             }
 
             const playTone = (frequency, startOffset) => {
@@ -2064,12 +2436,46 @@ function initializeNotificationActions() {
                 oscillator.stop(context.currentTime + startOffset + 0.18);
             };
 
-            playTone(880, 0);
-            playTone(1175, 0.18);
+            const boundedRepeatCount = Math.min(3, Math.max(1, repeatCount));
+            for (let index = 0; index < boundedRepeatCount; index += 1) {
+                const offset = index * 0.46;
+                playTone(880, offset);
+                playTone(1175, offset + 0.18);
+            }
         } catch (error) {
             console.warn('Notification sound unavailable', error);
         }
     };
+
+    const unlockNotificationSound = () => {
+        const context = ensureAudioContext();
+        if (!context) {
+            return;
+        }
+
+        if (context.state === 'suspended') {
+            context.resume().then(() => {
+                if (pendingNotificationSounds > 0) {
+                    const queuedSounds = pendingNotificationSounds;
+                    pendingNotificationSounds = 0;
+                    playNotificationSound(queuedSounds);
+                }
+            }).catch((error) => {
+                console.warn('Notification sound unavailable', error);
+            });
+            return;
+        }
+
+        if (pendingNotificationSounds > 0) {
+            const queuedSounds = pendingNotificationSounds;
+            pendingNotificationSounds = 0;
+            playNotificationSound(queuedSounds);
+        }
+    };
+
+    window.addEventListener('pointerdown', unlockNotificationSound);
+    window.addEventListener('keydown', unlockNotificationSound);
+    window.addEventListener('focus', unlockNotificationSound);
 
     const escapeHtml = (value) => String(value ?? '')
         .replaceAll('&', '&amp;')
@@ -2124,16 +2530,87 @@ function initializeNotificationActions() {
         return ids.length ? Math.max(...ids) : null;
     };
 
+    const notificationIds = (items) => {
+        if (!Array.isArray(items) || !items.length) {
+            return [];
+        }
+
+        return items
+            .map((item) => Number(item?.id ?? 0))
+            .filter((id) => Number.isFinite(id) && id > 0);
+    };
+
+    const notificationSignals = (items) => {
+        const signals = new Map();
+
+        if (!Array.isArray(items) || !items.length) {
+            return signals;
+        }
+
+        items.forEach((item) => {
+            const id = Number(item?.id ?? 0);
+            if (!Number.isFinite(id) || id <= 0) {
+                return;
+            }
+
+            signals.set(id, String(item?.updated_at || item?.created_at || id));
+        });
+
+        return signals;
+    };
+
+    const persistNotificationSignals = (signals) => {
+        try {
+            localStorage.setItem(
+                notificationSignalsStorageKey,
+                JSON.stringify(Object.fromEntries(signals.entries())),
+            );
+        } catch (error) {
+            console.warn('Unable to persist notification signals', error);
+        }
+    };
+
+    const updateUnreadCountDisplay = (unreadCount) => {
+        const normalizedCount = Math.max(0, Number(unreadCount || 0));
+        const displayCount = normalizedCount > 99 ? '99+' : String(normalizedCount);
+        const label = normalizedCount === 1 ? '1 unread' : `${displayCount} unread`;
+
+        unreadDot.classList.toggle('hidden', normalizedCount <= 0);
+
+        if (unreadCountBadge instanceof HTMLElement) {
+            unreadCountBadge.textContent = displayCount;
+            unreadCountBadge.classList.toggle('hidden', normalizedCount <= 0);
+        }
+
+        if (unreadCountLabel instanceof HTMLElement) {
+            unreadCountLabel.textContent = label;
+        }
+    };
+
     const applyPayload = (payload) => {
         const unreadCount = Number(payload?.unread_count ?? 0);
-        const latestId = latestNotificationId(payload?.items ?? []);
-        const hasNewNotification = latestId !== null
-            && lastNotificationId !== null
-            && latestId > lastNotificationId;
-        const shouldPlaySound = unreadCount > 0 && hasNewNotification;
+        const items = payload?.items ?? [];
+        const ids = notificationIds(items);
+        const latestId = latestNotificationId(items);
+        const currentSignals = notificationSignals(items);
+        let newNotificationCount = 0;
 
-        if (shouldPlaySound) {
-            playNotificationSound();
+        currentSignals.forEach((signal, id) => {
+            const isNewId = lastNotificationId !== null && id > lastNotificationId;
+            const previousSignal = knownNotificationSignals.get(id);
+            const wasUpdated = previousSignal !== undefined && previousSignal !== signal;
+
+            if (isNewId || wasUpdated) {
+                newNotificationCount += 1;
+            }
+        });
+
+        if (newNotificationCount === 0 && hasFetchedNotifications && lastNotificationId === null && unreadCount > lastUnreadCount) {
+            newNotificationCount = unreadCount - lastUnreadCount;
+        }
+
+        if (unreadCount > 0 && newNotificationCount > 0) {
+            playNotificationSound(newNotificationCount);
         }
 
         lastUnreadCount = unreadCount;
@@ -2145,8 +2622,11 @@ function initializeNotificationActions() {
                 console.warn('Unable to persist latest notification id', error);
             }
         }
-        unreadDot.classList.toggle('hidden', unreadCount <= 0);
-        renderItems(payload?.items ?? []);
+        knownNotificationSignals = currentSignals;
+        persistNotificationSignals(currentSignals);
+        updateUnreadCountDisplay(unreadCount);
+        renderItems(items);
+        hasFetchedNotifications = true;
     };
 
     const fetchNotifications = async () => {
@@ -2199,7 +2679,8 @@ function initializeNotificationActions() {
                 }
 
                 listRoot.innerHTML = '<p class="text-xs text-slate-500">No notifications right now.</p>';
-                unreadDot.classList.add('hidden');
+                lastUnreadCount = 0;
+                updateUnreadCountDisplay(0);
                 fetchNotifications();
             } catch (error) {
                 console.warn('Failed to mark notifications as read', error);
@@ -2243,8 +2724,58 @@ function initializeNotificationActions() {
     });
 
     window.MotoXRefreshNotifications = fetchNotifications;
+    window.MotoXPlayNotificationSound = playNotificationSound;
     fetchNotifications();
     window.setInterval(fetchNotifications, 2000);
+}
+
+function initializeSystemActionNotificationSound() {
+    const pendingActionStorageKey = 'motox.notifications.pending-system-action-sound';
+    const formSelector = [
+        'form[data-inventory-action-form]',
+        'form[action*="/customers"]',
+        'form[action*="/job-orders"]',
+        'form[action*="/settings"]',
+    ].join(',');
+
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement) || !form.matches(formSelector)) {
+            return;
+        }
+
+        try {
+            sessionStorage.setItem(pendingActionStorageKey, '1');
+        } catch (error) {
+            console.warn('Unable to queue notification sound', error);
+        }
+    }, true);
+
+    const hasSuccessfulSystemAction = document.body?.dataset.systemActionStatus === '1';
+    let hasPendingActionSound = false;
+
+    try {
+        hasPendingActionSound = sessionStorage.getItem(pendingActionStorageKey) === '1';
+        if (hasPendingActionSound) {
+            sessionStorage.removeItem(pendingActionStorageKey);
+        }
+    } catch (error) {
+        hasPendingActionSound = false;
+    }
+
+    if (!hasSuccessfulSystemAction || !hasPendingActionSound) {
+        return;
+    }
+
+    window.setTimeout(() => {
+        if (typeof window.MotoXRefreshNotifications === 'function') {
+            window.MotoXRefreshNotifications();
+        }
+
+        if (typeof window.MotoXPlayNotificationSound === 'function') {
+            window.MotoXPlayNotificationSound(1);
+        }
+    }, 250);
 }
 
 function initializeCustomersFilters() {
@@ -2277,10 +2808,15 @@ function initializeCustomersFilters() {
             const name = row.dataset.name?.toLowerCase() || '';
             const email = row.dataset.email?.toLowerCase() || '';
             const phone = row.dataset.phone?.toLowerCase() || '';
+            const notes = row.dataset.notes?.toLowerCase() || '';
             const createdAt = row.dataset.createdAt ? new Date(row.dataset.createdAt) : null;
             const activeJobs = Number.parseInt(row.dataset.activeJobs || '0', 10);
 
-            const matchesSearch = !searchTerm || name.includes(searchTerm) || email.includes(searchTerm) || phone.includes(searchTerm);
+            const matchesSearch = !searchTerm
+                || name.includes(searchTerm)
+                || email.includes(searchTerm)
+                || phone.includes(searchTerm)
+                || notes.includes(searchTerm);
 
             let matchesDate = true;
             if (dateFilter !== 'all' && createdAt instanceof Date && !Number.isNaN(createdAt.valueOf())) {

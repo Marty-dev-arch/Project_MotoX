@@ -106,11 +106,12 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="soft-table w-full min-w-[860px]">
+                <table class="soft-table w-full min-w-[1040px]">
                     <thead>
                         <tr class="table-heading">
                             <th>Name</th>
                             <th>Contact</th>
+                            <th>Notes</th>
                             <th>Job Orders</th>
                             <th>Updated</th>
                             <th class="text-right">Actions</th>
@@ -126,6 +127,7 @@
                                 data-name="{{ $customer->name }}"
                                 data-email="{{ $customer->email ?? '' }}"
                                 data-phone="{{ $customer->phone ?? '' }}"
+                                data-notes="{{ $customer->notes ?? '' }}"
                                 data-created-at="{{ $customer->created_at->toIso8601String() }}"
                                 data-active-jobs="{{ $customer->active_job_orders_count }}"
                             >
@@ -156,6 +158,13 @@
                                     </div>
                                 </td>
                                 <td>{{ $customer->phone ?: 'No phone' }}</td>
+                                <td class="max-w-[280px]">
+                                    @if (filled($customer->notes))
+                                        <p class="line-clamp-2 text-sm text-slate-600" title="{{ $customer->notes }}">{{ $customer->notes }}</p>
+                                    @else
+                                        <span class="text-sm text-slate-400">No notes</span>
+                                    @endif
+                                </td>
                                 <td>
                                     <x-badge :tone="$customer->active_job_orders_count > 0 ? 'warning' : 'neutral'">
                                         {{ $customer->job_orders_count }} total
@@ -190,7 +199,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="py-10 text-center text-sm text-slate-500">No customers yet. Add your first customer profile.</td>
+                                <td colspan="6" class="py-10 text-center text-sm text-slate-500">No customers yet. Add your first customer profile.</td>
                             </tr>
 @endforelse
                     </tbody>

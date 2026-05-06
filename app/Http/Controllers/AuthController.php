@@ -269,6 +269,9 @@ class AuthController extends Controller
 
         return Socialite::driver('google')
             ->redirectUrl($this->googleRedirectUrl())
+            ->with([
+                'prompt' => 'select_account',
+            ])
             ->redirect();
     }
 
@@ -303,16 +306,17 @@ class AuthController extends Controller
         }
 
         try {
-            try {
-                $googleUser = Socialite::driver('google')
-                    ->redirectUrl($this->googleRedirectUrl())
-                    ->user();
-            } catch (InvalidStateException $exception) {
-                $googleUser = Socialite::driver('google')
-                    ->redirectUrl($this->googleRedirectUrl())
-                    ->stateless()
-                    ->user();
-            }
+            $googleUser = Socialite::driver('google')
+                ->redirectUrl($this->googleRedirectUrl())
+                ->user();
+        } catch (InvalidStateException $exception) {
+            report($exception);
+
+            return redirect()
+                ->route('login')
+                ->withErrors([
+                    'email' => 'Google login session expired. Please try signing in again.',
+                ]);
         } catch (Throwable $exception) {
             report($exception);
 
@@ -372,8 +376,9 @@ class AuthController extends Controller
             return $user;
         });
 
-        Auth::login($user, true);
+        Auth::login($user, false);
         $request->session()->regenerate();
+        $request->session()->put('auth.provider', 'google');
 
         $target = $this->homeRouteFor($user);
 

@@ -18,8 +18,9 @@ class NotificationController extends Controller
 
         $notifications = $this->baseQuery($shopId, $user->id)
             ->whereNull('read_at')
+            ->latest('updated_at')
             ->latest('id')
-            ->take(20)
+            ->take(50)
             ->get()
             ->map(fn (SystemNotification $notification): array => [
                 'id' => $notification->id,
@@ -29,6 +30,7 @@ class NotificationController extends Controller
                 'severity' => $notification->severity,
                 'is_read' => $notification->read_at !== null,
                 'created_at' => $notification->created_at?->toIso8601String(),
+                'updated_at' => $notification->updated_at?->toIso8601String(),
                 'created_human' => $notification->created_at?->timezone('Asia/Manila')->format('M d, h:i A').' PHT',
             ])
             ->values();

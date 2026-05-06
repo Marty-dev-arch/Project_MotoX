@@ -68,7 +68,7 @@
             <div class="flex flex-wrap items-end justify-between gap-3">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-900">Revenue Snapshot</h2>
-                    <p class="mt-1 text-sm text-slate-500">Actual completed job-order revenue by operating window.</p>
+                    <p class="mt-1 text-sm text-slate-500">Actual completed job-order revenue by operating monitoring.</p>
                 </div>
                 <a href="{{ route('reports') }}" class="text-sm font-semibold text-brand-600 transition hover:text-brand-700">Open Reports</a>
             </div>
@@ -87,7 +87,7 @@
             <section class="panel-card budget-card p-5 sm:p-6">
                 <div class="flex flex-wrap items-start justify-between gap-4">
                     <div>
-                        <h2 class="text-2xl font-bold text-slate-900">Consolidated Stock Flow</h2>
+                        <h2 class="text-2xl font-bold text-slate-900">Graphical Chart Stock Flow</h2>
                         <div class="budget-legend mt-2">
                             <span class="budget-legend-item"><i class="budget-legend-dot budget-legend-dot-in"></i>Stock In</span>
                             <span class="budget-legend-item"><i class="budget-legend-dot budget-legend-dot-out"></i>Stock Out</span>
@@ -133,8 +133,8 @@
                                 <p class="text-sm font-semibold text-slate-800">{{ $row['category'] }}</p>
                                 <p class="text-sm font-bold text-brand-700">{{ $row['count'] }}</p>
                             </div>
-                            <div class="h-2.5 w-full rounded-full bg-slate-100">
-                                <div class="h-full rounded-full bg-brand-500" style="width: {{ $width }}%"></div>
+                            <div class="low-stock-meter">
+                                <div class="low-stock-meter-fill" style="width: {{ $width }}%"></div>
                             </div>
                         </article>
                     @empty
@@ -149,7 +149,7 @@
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-900">Low Stock Parts</h2>
-                        <p class="mt-1 text-sm text-slate-500">Items currently below configured minimum stock.</p>
+                        <p class="mt-1 text-sm text-slate-500">Items currently below minimum stock.</p>
                     </div>
                     <a href="{{ route('inventory') }}" class="text-sm font-semibold text-brand-600 transition hover:text-brand-700">Open Inventory</a>
                 </div>
@@ -174,7 +174,7 @@
             <section class="panel-card p-5 sm:p-6">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-900">Recent Stock Activity</h2>
-                    <p class="mt-1 text-sm text-slate-500">Latest inventory movements from your team.</p>
+                    <p class="mt-1 text-sm text-slate-500">Latest inventory movements.</p>
                 </div>
 
 <div class="mt-5 space-y-3" data-dashboard-results="movements">

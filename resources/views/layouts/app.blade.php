@@ -21,7 +21,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="app-shell transition-colors duration-200">
+    <body class="app-shell transition-colors duration-200" data-system-action-status="{{ session('status') ? '1' : '0' }}">
         @php
             $topbarUser = auth()->user();
             $topbarAvatarUrl = $topbarUser?->avatar_path
@@ -48,11 +48,15 @@
                                         aria-expanded="false"
                                     >
                                         <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500" data-notification-dot></span>
+                                        <span class="notification-count-badge hidden" data-notification-count-badge>0</span>
                                         <x-icon name="bell" class="h-5 w-5" />
                                     </button>
-                                    <div class="header-menu-panel hidden" data-header-menu-panel="notifications" data-notifications-url="{{ route('notifications.index') }}" data-notifications-read-url="{{ route('notifications.read-all') }}" data-notifications-delete-template="{{ url('/notifications/__ID__') }}">
-                                        <p class="header-menu-title">Notifications</p>
-                                        <div class="mt-3 space-y-2" data-notification-list>
+                                    <div class="header-menu-panel notification-menu-panel hidden" data-header-menu-panel="notifications" data-notifications-url="{{ route('notifications.index') }}" data-notifications-read-url="{{ route('notifications.read-all') }}" data-notifications-delete-template="{{ url('/notifications/__ID__') }}">
+                                        <div class="flex items-center justify-between gap-3">
+                                            <p class="header-menu-title">Notifications</p>
+                                            <span class="notification-count-pill" data-notification-count-label>0 unread</span>
+                                        </div>
+                                        <div class="notification-list-scroll mt-3 space-y-2" data-notification-list aria-live="polite">
                                             <p class="text-xs text-slate-500">Loading notifications...</p>
                                         </div>
                                         <button type="button" class="header-menu-link w-full text-left" data-mark-notifications-read>Mark all as read</button>
@@ -100,9 +104,9 @@
                                     </div>
                                 </div>
 
-                                <form method="POST" action="{{ route('logout') }}">
+                                <form method="POST" action="{{ route('logout') }}" data-logout-form>
                                     @csrf
-                                    <button class="icon-button" type="submit" aria-label="Log Out" title="Log Out">
+                                    <button class="icon-button" type="submit" aria-label="Log Out" title="Log Out" data-logout-button>
                                         <x-icon name="logout" class="h-5 w-5" />
                                     </button>
                                 </form>
@@ -143,5 +147,17 @@
         >
             <x-icon name="menu" class="h-5 w-5" />
         </button>
+
+        <div class="logout-loading-overlay hidden" data-logout-overlay aria-live="polite" aria-hidden="true">
+            <div class="logout-loading-card">
+                <span class="logout-loading-mark">
+                    <x-icon name="car" class="h-6 w-6" />
+                </span>
+                <span class="logout-loading-title">Logging out</span>
+                <span class="logout-loading-text">logging out...</span>
+                <span class="logout-loading-bar"><span></span></span>
+            </div>
+        </div>
+
     </body>
 </html>
