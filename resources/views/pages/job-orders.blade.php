@@ -16,7 +16,7 @@
         </div>
 
         <div class="grid gap-4 md:grid-cols-2 2xl:grid-cols-5">
-            <article class="panel-card p-5">
+            <article class="panel-card p-5 col-span-1">
                 <p class="muted-label">Total Orders</p>
                 <p class="mt-2 text-4xl font-black tracking-tight text-slate-900" data-joborder-kpi="total_orders">{{ number_format($orders->count()) }}</p>
             </article>
@@ -32,7 +32,7 @@
                 <p class="muted-label">Completed</p>
                 <p class="mt-2 text-4xl font-black tracking-tight text-slate-900" data-joborder-kpi="completed">{{ number_format($statusCounts['completed']) }}</p>
             </article>
-            <article class="panel-card p-5">
+            <article class="panel-card p-5 col-span-2 md:col-span-2 2xl:col-span-5 w-full">
                 <p class="muted-label">Estimated Value</p>
                 <p class="mt-2 text-4xl font-black tracking-tight text-slate-900" data-joborder-kpi="estimated_value">PHP {{ number_format($totalEstimated, 2) }}</p>
             </article>
