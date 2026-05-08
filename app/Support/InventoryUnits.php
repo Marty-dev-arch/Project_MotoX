@@ -9,7 +9,6 @@ class InventoryUnits
 {
     public const MODE_PIECE = 'piece';
     public const MODE_BOX_PIECE = 'box_piece';
-    public const MODE_LIQUID = 'liquid';
 
     public static function toBaseQuantity(Part $part, float $quantity, ?string $quantityUnit = null): float
     {
@@ -18,10 +17,6 @@ class InventoryUnits
         if ($part->usesBoxConversion() && $normalizedUnit === 'box') {
             $piecesPerBox = max(1.0, (float) $part->pieces_per_box);
             return round($quantity * $piecesPerBox, 3);
-        }
-
-        if ($part->usesLiquidMode() && in_array($normalizedUnit, ['ml', 'milliliter', 'milliliters'], true)) {
-            return round($quantity / 1000, 3);
         }
 
         return round($quantity, 3);
@@ -33,10 +28,6 @@ class InventoryUnits
             throw ValidationException::withMessages([
                 $field => 'Quantity must be greater than zero.',
             ]);
-        }
-
-        if ($part->usesLiquidMode()) {
-            return;
         }
 
         $isWhole = abs($quantity - round($quantity)) < 0.00001;
@@ -57,17 +48,20 @@ class InventoryUnits
                 rtrim(rtrim(number_format((float) ($part->pieces_per_box ?? 0), 3, '.', ''), '0'), '.'),
                 $part->defaultUnitLabel(),
             ),
-            self::MODE_LIQUID => $part->defaultUnitLabel(),
             default => $part->defaultUnitLabel(),
         };
     }
 
     public static function priceForBaseQuantity(Part $part, float $baseQuantity): float
     {
-        $unitPrice = (float) $part->unit_price;
+        $unitPrice = (float) ($part->unit_price_per_piece ?? 0);
 
-        if ($part->usesBoxConversion()) {
-            $unitPrice = $unitPrice / max(0.001, (float) $part->pieces_per_box);
+        if ($unitPrice <= 0) {
+            $unitPrice = (float) $part->unit_price;
+
+            if ($part->usesBoxConversion() && $part->unit_price_basis !== 'per_piece') {
+                $unitPrice = $unitPrice / max(0.001, (float) $part->pieces_per_box);
+            }
         }
 
         return round(abs($baseQuantity) * $unitPrice, 2);

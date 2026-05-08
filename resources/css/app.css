@@ -148,6 +148,11 @@
         box-shadow: 0 8px 18px -10px rgba(225, 29, 72, 0.9);
     }
 
+    .notification-dot-static {
+        @apply absolute right-2 top-2 h-2 w-2 rounded-full bg-rose-600;
+        animation: none !important;
+    }
+
     .notification-count-pill {
         @apply rounded-full bg-brand-50 px-2.5 py-1 text-[11px] font-black text-brand-700;
     }
@@ -279,6 +284,17 @@
 
     .primary-button:hover {
         box-shadow: 0 20px 40px -20px rgba(234, 88, 12, 0.65);
+    }
+
+    .danger-button {
+        @apply inline-flex items-center gap-2 px-5 py-3 text-sm font-bold text-white transition duration-200 hover:-translate-y-0.5;
+        border-radius: 9999px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        box-shadow: 0 16px 35px -20px rgba(220, 38, 38, 0.62);
+    }
+
+    .danger-button:hover {
+        box-shadow: 0 20px 40px -20px rgba(220, 38, 38, 0.68);
     }
 
     .ghost-button {
@@ -1492,6 +1508,66 @@
             transform 150ms ease;
     }
 
+    .auth-validation-list {
+        @apply mt-2 space-y-1 text-sm font-semibold text-slate-500;
+    }
+
+    .auth-validation-list li {
+        @apply flex items-center gap-2;
+    }
+
+    .auth-validation-list li::before {
+        content: '';
+        @apply h-2 w-2 rounded-full bg-slate-400;
+    }
+
+    .auth-validation-pass {
+        color: rgb(5 150 105);
+    }
+
+    .auth-validation-pass::before {
+        background: rgb(16 185 129) !important;
+    }
+
+    .auth-validation-fail {
+        color: rgb(190 18 60);
+    }
+
+    .auth-validation-fail::before {
+        background: rgb(244 63 94) !important;
+    }
+
+    .auth-inline-error {
+        @apply text-sm font-semibold text-rose-700;
+    }
+
+    .auth-phone-wrap {
+        @apply px-4;
+    }
+
+    .auth-phone-wrap .iti {
+        width: 100%;
+        color: rgb(51 65 85);
+    }
+
+    .auth-phone-wrap .iti__tel-input.auth-phone-input {
+        @apply pl-0;
+    }
+
+    .auth-phone-wrap .iti__selected-country {
+        border-radius: 0.875rem;
+    }
+
+    .auth-phone-wrap .iti__dropdown-content {
+        border-color: rgb(226 232 240);
+        border-radius: 1rem;
+        box-shadow: 0 24px 55px -35px rgba(15, 23, 42, 0.4);
+    }
+
+    .auth-phone-wrap .iti__search-input {
+        @apply text-sm text-slate-700 outline-none;
+    }
+
     .auth-consent {
         @apply inline-flex cursor-pointer items-center gap-2 text-sm font-medium text-slate-500 transition;
     }
@@ -1522,7 +1598,114 @@
     }
 
     .auth-alert {
-        @apply rounded-2xl border border-rose-200/80 bg-rose-50/90 px-4 py-3 text-rose-700;
+        @apply rounded-2xl border px-4 py-3;
+    }
+
+    .auth-alert {
+        @apply border-rose-200/80 bg-rose-50/90 text-rose-700;
+    }
+
+    .auth-alert-success {
+        @apply border-emerald-200/80 bg-emerald-50/90 text-emerald-700;
+    }
+
+    .auth-alert-danger {
+        @apply border-rose-200/80 bg-rose-50/90 text-rose-700;
+    }
+
+    .receipt-capture-host {
+        position: fixed;
+        left: -10000px;
+        top: 0;
+        z-index: -1;
+        width: 460px;
+        background: #ffffff;
+        padding: 20px;
+    }
+
+    .receipt-capture-card {
+        width: 420px;
+        border: 1px solid #e5e7eb;
+        border-radius: 18px;
+        background: #ffffff;
+        color: #111827;
+        padding: 24px;
+        font-family: Arial, sans-serif;
+    }
+
+    .receipt-capture-card h1 {
+        margin: 0;
+        font-size: 24px;
+        font-weight: 800;
+        letter-spacing: 0;
+    }
+
+    .receipt-capture-muted,
+    .receipt-capture-footer {
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .receipt-capture-muted {
+        margin: 4px 0 0;
+    }
+
+    .receipt-capture-avatar {
+        margin-top: 16px;
+        height: 64px;
+        width: 64px;
+        border-radius: 9999px;
+        object-fit: cover;
+        border: 2px solid #e5e7eb;
+    }
+
+    .receipt-capture-total {
+        margin: 22px 0;
+        border-radius: 14px;
+        background: #f8fafc;
+        padding: 16px;
+    }
+
+    .receipt-capture-total span {
+        display: block;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+    }
+
+    .receipt-capture-total strong {
+        display: block;
+        margin-top: 6px;
+        font-size: 28px;
+    }
+
+    .receipt-capture-card table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+    }
+
+    .receipt-capture-card td {
+        padding: 9px 0;
+        border-bottom: 1px solid #e5e7eb;
+        vertical-align: top;
+    }
+
+    .receipt-capture-card td:first-child {
+        width: 34%;
+        color: #64748b;
+    }
+
+    .receipt-capture-card td:last-child {
+        text-align: right;
+        font-weight: 700;
+    }
+
+    .receipt-capture-footer {
+        margin: 20px 0 0;
+        text-align: center;
     }
 
     @media (max-width: 1023px) {
@@ -1581,11 +1764,14 @@
     }
 
     .app-modal {
-        @apply fixed inset-0 z-40 flex items-center justify-center bg-slate-950/45 px-4 py-8;
+        @apply fixed inset-0 z-40 flex items-start justify-center overflow-y-auto bg-slate-950/45 px-4 py-8;
     }
 
     .app-modal-card {
         @apply w-full max-w-3xl rounded-[28px] border border-white/70 bg-white p-6 shadow-2xl sm:p-8;
+        max-height: calc(100vh - 4rem);
+        overflow-y: auto;
+        overscroll-behavior: contain;
     }
 
     .budget-card {
@@ -2519,6 +2705,30 @@
         box-shadow: 0 10px 22px -18px rgba(2, 6, 23, 0.85);
     }
 
+    .dark .auth-validation-list {
+        color: rgb(148 163 184);
+    }
+
+    .dark .auth-inline-error {
+        color: rgb(251 113 133);
+    }
+
+    .dark .auth-phone-wrap .iti {
+        color: rgb(226 232 240);
+    }
+
+    .dark .auth-phone-wrap .iti__dropdown-content,
+    .dark .auth-phone-wrap .iti__country-list,
+    .dark .auth-phone-wrap .iti__search-input {
+        border-color: rgb(51 65 85);
+        background: rgb(15 23 42);
+        color: rgb(226 232 240);
+    }
+
+    .dark .auth-phone-wrap .iti__country.iti__highlight {
+        background: rgb(30 41 59);
+    }
+
     .dark .ghost-button,
     .dark .google-login-btn {
         @apply border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white;
@@ -2840,6 +3050,51 @@
 
     .dark .budget-line-out {
         stroke: rgb(244 99 130);
+    }
+
+    .dark body,
+    .dark .app-shell,
+    .dark .landing-page {
+        background: #0d0d0d;
+        color: #f0f0f0;
+    }
+
+    .dark #sidebar,
+    .dark .bg-sidebar {
+        background: #111111;
+        border-color: #2a2a2a;
+    }
+
+    .dark .panel-card,
+    .dark .table-shell,
+    .dark .detail-card,
+    .dark .app-modal-card,
+    .dark .header-menu-panel,
+    .dark .receipt-capture-card {
+        border-color: #2a2a2a;
+        background: #1a1a1a;
+        color: #f0f0f0;
+    }
+
+    .dark .primary-button,
+    .dark .sidebar-primary-action {
+        background: linear-gradient(135deg, #ef4444, #b91c1c);
+        color: #fff;
+        box-shadow: 0 16px 34px -24px rgba(239, 68, 68, 0.78);
+    }
+
+    .dark .sidebar-brand-link,
+    .dark .sidebar-link-active,
+    .dark .landing-page .text-brand-600,
+    .dark .landing-page .text-brand-700,
+    .dark .landing-inline-link {
+        color: #f87171;
+    }
+
+    .dark .sidebar-link-active {
+        border-color: rgb(239 68 68 / 0.62);
+        background: rgb(127 29 29 / 0.24);
+        box-shadow: inset 3px 0 0 #ef4444;
     }
 
     @media (prefers-reduced-motion: reduce) {

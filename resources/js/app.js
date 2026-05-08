@@ -1,3 +1,7 @@
+import html2canvas from 'html2canvas';
+import intlTelInput from 'intl-tel-input/intlTelInputWithUtils';
+import 'intl-tel-input/styles';
+
 document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
     const modeButtons = [...document.querySelectorAll('[data-mode]')];
@@ -35,9 +39,13 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
+    initializeLanguagePreference();
     initializeModalControls();
+    initializeConfirmationModals();
     initializeInventoryFormGuards();
     initializePasswordToggles();
+    initializeAuthPasswordValidation();
+    initializeAuthPhoneInputs();
     initializeDashboardSearch();
     initializeSidebarDateFilters();
     initializeLiveTables();
@@ -50,7 +58,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeLandingRefreshLoader();
     initializeHeaderMenus();
     initializeNotificationActions();
-    initializeSystemActionNotificationSound();
     initializeLogoutLoading();
     initializeSidebarNavigation();
     initializeLandingBackgroundMotion();
@@ -110,17 +117,10 @@ function initializeModalControls() {
     const movementLabel = document.querySelector('[data-movement-label]');
 
     const defaultUnitLabelForMode = (mode) => {
-        switch (mode) {
-            case 'box_piece':
-                return 'pcs';
-            case 'liquid':
-                return 'liter';
-            default:
-                return 'pcs';
-        }
+        return 'box';
     };
 
-    const normalizeInventoryStockMode = (mode) => ['piece', 'box_piece', 'liquid'].includes(mode) ? mode : 'piece';
+    const normalizeInventoryStockMode = (mode) => 'box_piece';
 
     const syncInventoryUnitLabel = (form, preserveExisting = false) => {
         if (!(form instanceof HTMLFormElement)) {
@@ -129,19 +129,28 @@ function initializeModalControls() {
 
         const stockMode = form.querySelector('[data-stock-mode-select]');
         const unitLabel = form.querySelector('[data-unit-label-select]');
-        const piecesPerBox = form.querySelector('input[name="pieces_per_box"]');
+        const containerQuantity = form.querySelector('input[name="container_quantity"]');
+        const containerLabel = form.querySelector('[data-container-quantity-label]');
+        const containerHelp = form.querySelector('[data-container-quantity-help]');
 
         if (!(stockMode instanceof HTMLSelectElement) || !(unitLabel instanceof HTMLSelectElement)) {
             return;
         }
 
-        if (piecesPerBox instanceof HTMLInputElement) {
-            const isBoxMode = stockMode.value === 'box_piece';
-            piecesPerBox.required = isBoxMode;
-            piecesPerBox.disabled = !isBoxMode;
-            if (!isBoxMode) {
-                piecesPerBox.value = '';
-            }
+        if (containerQuantity instanceof HTMLInputElement) {
+            containerQuantity.required = true;
+            containerQuantity.disabled = false;
+            containerQuantity.step = '1';
+            containerQuantity.min = '1';
+            containerQuantity.placeholder = '10 pieces';
+        }
+
+        if (containerLabel instanceof HTMLElement) {
+            containerLabel.textContent = 'Pieces per Box';
+        }
+
+        if (containerHelp instanceof HTMLElement) {
+            containerHelp.textContent = 'Example: 1 box = 10 pieces';
         }
 
         const allowedValues = [...unitLabel.options].map((option) => option.value);
@@ -172,16 +181,18 @@ function initializeModalControls() {
             sku: trigger.dataset.editPartSku ?? '',
             category: trigger.dataset.editPartCategory ?? '',
             mode: normalizeInventoryStockMode(trigger.dataset.editPartMode),
-            unit: trigger.dataset.editPartUnit ?? 'pcs',
-            box_size: trigger.dataset.editPartBoxSize ?? '',
+            unit: trigger.dataset.editPartUnit ?? 'box',
+            container_quantity: trigger.dataset.editPartContainerQuantity ?? '',
             minimum: trigger.dataset.editPartMinimum ?? '0',
             price: trigger.dataset.editPartPrice ?? '0.00',
+            price_per_box: trigger.dataset.editPartPricePerBox ?? trigger.dataset.editPartPrice ?? '0.00',
+            price_per_piece: trigger.dataset.editPartPricePerPiece ?? '0.00',
             active: trigger.dataset.editPartActive ?? '1',
         };
 
         Object.entries(fields).forEach(([key, value]) => {
             const input = editForm.querySelector(`[data-edit-field="${key}"]`);
-            if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement) {
+            if (input instanceof HTMLInputElement || input instanceof HTMLSelectElement || input instanceof HTMLTextAreaElement) {
                 input.value = value;
             }
         });
@@ -243,30 +254,42 @@ function initializeModalControls() {
         if (movementLabel instanceof HTMLElement) {
             const partName = trigger.dataset.movementPartName ?? 'Part';
             const currentStock = trigger.dataset.movementPartStock ?? '0';
-            const unitLabel = trigger.dataset.movementPartUnit ?? 'pcs';
-            movementLabel.textContent = `${partName} - Current stock: ${currentStock} ${unitLabel}`;
+            movementLabel.textContent = `${partName} - Current stock: ${currentStock}`;
         }
 
-        const mode = trigger.dataset.movementPartMode ?? 'piece';
-        const unitLabel = trigger.dataset.movementPartUnit ?? 'pcs';
+        const mode = 'box_piece';
         const unitSelect = movementForm.querySelector('[data-movement-unit-select]');
-        if (unitSelect instanceof HTMLSelectElement) {
+        const typeSelect = movementForm.querySelector('[data-movement-type-select]');
+        const quantityInput = movementForm.querySelector('input[name="quantity"]');
+        const syncMovementUnits = () => {
+            if (!(unitSelect instanceof HTMLSelectElement)) {
+                return;
+            }
+
+            const type = typeSelect instanceof HTMLSelectElement ? typeSelect.value : 'in';
             const options = {
-                piece: [{ value: 'piece', label: 'Pieces' }],
-                box_piece: [
-                    { value: 'box', label: 'Box' },
-                    { value: 'piece', label: 'Pieces' },
-                ],
-                liquid: [
-                    { value: 'liter', label: unitLabel || 'liter' },
-                    { value: 'milliliter', label: 'milliliter' },
-                ],
+                box_piece: type === 'in'
+                    ? [{ value: 'box', label: 'Box' }]
+                    : [
+                        { value: 'box', label: 'Box' },
+                        { value: 'piece', label: 'Pieces' },
+                    ],
             };
 
-            unitSelect.innerHTML = (options[mode] ?? options.piece)
+            unitSelect.innerHTML = options[mode]
                 .map((option) => `<option value="${option.value}">${option.label}</option>`)
                 .join('');
+            if (quantityInput instanceof HTMLInputElement) {
+                quantityInput.step = '1';
+                quantityInput.min = '1';
+            }
+        };
+
+        if (typeSelect instanceof HTMLSelectElement) {
+            typeSelect.onchange = syncMovementUnits;
         }
+
+        syncMovementUnits();
     };
 
     document.querySelectorAll('[data-stock-mode-select]').forEach((select) => {
@@ -331,6 +354,227 @@ function initializeModalControls() {
     });
 }
 
+function initializeLanguagePreference() {
+    const storageKey = 'motox.language';
+    const html = document.documentElement;
+    const languageSelects = [...document.querySelectorAll('[data-language-preference]')];
+    const supportedLanguages = ['en-US', 'tl-PH'];
+    const translations = {
+        'tl-PH': {
+            'Quick Settings': 'Mabilisang Settings',
+            'Open settings page': 'Buksan ang settings page',
+            'Edit shop profile': 'I-edit ang shop profile',
+            'Profile': 'Profile',
+            'View profile': 'Tingnan ang profile',
+            'Account preferences': 'Mga preference ng account',
+            'Notifications': 'Mga Notification',
+            'Loading notifications...': 'Naglo-load ng notifications...',
+            'Mark all as read': 'Markahan lahat bilang nabasa',
+            'Notification settings': 'Settings ng notification',
+            'Search anything...': 'Maghanap...',
+            'Save Settings': 'I-save ang Settings',
+            'Shop Preferences': 'Mga Preference ng Shop',
+            'Language Preference': 'Preference sa Wika',
+            'US English': 'US English',
+            'Philippines - Tagalog': 'Philippines - Tagalog',
+            'Appearance': 'Hitsura',
+            'Light Mode': 'Light Mode',
+            'Dark Mode': 'Dark Mode',
+            'Are you sure?': 'Sigurado ka ba?',
+            'Are you sure you want to delete this Part?': 'Sigurado ka bang gusto mong i-delete ang Part na ito?',
+            'Are you sure you want to delete this Customer?': 'Sigurado ka bang gusto mong i-delete ang Customer na ito?',
+            'Are you sure you want to delete this Job Order?': 'Sigurado ka bang gusto mong i-delete ang Job Order na ito?',
+            'You are about to delete this log entry.': 'Ide-delete mo ang log entry na ito.',
+            'You are about to delete all log history.': 'Ide-delete mo ang buong log history.',
+            'Yes, Delete': 'Oo, I-delete',
+            'Cancel': 'Kanselahin',
+            'Are you sure you want to log out?': 'Sigurado ka bang mag-log out?',
+            'You will be logged out of MotoX.': 'Mala-log out ka sa MotoX.',
+            'Log Out': 'Mag Log Out',
+            'Logging out': 'Nagla-log out',
+            'logging out...': 'nagla-log out...',
+            'Print Receipt': 'I-download ang Resibo',
+            'Filter by Date': 'I-filter ayon sa Petsa',
+            'Add Part': 'Magdagdag ng Part',
+            'Create Customer': 'Gumawa ng Customer',
+            'Create Job Order': 'Gumawa ng Job Order',
+            'Dashboard': 'Dashboard',
+            'Customers': 'Mga Customer',
+            'Job Orders': 'Mga Job Order',
+            'Inventory': 'Inventory',
+            'Billing': 'Billing',
+            'Reports': 'Mga Report',
+            'Settings': 'Settings',
+            'Logs': 'Logs',
+            'Support': 'Support',
+            'New Job Order': 'Bagong Job Order',
+            'Total Customers': 'Kabuuang Customer',
+            'Active Jobs': 'Aktibong Trabaho',
+            'New This Month': 'Bago Ngayong Buwan',
+            'Customer Directory': 'Direktoryo ng Customer',
+            'Full Name': 'Buong Pangalan',
+            'Email': 'Email',
+            'Phone': 'Telepono',
+            'Address': 'Address',
+            'Notes': 'Notes',
+            'Save Customer': 'I-save ang Customer',
+            'Add New Part': 'Magdagdag ng Part',
+            'Edit Part': 'I-edit ang Part',
+            'Stock Mode': 'Stock Mode',
+            'Unit Label': 'Unit Label',
+            'Pieces per Box': 'Piraso bawat Kahon',
+            'Minimum Stock': 'Minimum Stock',
+            'Unit Price (PHP)': 'Presyo (PHP)',
+            'Price Basis': 'Basehan ng Presyo',
+            'Status': 'Status',
+            'Save Part': 'I-save ang Part',
+            'Update Part': 'I-update ang Part',
+            'Record Stock Movement': 'Mag-record ng Stock Movement',
+            'Movement Type': 'Uri ng Movement',
+            'Quantity': 'Dami',
+            'Quantity Unit': 'Unit ng Dami',
+            'Reason': 'Dahilan',
+            'Save Movement': 'I-save ang Movement',
+            'History Log': 'History Log',
+            'Action History': 'Kasaysayan ng Aksyon',
+            'User': 'User',
+            'Action': 'Aksyon',
+            'Description': 'Deskripsyon',
+            'Delete All History': 'I-delete ang Buong History',
+        },
+    };
+
+    const normalizeLanguage = (value) => {
+        const language = String(value || '').trim();
+        return supportedLanguages.includes(language) ? language : 'en-US';
+    };
+
+    const translate = (text, language) => {
+        const key = String(text || '').trim();
+        return translations[language]?.[key] || key;
+    };
+
+    const applyLanguage = (language) => {
+        const normalized = normalizeLanguage(language);
+        html.lang = normalized === 'tl-PH' ? 'tl-PH' : 'en-US';
+        localStorage.setItem(storageKey, normalized);
+
+        languageSelects.forEach((select) => {
+            if (select instanceof HTMLSelectElement) {
+                select.value = normalized;
+            }
+        });
+
+        document.querySelectorAll('[data-i18n]').forEach((node) => {
+            if (!(node instanceof HTMLElement)) {
+                return;
+            }
+
+            const key = node.dataset.i18n || node.textContent || '';
+            node.textContent = translate(key, normalized);
+        });
+
+        document.querySelectorAll('a, button, h1, h2, h3, th, option, span, p').forEach((node) => {
+            if (!(node instanceof HTMLElement) || node.children.length > 0 || node.dataset.i18n) {
+                return;
+            }
+
+            const original = node.dataset.i18nOriginal || node.textContent || '';
+            const trimmed = original.trim();
+            if (!trimmed || translate(trimmed, 'tl-PH') === trimmed) {
+                return;
+            }
+
+            node.dataset.i18nOriginal = trimmed;
+            node.textContent = translate(trimmed, normalized);
+        });
+
+        document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
+            if (!(node instanceof HTMLInputElement || node instanceof HTMLTextAreaElement)) {
+                return;
+            }
+
+            node.placeholder = translate(node.dataset.i18nPlaceholder || node.placeholder, normalized);
+        });
+    };
+
+    const savedLanguage = normalizeLanguage(localStorage.getItem(storageKey));
+    applyLanguage(savedLanguage);
+
+    languageSelects.forEach((select) => {
+        if (!(select instanceof HTMLSelectElement)) {
+            return;
+        }
+
+        select.addEventListener('change', () => applyLanguage(select.value));
+    });
+}
+
+function initializeConfirmationModals() {
+    const modal = document.querySelector('[data-confirm-modal]');
+    const title = document.querySelector('[data-confirm-title]');
+    const body = document.querySelector('[data-confirm-body]');
+    const action = document.querySelector('[data-confirm-action]');
+    const cancelButtons = [...document.querySelectorAll('[data-confirm-cancel]')];
+    let pendingForm = null;
+
+    if (!(modal instanceof HTMLElement) || !(action instanceof HTMLButtonElement)) {
+        return;
+    }
+
+    const open = (form) => {
+        pendingForm = form;
+
+        if (title instanceof HTMLElement) {
+            title.textContent = form.dataset.confirmTitle || 'Are you sure?';
+        }
+
+        if (body instanceof HTMLElement) {
+            body.textContent = form.dataset.confirmBody || 'You are about to delete this item.';
+        }
+
+        action.textContent = form.dataset.confirmAction || 'Yes, Delete';
+        modal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    const close = () => {
+        pendingForm = null;
+        modal.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    document.querySelectorAll('[data-confirm-form]').forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            open(form);
+        });
+    });
+
+    action.addEventListener('click', () => {
+        const form = pendingForm;
+        close();
+
+        if (form instanceof HTMLFormElement) {
+            HTMLFormElement.prototype.submit.call(form);
+        }
+    });
+
+    cancelButtons.forEach((button) => {
+        button.addEventListener('click', close);
+    });
+
+    modal.addEventListener('click', (event) => {
+        if (event.target === modal) {
+            close();
+        }
+    });
+}
+
 function initializeInventoryFormGuards() {
     const forms = [...document.querySelectorAll('[data-inventory-action-form]')];
 
@@ -365,18 +609,33 @@ function initializeLogoutLoading() {
     const logoutForm = document.querySelector('[data-logout-form]');
     const logoutButton = document.querySelector('[data-logout-button]');
     const logoutOverlay = document.querySelector('[data-logout-overlay]');
+    const logoutModal = document.querySelector('[data-logout-confirm-modal]');
+    const confirmLogoutButton = document.querySelector('[data-confirm-logout]');
+    const cancelLogoutButtons = [...document.querySelectorAll('[data-cancel-logout]')];
     let logoutSubmitting = false;
 
     if (!(logoutForm instanceof HTMLFormElement)) {
         return;
     }
 
-    logoutForm.addEventListener('submit', (event) => {
-        if (logoutSubmitting) {
-            return;
+    const openLogoutModal = () => {
+        if (!(logoutModal instanceof HTMLElement)) {
+            return false;
         }
 
-        event.preventDefault();
+        logoutModal.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        return true;
+    };
+
+    const closeLogoutModal = () => {
+        if (logoutModal instanceof HTMLElement) {
+            logoutModal.classList.add('hidden');
+        }
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    const submitLogout = () => {
         logoutSubmitting = true;
 
         if (logoutButton instanceof HTMLButtonElement) {
@@ -391,9 +650,141 @@ function initializeLogoutLoading() {
         }
 
         window.setTimeout(() => {
-            logoutForm.submit();
+            HTMLFormElement.prototype.submit.call(logoutForm);
         }, 3000);
+    };
+
+    logoutForm.addEventListener('submit', (event) => {
+        if (logoutSubmitting) {
+            return;
+        }
+
+        event.preventDefault();
+        if (!openLogoutModal()) {
+            submitLogout();
+        }
     });
+
+    if (confirmLogoutButton instanceof HTMLButtonElement) {
+        confirmLogoutButton.addEventListener('click', () => {
+            closeLogoutModal();
+            submitLogout();
+        });
+    }
+
+    cancelLogoutButtons.forEach((button) => {
+        button.addEventListener('click', closeLogoutModal);
+    });
+
+    if (logoutModal instanceof HTMLElement) {
+        logoutModal.addEventListener('click', (event) => {
+            if (event.target === logoutModal) {
+                closeLogoutModal();
+            }
+        });
+    }
+}
+
+function receiptDataFromButton(button) {
+    const data = button.dataset;
+
+    return {
+        invoice: data.receiptInvoice || '',
+        order: data.receiptOrder || '',
+        customer: data.receiptCustomer || '',
+        phone: data.receiptPhone || '',
+        email: data.receiptEmail || '',
+        photo: data.receiptPhoto || '',
+        vehicle: data.receiptVehicle || '',
+        status: data.receiptStatus || '',
+        amount: data.receiptAmount || 'PHP 0.00',
+        updated: data.receiptUpdated || '',
+        shop: data.receiptShop || 'MotoX',
+    };
+}
+
+function buildReceiptNode(data) {
+    const escapeHtml = (value) => String(value ?? '')
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+
+    const rows = [
+        ['Invoice', data.invoice],
+        ['Job Order', data.order],
+        ['Customer', data.customer],
+        ['Phone', data.phone || '-'],
+        ['Email', data.email || '-'],
+        ['Vehicle', data.vehicle],
+        ['Status', data.status],
+        ['Updated', data.updated],
+    ];
+
+    const node = document.createElement('section');
+    node.className = 'receipt-capture-card';
+    node.innerHTML = `
+        <h1>${escapeHtml(data.shop || 'MotoX')}</h1>
+        <p class="receipt-capture-muted">Official customer receipt</p>
+        ${data.photo ? `<img src="${escapeHtml(data.photo)}" alt="${escapeHtml(data.customer)} profile" class="receipt-capture-avatar">` : ''}
+        <div class="receipt-capture-total">
+            <span>Total Amount</span>
+            <strong>${escapeHtml(data.amount || 'PHP 0.00')}</strong>
+        </div>
+        <table>
+            <tbody>
+                ${rows.map(([label, value]) => `
+                    <tr>
+                        <td>${escapeHtml(label)}</td>
+                        <td>${escapeHtml(value || '-')}</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+        <p class="receipt-capture-footer">Thank you for choosing ${escapeHtml(data.shop || 'MotoX')}.</p>
+    `;
+
+    return node;
+}
+
+async function downloadReceiptPng(source) {
+    if (!(source instanceof HTMLElement)) {
+        return;
+    }
+
+    if (source instanceof HTMLButtonElement) {
+        source.disabled = true;
+        source.setAttribute('aria-busy', 'true');
+    }
+
+    const host = document.createElement('div');
+    host.className = 'receipt-capture-host';
+    const receiptNode = buildReceiptNode(receiptDataFromButton(source));
+    host.appendChild(receiptNode);
+    document.body.appendChild(host);
+
+    try {
+        const canvas = await html2canvas(receiptNode, {
+            backgroundColor: '#ffffff',
+            scale: Math.max(2, window.devicePixelRatio || 1),
+            useCORS: true,
+        });
+        const link = document.createElement('a');
+        const filename = (source.dataset.receiptInvoice || 'motox-receipt')
+            .toLowerCase()
+            .replace(/[^a-z0-9]+/g, '-')
+            .replace(/^-+|-+$/g, '');
+        link.href = canvas.toDataURL('image/png');
+        link.download = `${filename || 'motox-receipt'}.png`;
+        link.click();
+    } finally {
+        host.remove();
+        if (source instanceof HTMLButtonElement) {
+            source.disabled = false;
+            source.removeAttribute('aria-busy');
+        }
+    }
 }
 
 function initializePasswordToggles() {
@@ -446,6 +837,191 @@ function initializePasswordToggles() {
             input.type = nextVisibleState ? 'text' : 'password';
             syncPasswordToggle(button, input);
         });
+    });
+}
+
+function initializeAuthPasswordValidation() {
+    const forms = [...document.querySelectorAll('[data-auth-password-form]')];
+
+    if (!forms.length) {
+        return;
+    }
+
+    const checks = {
+        length: (value) => value.length >= 8 && value.length <= 16,
+        lower: (value) => /[a-z]/.test(value),
+        upper: (value) => /[A-Z]/.test(value),
+        number: (value) => /[0-9]/.test(value),
+        special: (value) => /[!@#$%&*]/.test(value),
+    };
+
+    forms.forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        const password = form.querySelector('[data-auth-password]');
+        const confirmation = form.querySelector('[data-auth-password-confirmation]');
+        const ruleItems = [...form.querySelectorAll('[data-password-rule]')];
+        const matchError = form.querySelector('[data-auth-password-match]');
+
+        if (!(password instanceof HTMLInputElement)) {
+            return;
+        }
+
+        const validate = (showErrors = true) => {
+            const value = password.value;
+            const ruleResults = Object.fromEntries(
+                Object.entries(checks).map(([key, check]) => [key, check(value)]),
+            );
+            const passwordIsValid = Object.values(ruleResults).every(Boolean);
+            const confirmationIsValid = !(confirmation instanceof HTMLInputElement)
+                || (confirmation.value.length > 0 && confirmation.value === value);
+
+            ruleItems.forEach((item) => {
+                const rule = item.dataset.passwordRule;
+                const isValid = Boolean(rule && ruleResults[rule]);
+                item.classList.toggle('auth-validation-pass', isValid);
+                item.classList.toggle('auth-validation-fail', showErrors && !isValid);
+            });
+
+            if (confirmation instanceof HTMLInputElement) {
+                confirmation.setCustomValidity(confirmationIsValid ? '' : 'Password confirmation does not match.');
+            }
+
+            if (matchError instanceof HTMLElement) {
+                matchError.classList.toggle('hidden', confirmationIsValid || !showErrors);
+            }
+
+            password.setCustomValidity(passwordIsValid ? '' : 'Password does not meet the required strength rules.');
+
+            return passwordIsValid && confirmationIsValid;
+        };
+
+        password.addEventListener('input', () => validate(true));
+        if (confirmation instanceof HTMLInputElement) {
+            confirmation.addEventListener('input', () => validate(true));
+        }
+
+        form.addEventListener('submit', (event) => {
+            if (!validate(true)) {
+                event.preventDefault();
+                password.reportValidity();
+            }
+        });
+
+        validate(false);
+    });
+}
+
+function initializeAuthPhoneInputs() {
+    const forms = [...document.querySelectorAll('[data-auth-phone-form]')];
+
+    if (!forms.length) {
+        return;
+    }
+
+    forms.forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        const input = form.querySelector('[data-auth-phone-input]');
+        const fullInput = form.querySelector('[data-auth-phone-full]');
+        const countryInput = form.querySelector('[data-auth-phone-country]');
+        const dialCodeInput = form.querySelector('[data-auth-phone-dial-code]');
+        const error = form.querySelector('[data-auth-phone-error]');
+
+        if (!(input instanceof HTMLInputElement)
+            || !(fullInput instanceof HTMLInputElement)
+            || !(countryInput instanceof HTMLInputElement)
+            || !(dialCodeInput instanceof HTMLInputElement)
+        ) {
+            return;
+        }
+
+        const initialCountry = (countryInput.value || 'ph').toLowerCase();
+        const phone = intlTelInput(input, {
+            initialCountry,
+            separateDialCode: true,
+            nationalMode: true,
+            strictMode: true,
+            formatAsYouType: false,
+        });
+
+        if (fullInput.value) {
+            phone.setNumber(fullInput.value);
+        }
+
+        const selectedDialCode = () => {
+            const data = phone.getSelectedCountryData();
+            return data?.dialCode ? `+${data.dialCode}` : '';
+        };
+
+        const syncCountryFields = () => {
+            const data = phone.getSelectedCountryData();
+            countryInput.value = String(data?.iso2 || '').toLowerCase();
+            dialCodeInput.value = selectedDialCode();
+        };
+
+        const digitsOnly = () => {
+            const digits = input.value.replace(/\D+/g, '');
+            if (input.value !== digits) {
+                input.value = digits;
+            }
+
+            return digits;
+        };
+
+        const setPhoneError = (message = '') => {
+            input.setCustomValidity(message);
+
+            if (error instanceof HTMLElement) {
+                error.textContent = message;
+                error.classList.toggle('hidden', message === '');
+            }
+        };
+
+        const validate = (showErrors = true) => {
+            const digits = digitsOnly();
+            syncCountryFields();
+
+            if (digits === '') {
+                fullInput.value = '';
+                setPhoneError('');
+                return true;
+            }
+
+            if (!/^\d+$/.test(digits)) {
+                const message = 'Contact number can contain numbers only.';
+                setPhoneError(showErrors ? message : '');
+                return false;
+            }
+
+            const isValid = phone.isValidNumber();
+            if (!isValid) {
+                const message = 'Enter a valid phone number for the selected country.';
+                setPhoneError(showErrors ? message : '');
+                return false;
+            }
+
+            fullInput.value = phone.getNumber();
+            setPhoneError('');
+            return true;
+        };
+
+        input.addEventListener('input', () => validate(true));
+        input.addEventListener('blur', () => validate(true));
+        input.addEventListener('countrychange', () => validate(input.value.trim() !== ''));
+
+        form.addEventListener('submit', (event) => {
+            if (!validate(true)) {
+                event.preventDefault();
+                input.reportValidity();
+            }
+        });
+
+        validate(false);
     });
 }
 
@@ -2346,6 +2922,8 @@ function initializeNotificationActions() {
     let audioContext = null;
     let hasFetchedNotifications = false;
     let pendingNotificationSounds = 0;
+    const currentPage = String(document.body?.dataset.currentPage || '').trim();
+    const notificationSoundAllowed = !['billing', 'reports'].includes(currentPage);
 
     if (!notificationsUrl) {
         return;
@@ -2609,7 +3187,7 @@ function initializeNotificationActions() {
             newNotificationCount = unreadCount - lastUnreadCount;
         }
 
-        if (unreadCount > 0 && newNotificationCount > 0) {
+        if (notificationSoundAllowed && unreadCount > 0 && newNotificationCount > 0) {
             playNotificationSound(newNotificationCount);
         }
 
@@ -2724,58 +3302,8 @@ function initializeNotificationActions() {
     });
 
     window.MotoXRefreshNotifications = fetchNotifications;
-    window.MotoXPlayNotificationSound = playNotificationSound;
     fetchNotifications();
     window.setInterval(fetchNotifications, 2000);
-}
-
-function initializeSystemActionNotificationSound() {
-    const pendingActionStorageKey = 'motox.notifications.pending-system-action-sound';
-    const formSelector = [
-        'form[data-inventory-action-form]',
-        'form[action*="/customers"]',
-        'form[action*="/job-orders"]',
-        'form[action*="/settings"]',
-    ].join(',');
-
-    document.addEventListener('submit', (event) => {
-        const form = event.target;
-        if (!(form instanceof HTMLFormElement) || !form.matches(formSelector)) {
-            return;
-        }
-
-        try {
-            sessionStorage.setItem(pendingActionStorageKey, '1');
-        } catch (error) {
-            console.warn('Unable to queue notification sound', error);
-        }
-    }, true);
-
-    const hasSuccessfulSystemAction = document.body?.dataset.systemActionStatus === '1';
-    let hasPendingActionSound = false;
-
-    try {
-        hasPendingActionSound = sessionStorage.getItem(pendingActionStorageKey) === '1';
-        if (hasPendingActionSound) {
-            sessionStorage.removeItem(pendingActionStorageKey);
-        }
-    } catch (error) {
-        hasPendingActionSound = false;
-    }
-
-    if (!hasSuccessfulSystemAction || !hasPendingActionSound) {
-        return;
-    }
-
-    window.setTimeout(() => {
-        if (typeof window.MotoXRefreshNotifications === 'function') {
-            window.MotoXRefreshNotifications();
-        }
-
-        if (typeof window.MotoXPlayNotificationSound === 'function') {
-            window.MotoXPlayNotificationSound(1);
-        }
-    }, 250);
 }
 
 function initializeCustomersFilters() {
@@ -2854,6 +3382,7 @@ function initializeCustomersFilters() {
         });
 
         updateVisibleCount();
+        syncEmptyState(customerRows, 'customer-empty-filter-row', 6, 'No customers match the current filters.');
     };
 
     searchInput.addEventListener('input', (event) => {
@@ -2991,6 +3520,8 @@ function initializeJobOrdersFilters() {
 
             row.style.display = matchesSearch && matchesDate && matchesProgress ? '' : 'none';
         });
+
+        syncEmptyState(jobOrderRows, 'job-order-empty-filter-row', 7, 'No job orders match the current filters.');
     };
 
     searchInput.addEventListener('input', (event) => {
@@ -3047,6 +3578,32 @@ function initializeJobOrdersFilters() {
     }
 
     applyFilters();
+}
+
+function syncEmptyState(rows, rowId, colspan, message) {
+    if (!Array.isArray(rows) || rows.length === 0) {
+        return;
+    }
+
+    const tbody = rows[0].closest('tbody');
+    if (!(tbody instanceof HTMLTableSectionElement)) {
+        return;
+    }
+
+    let emptyRow = document.getElementById(rowId);
+    if (!(emptyRow instanceof HTMLTableRowElement)) {
+        tbody.insertAdjacentHTML('beforeend', `
+            <tr id="${rowId}" class="hidden">
+                <td colspan="${colspan}" class="py-10 text-center text-sm text-slate-500">${message}</td>
+            </tr>
+        `);
+        emptyRow = document.getElementById(rowId);
+    }
+
+    if (emptyRow instanceof HTMLTableRowElement) {
+        const visibleRows = rows.filter((row) => row.style.display !== 'none').length;
+        emptyRow.classList.toggle('hidden', visibleRows > 0);
+    }
 }
 
 function initializeSidebarDateFilters() {
@@ -3237,38 +3794,12 @@ function initializeLiveTables() {
         </span>
     `;
 
-    const receiptButton = (invoice) => `
-        <button
-            type="button"
-            class="icon-button h-9 w-9"
-            title="Print receipt"
-            aria-label="Print receipt for ${escapeHtml(invoice.invoice_number)}"
-            data-print-receipt
-            data-receipt-invoice="${escapeHtml(invoice.invoice_number)}"
-            data-receipt-order="${escapeHtml(invoice.order_number)}"
-            data-receipt-customer="${escapeHtml(invoice.customer)}"
-            data-receipt-phone="${escapeHtml(invoice.customer_phone || '')}"
-            data-receipt-email="${escapeHtml(invoice.customer_email || '')}"
-            data-receipt-vehicle="${escapeHtml(invoice.vehicle)}"
-            data-receipt-status="${escapeHtml(invoice.status)}"
-            data-receipt-amount="${escapeHtml(invoice.amount_display)}"
-            data-receipt-updated="${escapeHtml(invoice.receipt_updated_display || invoice.updated_display)}"
-            data-receipt-shop="${escapeHtml(invoice.shop_name || 'MotoX')}"
-        >
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M6 9V4h12v5"></path>
-                <rect x="6" y="14" width="12" height="7" rx="1"></rect>
-                <rect x="3" y="9" width="18" height="7" rx="2"></rect>
-            </svg>
-        </button>
-    `;
-
     const tableConfigs = {
         billing: {
             tbody: document.querySelector('[data-billing-rows]'),
             input: document.getElementById('billing-search-input'),
             exportUrl: document.querySelector('[data-billing-export-url]')?.dataset.billingExportUrl || '',
-            emptyColspan: 8,
+            emptyColspan: 7,
             emptyText: 'No billable job orders match the current filters.',
             filename: 'motox-billing.csv',
             title: 'MotoX Billing',
@@ -3285,15 +3816,36 @@ function initializeLiveTables() {
                     ].join(' ').toLowerCase();
 
                     return `
-                        <tr data-billing-row data-item-date="${escapeHtml(invoice.updated_at || '')}" data-search="${escapeHtml(search)}">
+                        <tr
+                            data-billing-row
+                            data-item-date="${escapeHtml(invoice.updated_at || '')}"
+                            data-search="${escapeHtml(search)}"
+                            data-receipt-invoice="${escapeHtml(invoice.invoice_number)}"
+                            data-receipt-order="${escapeHtml(invoice.order_number)}"
+                            data-receipt-customer="${escapeHtml(invoice.customer)}"
+                            data-receipt-phone="${escapeHtml(invoice.customer_phone || '')}"
+                            data-receipt-email="${escapeHtml(invoice.customer_email || '')}"
+                            data-receipt-photo="${escapeHtml(invoice.customer_photo_url || '')}"
+                            data-receipt-vehicle="${escapeHtml(invoice.vehicle)}"
+                            data-receipt-status="${escapeHtml(invoice.status)}"
+                            data-receipt-amount="${escapeHtml(invoice.amount_display)}"
+                            data-receipt-updated="${escapeHtml(invoice.receipt_updated_display || invoice.updated_display)}"
+                            data-receipt-shop="${escapeHtml(invoice.shop_name || 'MotoX')}"
+                        >
                             <td class="font-semibold text-slate-900">${escapeHtml(invoice.invoice_number)}</td>
                             <td>${escapeHtml(invoice.order_number)}</td>
-                            <td>${escapeHtml(invoice.customer)}</td>
+                            <td>
+                                <div class="flex items-center gap-3">
+                                    ${invoice.customer_photo_url
+                                        ? `<img src="${escapeHtml(invoice.customer_photo_url)}" alt="${escapeHtml(invoice.customer)} profile" class="h-10 w-10 rounded-full object-cover">`
+                                        : `<span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">${escapeHtml(String(invoice.customer || 'CU').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'CU')}</span>`}
+                                    <span>${escapeHtml(invoice.customer)}</span>
+                                </div>
+                            </td>
                             <td>${escapeHtml(invoice.vehicle)}</td>
                             <td>${renderBadge(invoice.status, invoice.tone)}</td>
                             <td class="font-semibold text-slate-900">${escapeHtml(invoice.amount_display)}</td>
                             <td>${escapeHtml(invoice.updated_display)}</td>
-                            <td data-print-skip>${receiptButton(invoice)}</td>
                         </tr>
                     `;
                 }).join('');
@@ -3315,7 +3867,14 @@ function initializeLiveTables() {
 
                     return `
                         <tr data-reports-row data-item-date="${escapeHtml(row.latest_job_at || '')}" data-search="${escapeHtml(search)}">
-                            <td class="font-semibold text-slate-900">${escapeHtml(row.name)}</td>
+                            <td class="font-semibold text-slate-900">
+                                <div class="flex items-center gap-3">
+                                    ${row.profile_photo_url
+                                        ? `<img src="${escapeHtml(row.profile_photo_url)}" alt="${escapeHtml(row.name)} profile" class="h-10 w-10 rounded-full object-cover">`
+                                        : `<span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">${escapeHtml(String(row.name || 'CU').split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part.charAt(0).toUpperCase()).join('') || 'CU')}</span>`}
+                                    <span>${escapeHtml(row.name)}</span>
+                                </div>
+                            </td>
                             <td>${escapeHtml(row.jobs)}</td>
                             <td class="font-semibold text-slate-900">${escapeHtml(row.billed)}</td>
                             <td>${escapeHtml(row.latest_display || '-')}</td>
@@ -3391,14 +3950,22 @@ function initializeLiveTables() {
             printButton.addEventListener('click', () => printVisibleTable(config));
         }
 
-        applyFilters(page);
-    });
+        if (page === 'billing') {
+            const receiptToolbarButton = document.querySelector('[data-download-visible-receipt]');
+            if (receiptToolbarButton instanceof HTMLButtonElement) {
+                receiptToolbarButton.addEventListener('click', () => {
+                    const firstVisibleReceiptRow = getRows('billing')
+                        .filter((row) => row.style.display !== 'none')
+                        .find((row) => row instanceof HTMLTableRowElement);
 
-    document.addEventListener('click', (event) => {
-        const button = event.target instanceof Element ? event.target.closest('[data-print-receipt]') : null;
-        if (button instanceof HTMLButtonElement) {
-            printBillingReceipt(button);
+                    if (firstVisibleReceiptRow instanceof HTMLTableRowElement) {
+                        downloadReceiptPng(firstVisibleReceiptRow);
+                    }
+                });
+            }
         }
+
+        applyFilters(page);
     });
 
     window.addEventListener('motox:date-filter-change', (event) => {
@@ -3449,82 +4016,7 @@ function visibleTableData(config) {
 }
 
 function printBillingReceipt(button) {
-    const escapeHtml = (value) => String(value ?? '')
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
-    const data = button.dataset;
-    const printWindow = window.open('', '_blank', 'width=520,height=720');
-
-    if (!printWindow) {
-        window.print();
-        return;
-    }
-
-    const rows = [
-        ['Invoice', data.receiptInvoice],
-        ['Job Order', data.receiptOrder],
-        ['Customer', data.receiptCustomer],
-        ['Phone', data.receiptPhone || '-'],
-        ['Email', data.receiptEmail || '-'],
-        ['Vehicle', data.receiptVehicle],
-        ['Status', data.receiptStatus],
-        ['Updated', data.receiptUpdated],
-    ];
-
-    printWindow.document.write(`
-        <!doctype html>
-        <html>
-            <head>
-                <title>${escapeHtml(data.receiptInvoice || 'MotoX Receipt')}</title>
-                <style>
-                    * { box-sizing: border-box; }
-                    body { margin: 0; background: #f3f4f6; color: #111827; font-family: Arial, sans-serif; padding: 24px; }
-                    .receipt { max-width: 420px; margin: 0 auto; background: white; border: 1px solid #e5e7eb; border-radius: 18px; padding: 24px; }
-                    .brand { font-size: 24px; font-weight: 800; margin: 0; }
-                    .muted { color: #64748b; font-size: 12px; margin: 4px 0 0; }
-                    .total { margin: 22px 0; border-radius: 14px; background: #f8fafc; padding: 16px; }
-                    .total span { display: block; color: #64748b; font-size: 12px; text-transform: uppercase; letter-spacing: .12em; }
-                    .total strong { display: block; margin-top: 6px; font-size: 28px; }
-                    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-                    td { padding: 9px 0; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-                    td:first-child { width: 34%; color: #64748b; }
-                    td:last-child { text-align: right; font-weight: 700; }
-                    .footer { margin-top: 20px; text-align: center; color: #64748b; font-size: 12px; }
-                    @media print {
-                        body { background: white; padding: 0; }
-                        .receipt { border: 0; border-radius: 0; max-width: none; }
-                    }
-                </style>
-            </head>
-            <body>
-                <section class="receipt">
-                    <h1 class="brand">${escapeHtml(data.receiptShop || 'MotoX')}</h1>
-                    <p class="muted">Official customer receipt</p>
-                    <div class="total">
-                        <span>Total Amount</span>
-                        <strong>${escapeHtml(data.receiptAmount || 'PHP 0.00')}</strong>
-                    </div>
-                    <table>
-                        <tbody>
-                            ${rows.map(([label, value]) => `
-                                <tr>
-                                    <td>${escapeHtml(label)}</td>
-                                    <td>${escapeHtml(value || '-')}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                    <p class="footer">Thank you for choosing ${escapeHtml(data.receiptShop || 'MotoX')}.</p>
-                </section>
-            </body>
-        </html>
-    `);
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    downloadReceiptPng(button);
 }
 
 function exportVisibleTable(config) {

@@ -26,15 +26,6 @@ class SystemNotifier
 
         if ($activeOutAlert && $currentStock > 0) {
             $activeOutAlert->update(['read_at' => now()]);
-            self::notifyShop(
-                $shop,
-                'stock.restocked',
-                'Stock Restocked',
-                sprintf('%s has been restocked and is now available.', $part->name),
-                'success',
-                ['part_id' => $part->id, 'current_stock' => $currentStock],
-                false,
-            );
         }
 
         if ((float) $currentStock <= 0.0) {

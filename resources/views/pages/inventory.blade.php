@@ -1,21 +1,44 @@
 @extends('layouts.app')
 
 @section('content')
+    @php
+        $formatStockQuantity = function (float $stock, float $piecesPerBox): array {
+            $piecesPerBox = max(1.0, $piecesPerBox);
+            $wholeBoxes = (int) floor($stock / $piecesPerBox);
+            $loosePieces = round($stock - ($wholeBoxes * $piecesPerBox), 3);
+            $formatNumber = fn (float $value): string => rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
+            $parts = [];
+
+            if ($wholeBoxes > 0) {
+                $parts[] = $wholeBoxes.' box'.($wholeBoxes === 1 ? '' : 'es');
+            }
+
+            if ($loosePieces > 0 || $parts === []) {
+                $parts[] = $formatNumber(max(0, $loosePieces)).' piece'.(abs($loosePieces - 1.0) < 0.00001 ? '' : 's');
+            }
+
+            return [
+                'display' => implode(' + ', $parts),
+                'total' => $formatNumber(max(0, $stock)).' total piece'.(abs($stock - 1.0) < 0.00001 ? '' : 's'),
+            ];
+        };
+    @endphp
+
     <section class="space-y-6">
         @if (session('status'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-{{ session('status_tone', 'success') }}">
                 <p class="font-semibold">{{ session('status') }}</p>
             </div>
         @endif
 
         @if ($errors->has('inventory'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-danger">
                 <p class="font-semibold">{{ $errors->first('inventory') }}</p>
             </div>
         @endif
 
         @if ($errors->any() && ! $errors->has('inventory'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-danger">
                 <p class="font-semibold">{{ $errors->first() }}</p>
             </div>
         @endif
@@ -113,10 +136,12 @@
                     @foreach ($alerts as $part)
                         @php
                             $isOut = (float) $part->current_stock <= 0;
-                            $current = rtrim(rtrim(number_format((float) $part->current_stock, 3, '.', ''), '0'), '.');
+                            $conversion = max(1.0, (float) ($part->pieces_per_box ?? 1));
+                            $stockQuantity = $formatStockQuantity((float) $part->current_stock, $conversion);
+                            $current = $stockQuantity['display'];
                             $minimum = rtrim(rtrim(number_format((float) $part->minimum_stock, 3, '.', ''), '0'), '.');
-                            $displayUnitLabel = in_array($part->unit_label, $unitLabelChoices, true) ? $part->unit_label : 'pcs';
-                            $editStockMode = in_array($part->stock_mode, ['piece', 'box_piece', 'liquid'], true) ? $part->stock_mode : 'piece';
+                            $displayUnitLabel = $part->unit_label ?: 'box';
+                            $editStockMode = 'box_piece';
                         @endphp
                         <article class="detail-card">
                             <div class="flex items-start justify-between gap-3">
@@ -126,14 +151,14 @@
                                 </div>
                                 <x-badge :tone="$isOut ? 'danger' : 'warning'">{{ $isOut ? 'Sold out' : 'Low' }}</x-badge>
                             </div>
-                            <p class="mt-4 text-sm font-semibold text-slate-700">{{ $current }} / {{ $minimum }} {{ $displayUnitLabel }}</p>
+                            <p class="mt-4 text-sm font-semibold text-slate-700">{{ $current }}</p>
                             <button
                                 type="button"
                                 class="ghost-button mt-4 w-full justify-center"
                                 data-open-modal="movement-modal"
                                 data-movement-part-id="{{ $part->id }}"
                                 data-movement-part-name="{{ $part->name }}"
-                                data-movement-part-stock="{{ $part->current_stock }}"
+                                data-movement-part-stock="{{ $current }}"
                                 data-movement-part-mode="{{ $editStockMode }}"
                                 data-movement-part-unit="{{ $displayUnitLabel }}"
                             >
@@ -155,7 +180,7 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="soft-table">
+                <table class="soft-table w-full min-w-[1180px]">
                     <thead>
 <tr class="table-heading">
                             <th width="80">Image</th>
@@ -177,19 +202,16 @@
                                 $isOut = $part->current_stock <= 0;
                                 $tone = $isOut ? 'danger' : ($isLow ? 'warning' : 'success');
                                 $status = $isOut ? 'Out of Stock' : ($isLow ? 'Low Stock' : 'In Stock');
-                                $stockDisplay = rtrim(rtrim(number_format((float) $part->current_stock, 3, '.', ''), '0'), '.');
-                                $displayUnitLabel = in_array($part->unit_label, $unitLabelChoices, true) ? $part->unit_label : 'pcs';
-                                $editStockMode = in_array($part->stock_mode, ['piece', 'box_piece', 'liquid'], true) ? $part->stock_mode : 'piece';
-                                $conversion = (float) ($part->pieces_per_box ?? 0);
+                                $displayUnitLabel = $part->unit_label ?: 'box';
+                                $editStockMode = 'box_piece';
+                                $conversion = max(1.0, (float) ($part->pieces_per_box ?? 1));
                                 $stockBreakdown = null;
                                 $partImageUrl = $part->image_path && Storage::disk('public')->exists($part->image_path)
                                     ? Storage::url($part->image_path)
                                     : null;
-                                if ($part->stock_mode === 'box_piece' && $conversion > 0) {
-                                    $wholeBoxes = floor((float) $part->current_stock / $conversion);
-                                    $loosePieces = round((float) $part->current_stock - ($wholeBoxes * $conversion), 3);
-                                    $stockBreakdown = "{$wholeBoxes} box".($wholeBoxes == 1 ? '' : 'es')." + ".rtrim(rtrim(number_format($loosePieces, 3, '.', ''), '0'), '.').' '.$displayUnitLabel;
-                                }
+                                $stockQuantity = $formatStockQuantity((float) $part->current_stock, $conversion);
+                                $stockDisplay = $stockQuantity['display'];
+                                $stockBreakdown = $stockQuantity['total'];
                             @endphp
                             <tr>
                                 <td>
@@ -210,20 +232,17 @@
                                 <td>{{ $part->sku }}</td>
                                 <td>{{ $part->category }}</td>
                                 <td class="font-semibold text-slate-900">
-                                    {{ $stockDisplay }} {{ $displayUnitLabel }}
+                                    {{ $stockDisplay }}
                                     @if ($stockBreakdown)
                                         <span class="block text-xs font-medium text-slate-500">{{ $stockBreakdown }}</span>
                                     @endif
                                 </td>
                                 <td>{{ rtrim(rtrim(number_format((float) $part->minimum_stock, 3, '.', ''), '0'), '.') }}</td>
-                                <td>{{ $displayUnitLabel }}</td>
+                                <td>{{ ucfirst($displayUnitLabel) }}</td>
                                 <td class="font-semibold text-slate-900">
-                                    PHP {{ number_format((float) $part->unit_price, 2) }}
-                                    @if ($part->stock_mode === 'box_piece')
-                                        <span class="block text-xs text-slate-500">per box</span>
-                                    @else
-                                        <span class="block text-xs text-slate-500">per {{ $displayUnitLabel }}</span>
-                                    @endif
+                                    PHP {{ number_format((float) ($part->unit_price_per_box ?? $part->unit_price), 2) }}
+                                    <span class="block text-xs text-slate-500">per box</span>
+                                    <span class="block text-xs text-slate-500">PHP {{ number_format((float) ($part->unit_price_per_piece ?? 0), 2) }} per piece</span>
                                 </td>
                                 <td><x-badge :tone="$tone">{{ $status }}</x-badge></td>
                                 <td>
@@ -236,7 +255,7 @@
                                             data-open-modal="movement-modal"
                                             data-movement-part-id="{{ $part->id }}"
                                             data-movement-part-name="{{ $part->name }}"
-                                            data-movement-part-stock="{{ $part->current_stock }}"
+                                            data-movement-part-stock="{{ $stockDisplay }}"
                                             data-movement-part-mode="{{ $editStockMode }}"
                                             data-movement-part-unit="{{ $displayUnitLabel }}"
                                         >
@@ -254,21 +273,25 @@
                                             data-edit-part-category="{{ $part->category }}"
                                             data-edit-part-mode="{{ $editStockMode }}"
                                             data-edit-part-unit="{{ $displayUnitLabel }}"
-                                            data-edit-part-box-size="{{ rtrim(rtrim(number_format((float) ($part->pieces_per_box ?? 0), 3, '.', ''), '0'), '.') }}"
+                                            data-edit-part-container-quantity="{{ rtrim(rtrim(number_format((float) ($part->pieces_per_box ?? 1), 3, '.', ''), '0'), '.') }}"
                                             data-edit-part-minimum="{{ $part->minimum_stock }}"
                                             data-edit-part-price="{{ number_format((float) $part->unit_price, 2, '.', '') }}"
+                                            data-edit-part-price-per-box="{{ number_format((float) ($part->unit_price_per_box ?? $part->unit_price), 2, '.', '') }}"
+                                            data-edit-part-price-per-piece="{{ number_format((float) ($part->unit_price_per_piece ?? 0), 2, '.', '') }}"
                                             data-edit-part-active="{{ $part->is_active ? '1' : '0' }}"
                                             data-edit-part-image-url="{{ $partImageUrl ?? '' }}"
                                         >
                                             <x-icon name="pencil" class="h-4 w-4" />
                                         </button>
-                                        <form method="POST" action="{{ route('inventory.parts.destroy', $part) }}" onsubmit="return confirm('Delete this part?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="icon-button" aria-label="Delete part" title="Delete part">
-                                                <x-icon name="trash" class="h-4 w-4" />
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="icon-button"
+                                            aria-label="Delete part"
+                                            title="Delete part"
+                                            data-open-modal="delete-part-{{ $part->id }}-modal"
+                                        >
+                                            <x-icon name="trash" class="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -283,6 +306,31 @@
         </section>
     </section>
 
+    @foreach ($parts as $part)
+        <div class="app-modal hidden" data-modal="delete-part-{{ $part->id }}-modal">
+            <div class="app-modal-card max-w-lg">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-2xl font-bold text-slate-900">Are you sure?</h3>
+                        <p class="mt-2 text-sm text-slate-500">You are about to delete this Part.</p>
+                    </div>
+                    <button type="button" class="icon-button" data-close-modal="delete-part-{{ $part->id }}-modal" aria-label="Cancel delete part">
+                        <x-icon name="x" class="h-4 w-4" />
+                    </button>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" class="ghost-button" data-close-modal="delete-part-{{ $part->id }}-modal">Cancel</button>
+                    <form method="POST" action="{{ route('inventory.parts.destroy', $part) }}">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="danger-button">Yes, Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endforeach
+
     <div class="app-modal hidden" data-modal="create-part-modal">
         <div class="app-modal-card">
             <div class="flex items-center justify-between gap-3">
@@ -295,6 +343,9 @@
             <form method="POST" action="{{ route('inventory.parts.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data" data-inventory-action-form>
                 @csrf
                 <input type="hidden" name="form_context" value="create">
+                <input type="hidden" name="stock_mode" value="box_piece">
+                <input type="hidden" name="is_active" value="1">
+                <input type="hidden" name="unit_price_basis" value="per_box">
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
@@ -302,43 +353,31 @@
                         <input type="text" name="name" class="input-shell" required>
                     </label>
                     <label class="form-field">
-                        <span class="muted-label">SKU</span>
+                        <span class="muted-label">Part Number / SKU</span>
                         <input type="text" name="sku" class="input-shell" required>
-                    </label>
-                </div>
-
-                <div class="grid gap-4 md:grid-cols-3">
-                    <label class="form-field">
-                        <span class="muted-label">Category</span>
-                        <input type="text" name="category" list="part-categories" class="input-shell" required>
-                        <datalist id="part-categories">
-                            @foreach ($partCategories as $category)
-                                <option value="{{ $category }}"></option>
-                            @endforeach
-                        </datalist>
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Stock Mode</span>
-                        <select name="stock_mode" class="input-shell" data-stock-mode-select required>
-                            <option value="piece" selected>Piece</option>
-                            <option value="box_piece">Box</option>
-                            <option value="liquid">Liquid</option>
-                        </select>
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Unit Label</span>
-                        <select name="unit_label" class="input-shell" data-unit-label-select required>
-                            @foreach ($unitLabelChoices as $unitLabel)
-                                <option value="{{ $unitLabel }}" @selected(old('unit_label', 'pcs') === $unitLabel)>{{ $unitLabel }}</option>
-                            @endforeach
-                        </select>
                     </label>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
-                        <span class="muted-label">Pieces per Box</span>
-                        <input type="number" name="pieces_per_box" min="1" step="1" class="input-shell" placeholder="10 pieces">
+                        <span class="muted-label">Category</span>
+                        <select name="category" class="input-shell" required>
+                            @foreach ($partCategories as $category)
+                                <option value="{{ $category }}">{{ $category }}</option>
+                            @endforeach
+                        </select>
+                    </label>
+                    <label class="form-field">
+                        <span class="muted-label">Unit Label</span>
+                        <input type="text" name="unit_label" class="input-shell" value="box" placeholder="box" required>
+                    </label>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label" data-container-quantity-label>Pieces per Box</span>
+                        <input type="number" name="container_quantity" min="1" step="1" class="input-shell" value="1" required>
+                        <span class="text-xs text-slate-500" data-container-quantity-help></span>
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Minimum Stock</span>
@@ -354,22 +393,27 @@
                         </span>
                     </span>
                     <span class="part-upload-content">
-                        <span class="part-upload-title">Choose your spare parts file</span>
+                        <span class="part-upload-title">Choose spare part image</span>
                         <span class="part-upload-note">PNG, JPG, WEBP up to 2MB.</span>
                     </span>
                     <input type="file" name="image" accept="image/*" class="sr-only" data-image-preview-input="create-part-image">
                 </label>
+
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
-                        <span class="muted-label">Unit Price (PHP)</span>
-                        <input type="number" name="unit_price" min="0" step="0.01" class="input-shell" value="0.00" required>
+                        <span class="muted-label">Price per Box (PHP)</span>
+                        <input type="number" name="unit_price_per_box" min="0" step="0.01" class="input-shell" value="0.00" required>
                     </label>
                     <label class="form-field">
-                        <span class="muted-label">Status</span>
-                        <select name="is_active" class="input-shell">
-                            <option value="1" selected>Active</option>
-                            <option value="0">Inactive</option>
-                        </select>
+                        <span class="muted-label">Price per Piece (PHP)</span>
+                        <input type="number" name="unit_price_per_piece" min="0" step="0.01" class="input-shell" value="0.00" required>
+                    </label>
+                </div>
+
+                <div class="grid gap-4 md:grid-cols-2">
+                    <label class="form-field">
+                        <span class="muted-label">Stock (boxes)</span>
+                        <input type="number" name="initial_stock" min="0" step="1" class="input-shell" value="0" required>
                     </label>
                 </div>
 
@@ -402,6 +446,8 @@
                 @csrf
                 @method('PUT')
                 <input type="hidden" name="form_context" value="edit">
+                <input type="hidden" name="stock_mode" value="box_piece">
+                <input type="hidden" name="unit_price_basis" value="per_box">
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
@@ -414,33 +460,26 @@
                     </label>
                 </div>
 
-                <div class="grid gap-4 md:grid-cols-3">
+                <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
                         <span class="muted-label">Category</span>
-                        <input type="text" name="category" class="input-shell" data-edit-field="category" required>
-                    </label>
-                    <label class="form-field">
-                        <span class="muted-label">Stock Mode</span>
-                        <select name="stock_mode" class="input-shell" data-edit-field="mode" data-stock-mode-select required>
-                            <option value="piece">Piece</option>
-                            <option value="box_piece">Box</option>
-                            <option value="liquid">Liquid</option>
+                        <select name="category" class="input-shell" data-edit-field="category" required>
+                            @foreach ($partCategories as $category)
+                                <option value="{{ $category }}">{{ $category }}</option>
+                            @endforeach
                         </select>
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Unit Label</span>
-                        <select name="unit_label" class="input-shell" data-edit-field="unit" data-unit-label-select required>
-                            @foreach ($unitLabelChoices as $unitLabel)
-                                <option value="{{ $unitLabel }}">{{ $unitLabel }}</option>
-                            @endforeach
-                        </select>
+                        <input type="text" name="unit_label" class="input-shell" data-edit-field="unit" required>
                     </label>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
-                        <span class="muted-label">Pieces per Box</span>
-                        <input type="number" name="pieces_per_box" min="1" step="1" class="input-shell" data-edit-field="box_size" placeholder="10 pieces">
+                        <span class="muted-label" data-container-quantity-label>Pieces per Box</span>
+                        <input type="number" name="container_quantity" min="1" step="1" class="input-shell" data-edit-field="container_quantity" placeholder="10 pieces" required>
+                        <span class="text-xs text-slate-500" data-container-quantity-help></span>
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Minimum Stock</span>
@@ -463,9 +502,15 @@
                 </label>
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
-                        <span class="muted-label">Unit Price (PHP)</span>
-                        <input type="number" name="unit_price" min="0" step="0.01" class="input-shell" data-edit-field="price" required>
+                        <span class="muted-label">Price per Box (PHP)</span>
+                        <input type="number" name="unit_price_per_box" min="0" step="0.01" class="input-shell" data-edit-field="price_per_box" required>
                     </label>
+                    <label class="form-field">
+                        <span class="muted-label">Price per Piece (PHP)</span>
+                        <input type="number" name="unit_price_per_piece" min="0" step="0.01" class="input-shell" data-edit-field="price_per_piece" required>
+                    </label>
+                </div>
+                <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
                         <span class="muted-label">Status</span>
                         <select name="is_active" class="input-shell" data-edit-field="active">
@@ -487,7 +532,7 @@
         <div class="app-modal-card">
             <div class="flex items-center justify-between gap-3">
                 <div>
-                    <h3 class="text-2xl font-bold text-slate-900">Record Stock Movement</h3>
+                    <h3 class="text-2xl font-bold text-slate-900">Stock Movement</h3>
                     <p class="mt-1 text-sm text-slate-500" data-movement-label></p>
                 </div>
                 <button type="button" class="icon-button" data-close-modal="movement-modal">
@@ -509,7 +554,7 @@
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
                         <span class="muted-label">Movement Type</span>
-                        <select name="type" class="input-shell" required>
+                        <select name="type" class="input-shell" data-movement-type-select required>
                             <option value="in">Stock In (+)</option>
                             <option value="out">Stock Out (-)</option>
                         </select>
@@ -524,9 +569,7 @@
                     <label class="form-field">
                         <span class="muted-label">Quantity Unit</span>
                         <select name="quantity_unit" class="input-shell" data-movement-unit-select>
-                            <option value="piece">Pieces</option>
                             <option value="box">Box</option>
-                            <option value="liter">Liter</option>
                         </select>
                     </label>
                 </div>

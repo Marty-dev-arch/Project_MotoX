@@ -16,6 +16,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'sku',
     'name',
     'category',
+    'notes',
     'image_path',
     'stock_mode',
     'unit_label',
@@ -23,6 +24,9 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'allow_fractional_quantity',
     'minimum_stock',
     'unit_price',
+    'unit_price_per_box',
+    'unit_price_per_piece',
+    'unit_price_basis',
     'is_active',
 ])]
 class Part extends Model
@@ -35,6 +39,9 @@ class Part extends Model
         return [
             'minimum_stock' => 'decimal:3',
             'unit_price' => 'decimal:2',
+            'unit_price_per_box' => 'decimal:2',
+            'unit_price_per_piece' => 'decimal:2',
+            'unit_price_basis' => 'string',
             'is_active' => 'boolean',
             'pieces_per_box' => 'decimal:3',
             'allow_fractional_quantity' => 'boolean',
@@ -71,6 +78,7 @@ class Part extends Model
                 COALESCE(SUM(
                     CASE
                         WHEN type = 'in' THEN quantity
+                        WHEN type = 'opening' THEN quantity
                         WHEN type = 'out' THEN -quantity
                         ELSE quantity
                     END
@@ -102,13 +110,12 @@ class Part extends Model
         return $this->stock_mode === 'box_piece' && (float) ($this->pieces_per_box ?? 0) > 0;
     }
 
-    public function usesLiquidMode(): bool
-    {
-        return $this->stock_mode === 'liquid';
-    }
-
     public function defaultUnitLabel(): string
     {
-        return trim((string) $this->unit_label) !== '' ? $this->unit_label : 'pcs';
+        if (trim((string) $this->unit_label) !== '') {
+            return $this->unit_label;
+        }
+
+        return 'box';
     }
 }

@@ -67,10 +67,7 @@ class InventoryController extends Controller
             'alerts' => $lowStockParts->take(8),
             'parts' => $parts,
             'movements' => $recentMovements,
-            'partCategories' => [
-                    'Engine Parts', 'Electrical Parts', 'Transmission & Drive Parts', 
-                    'Brake & Suspension Parts', 'Body & Frame Parts'
-                ],
+            'partCategories' => $this->categoryChoices(),
             'unitLabelChoices' => $this->unitLabelChoices(),
         ]));
     }
@@ -81,19 +78,27 @@ class InventoryController extends Controller
         abort_if($shop === null, 403, 'Shop profile not found.');
 
         $request->merge([
-            'unit_label' => $this->normalizeUnitLabel((string) $request->input('unit_label', '')),
+            'stock_mode' => 'box_piece',
+            'unit_label' => $this->normalizeUnitLabel((string) $request->input('unit_label', 'box')),
+            'pieces_per_box' => $request->input('container_quantity', $request->input('pieces_per_box')),
+            'unit_price_basis' => 'per_box',
         ]);
 
         $validated = $request->validate([
             'sku' => ['required', 'string', 'max:50', Rule::unique('parts', 'sku')->where(fn ($query) => $query->where('shop_id', $shop->id))],
             'name' => ['required', 'string', 'max:140'],
-            'category' => ['required', 'string', 'max:100'],
+            'category' => ['required', 'string', 'max:100', Rule::in($this->categoryChoices())],
             'stock_mode' => ['required', Rule::in($this->stockModeChoices())],
-            'unit_label' => ['required', 'string', 'max:20', Rule::in($this->unitLabelChoices())],
+            'unit_label' => ['required', 'string', 'max:20'],
             'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'integer', 'min:1', 'max:1000000'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'minimum_stock' => ['required', 'integer', 'min:0', 'max:100000'],
-            'unit_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'minimum_stock' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'unit_price_per_box' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'unit_price_per_piece' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'unit_price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'unit_price_basis' => ['required', Rule::in(['per_box', 'per_piece'])],
+            'initial_stock' => ['required', 'integer', 'min:0', 'max:1000000'],
+            'notes' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -108,26 +113,39 @@ class InventoryController extends Controller
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
             'stock_mode' => $validated['stock_mode'],
-            'unit_label' => $this->normalizeUnitLabel($validated['unit_label']),
-            'pieces_per_box' => $validated['stock_mode'] === 'box_piece' ? (float) ($validated['pieces_per_box'] ?? 0) : null,
+            'unit_label' => $validated['unit_label'],
+            'pieces_per_box' => (float) ($validated['pieces_per_box'] ?? 1),
             'allow_fractional_quantity' => false,
             'image_path' => $imagePath,
             'minimum_stock' => $validated['minimum_stock'],
-            'unit_price' => $validated['unit_price'],
+            'unit_price' => $validated['unit_price_basis'] === 'per_piece'
+                ? $validated['unit_price_per_piece']
+                : $validated['unit_price_per_box'],
+            'unit_price_per_box' => $validated['unit_price_per_box'],
+            'unit_price_per_piece' => $validated['unit_price_per_piece'],
+            'unit_price_basis' => $validated['unit_price_basis'],
+            'notes' => isset($validated['notes']) && $validated['notes'] !== null ? trim($validated['notes']) : null,
             'is_active' => (bool) ($validated['is_active'] ?? true),
         ]);
 
-        SystemNotifier::notifyShop(
-            $shop,
-            'part.created',
-            'Part Added',
-            sprintf('%s was added to inventory.', $part->name),
-            'success',
-            ['part_id' => $part->id],
-        );
-        SystemNotifier::notifyStockLevel($part->fresh(), 0.0);
+        $initialBoxes = (int) $validated['initial_stock'];
+        $initialPieces = InventoryUnits::toBaseQuantity($part, (float) $initialBoxes, 'box');
 
-        return redirect()->route('inventory')->with('status', 'Part added successfully.');
+        StockMovement::query()->create([
+            'part_id' => $part->id,
+            'user_id' => $request->user()->id,
+            'type' => StockMovement::TYPE_OPENING,
+            'quantity' => $initialPieces,
+            'reason' => sprintf('Opening Stock: %s box%s', number_format($initialBoxes), $initialBoxes === 1 ? '' : 'es'),
+            'reference' => 'opening-stock',
+            'moved_at' => now(),
+        ]);
+
+        SystemNotifier::notifyStockLevel($part->fresh(), $initialPieces);
+
+        return redirect()->route('inventory')
+            ->with('status', 'Part added successfully.')
+            ->with('status_tone', 'success');
     }
 
     public function updatePart(Request $request, Part $part): RedirectResponse
@@ -137,7 +155,10 @@ class InventoryController extends Controller
         $part = $this->shopPart($part, $shop->id);
 
         $request->merge([
-            'unit_label' => $this->normalizeUnitLabel((string) $request->input('unit_label', '')),
+            'stock_mode' => 'box_piece',
+            'unit_label' => $this->normalizeUnitLabel((string) $request->input('unit_label', 'box')),
+            'pieces_per_box' => $request->input('container_quantity', $request->input('pieces_per_box')),
+            'unit_price_basis' => 'per_box',
         ]);
 
         $validated = $request->validate([
@@ -150,13 +171,17 @@ class InventoryController extends Controller
                     ->ignore($part->id),
             ],
             'name' => ['required', 'string', 'max:140'],
-            'category' => ['required', 'string', 'max:100'],
+            'category' => ['required', 'string', 'max:100', Rule::in($this->categoryChoices())],
             'stock_mode' => ['required', Rule::in($this->stockModeChoices())],
-            'unit_label' => ['required', 'string', 'max:20', Rule::in($this->unitLabelChoices())],
+            'unit_label' => ['required', 'string', 'max:20'],
             'pieces_per_box' => ['nullable', 'required_if:stock_mode,box_piece', 'integer', 'min:1', 'max:1000000'],
             'image' => ['nullable', 'image', 'max:2048'],
-            'minimum_stock' => ['required', 'integer', 'min:0', 'max:100000'],
-            'unit_price' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'minimum_stock' => ['required', 'numeric', 'min:0', 'max:100000'],
+            'unit_price_per_box' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'unit_price_per_piece' => ['required', 'numeric', 'min:0', 'max:99999999.99'],
+            'unit_price' => ['nullable', 'numeric', 'min:0', 'max:99999999.99'],
+            'unit_price_basis' => ['required', Rule::in(['per_box', 'per_piece'])],
+            'notes' => ['nullable', 'string', 'max:2000'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
@@ -174,23 +199,20 @@ class InventoryController extends Controller
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
             'stock_mode' => $validated['stock_mode'],
-            'unit_label' => $this->normalizeUnitLabel($validated['unit_label']),
-            'pieces_per_box' => $validated['stock_mode'] === 'box_piece' ? (float) ($validated['pieces_per_box'] ?? 0) : null,
+            'unit_label' => $validated['unit_label'],
+            'pieces_per_box' => (float) ($validated['pieces_per_box'] ?? 1),
             'allow_fractional_quantity' => false,
             'image_path' => $imagePath,
             'minimum_stock' => $validated['minimum_stock'],
-            'unit_price' => $validated['unit_price'],
+            'unit_price' => $validated['unit_price_basis'] === 'per_piece'
+                ? $validated['unit_price_per_piece']
+                : $validated['unit_price_per_box'],
+            'unit_price_per_box' => $validated['unit_price_per_box'],
+            'unit_price_per_piece' => $validated['unit_price_per_piece'],
+            'unit_price_basis' => $validated['unit_price_basis'],
+            'notes' => isset($validated['notes']) && $validated['notes'] !== null ? trim($validated['notes']) : null,
             'is_active' => (bool) ($validated['is_active'] ?? true),
         ]);
-
-        SystemNotifier::notifyShop(
-            $shop,
-            'part.updated',
-            'Part Updated',
-            sprintf('%s details were updated.', $part->name),
-            'success',
-            ['part_id' => $part->id],
-        );
 
         $freshPart = InventoryMetrics::partsWithStockQuery($shop->id)
             ->where('parts.id', $part->id)
@@ -200,7 +222,9 @@ class InventoryController extends Controller
             SystemNotifier::notifyStockLevel($part->fresh(), (float) $freshPart->current_stock);
         }
 
-        return redirect()->route('inventory')->with('status', 'Part updated successfully.');
+        return redirect()->route('inventory')
+            ->with('status', 'Part updated successfully.')
+            ->with('status_tone', 'success');
     }
 
     public function destroyPart(Request $request, Part $part): RedirectResponse
@@ -209,30 +233,15 @@ class InventoryController extends Controller
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
 
-        $deletedPartId = $part->id;
-        $deletedPartName = $part->name;
-        $deletedMovementCount = $part->movements()->count();
-
         if ($part->image_path) {
             Storage::disk('public')->delete($part->image_path);
         }
 
         $part->delete();
 
-        SystemNotifier::notifyShop(
-            $shop,
-            'part.deleted',
-            'Part Deleted',
-            sprintf(
-                '%s was removed from inventory%s.',
-                $deletedPartName,
-                $deletedMovementCount > 0 ? sprintf(' with %s stock movement record%s', number_format($deletedMovementCount), $deletedMovementCount === 1 ? '' : 's') : ''
-            ),
-            'warning',
-            ['part_id' => $deletedPartId],
-        );
-
-        return redirect()->route('inventory')->with('status', 'Part deleted.');
+        return redirect()->route('inventory')
+            ->with('status', 'Part deleted successfully.')
+            ->with('status_tone', 'danger');
     }
 
     public function storeMovement(Request $request, Part $part): RedirectResponse
@@ -245,7 +254,7 @@ class InventoryController extends Controller
         $validator = Validator::make($request->all(), [
             'type' => ['required', Rule::in([StockMovement::TYPE_IN, StockMovement::TYPE_OUT])],
             'quantity' => ['required', 'integer', 'min:1', 'max:100000'],
-            'quantity_unit' => ['nullable', Rule::in(['piece', 'box', 'liter', 'milliliter'])],
+            'quantity_unit' => ['nullable', Rule::in(['piece', 'box'])],
             'reason' => ['nullable', 'string', 'max:255'],
         ]);
 
@@ -253,6 +262,12 @@ class InventoryController extends Controller
             $type = (string) request('type');
             $inputQuantity = (float) request('quantity');
             $quantityUnit = (string) request('quantity_unit', '');
+
+            if (! $this->movementUnitAllowed($part, $type, $quantityUnit)) {
+                $validator->errors()->add('quantity_unit', 'The selected quantity unit is not allowed for this stock movement.');
+                return;
+            }
+
             $rawQty = InventoryUnits::toBaseQuantity($part, $inputQuantity, $quantityUnit);
 
             try {
@@ -304,18 +319,9 @@ class InventoryController extends Controller
             SystemNotifier::notifyStockLevel($part->fresh(), (float) $freshPart->current_stock);
         }
 
-        $movementValue = InventoryUnits::priceForBaseQuantity($part, $baseQuantity);
-
-        SystemNotifier::notifyShop(
-            $shop,
-            'stock.movement',
-            'Stock Movement Recorded',
-            sprintf('%s stock %s: %.3f %s worth PHP %s.', $part->name, $validated['type'], $baseQuantity, $part->defaultUnitLabel(), number_format($movementValue, 2)),
-            $validated['type'] === StockMovement::TYPE_OUT ? 'warning' : 'success',
-            ['part_id' => $part->id, 'quantity' => $baseQuantity, 'type' => $validated['type'], 'movement_value' => $movementValue],
-        );
-
-        return redirect()->route('inventory')->with('status', 'Stock movement recorded.');
+        return redirect()->route('inventory')
+            ->with('status', 'Stock movement recorded.')
+            ->with('status_tone', $validated['type'] === StockMovement::TYPE_OUT ? 'danger' : 'success');
     }
 
     private function movementDelta(string $type, float $quantity): float
@@ -337,17 +343,39 @@ class InventoryController extends Controller
 
     private function unitLabelChoices(): array
     {
-        return ['pcs', 'liter'];
+        return ['box', 'case', 'pack', 'set'];
+    }
+
+    private function categoryChoices(): array
+    {
+        return [
+            'Body & Fairings',
+            'Lighting & Accessories',
+            'Engine Parts',
+            'Electrical Parts',
+            'Brake System',
+        ];
     }
 
     private function stockModeChoices(): array
     {
-        return ['piece', 'box_piece', 'liquid'];
+        return ['box_piece'];
+    }
+
+    private function movementUnitAllowed(Part $part, string $type, string $unit): bool
+    {
+        $unit = strtolower(trim($unit));
+
+        return $type === StockMovement::TYPE_IN
+            ? $unit === 'box'
+            : in_array($unit, ['box', 'piece'], true);
     }
 
     private function normalizeUnitLabel(string $unitLabel): string
     {
-        return strtolower(trim($unitLabel));
+        $normalized = strtolower(trim($unitLabel));
+
+        return $normalized !== '' ? $normalized : 'box';
     }
 
     private function shopPart(Part $part, int $shopId): Part
@@ -401,6 +429,7 @@ class InventoryController extends Controller
             ['label' => 'Inventory', 'route' => 'inventory', 'icon' => 'inventory'],
             ['label' => 'Billing', 'route' => 'billing', 'icon' => 'billing'],
             ['label' => 'Reports', 'route' => 'reports', 'icon' => 'reports'],
+            ['label' => 'Logs', 'route' => 'logs', 'icon' => 'file'],
             ['label' => 'Settings', 'route' => 'settings', 'icon' => 'settings'],
         ];
     }

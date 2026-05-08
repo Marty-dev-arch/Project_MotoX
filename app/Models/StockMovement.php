@@ -15,6 +15,7 @@ class StockMovement extends Model
     public const TYPE_IN = 'in';
     public const TYPE_OUT = 'out';
     public const TYPE_ADJUST = 'adjust';
+    public const TYPE_OPENING = 'opening';
 
     
     protected function casts(): array
@@ -40,7 +41,7 @@ class StockMovement extends Model
     public function delta(): float
     {
         return match ($this->type) {
-            self::TYPE_IN => abs((float) $this->quantity),
+            self::TYPE_IN, self::TYPE_OPENING => abs((float) $this->quantity),
             self::TYPE_OUT => abs((float) $this->quantity) * -1,
             default => (float) $this->quantity,
         };

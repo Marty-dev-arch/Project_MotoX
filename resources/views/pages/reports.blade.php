@@ -154,7 +154,18 @@
                                 data-item-date="{{ optional($row['latest_job_at'] ?? null)->toIso8601String() }}"
                                 data-search="{{ strtolower($row['name'].' '.$row['jobs'].' '.$row['billed']) }}"
                             >
-                                <td class="font-semibold text-slate-900">{{ $row['name'] }}</td>
+                                <td class="font-semibold text-slate-900">
+                                    <div class="flex items-center gap-3">
+                                        @if (! empty($row['profile_photo_url']))
+                                            <img src="{{ $row['profile_photo_url'] }}" alt="{{ $row['name'] }} profile" class="h-10 w-10 rounded-full object-cover">
+                                        @else
+                                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
+                                                {{ strtoupper(collect(explode(' ', $row['name']))->filter()->map(fn (string $part): string => mb_substr($part, 0, 1))->take(2)->implode('') ?: 'CU') }}
+                                            </span>
+                                        @endif
+                                        <span>{{ $row['name'] }}</span>
+                                    </div>
+                                </td>
                                 <td>{{ $row['jobs'] }}</td>
                                 <td class="font-semibold text-slate-900">{{ $row['billed'] }}</td>
                                 <td>{{ $row['latest_display'] ?? optional($row['latest_job_at'] ?? null)->timezone('Asia/Manila')->format('M d, Y') ?? now('Asia/Manila')->format('M d, Y') }}</td>

@@ -10,6 +10,7 @@ use App\Support\DatePeriods;
 use App\Support\InventoryMetrics;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
@@ -263,6 +264,7 @@ class ReportsController extends Controller
             ->map(fn (Customer $customer): array => [
                 'customer_id' => $customer->id,
                 'name' => $customer->name,
+                'profile_photo_url' => $customer->profile_photo_path ? Storage::url($customer->profile_photo_path) : '',
                 'jobs' => $customer->job_orders_count,
                 'billed_raw' => (float) ($customer->job_orders_sum_estimated_cost ?? 0),
                 'billed' => $this->money((float) ($customer->job_orders_sum_estimated_cost ?? 0)),
@@ -344,6 +346,7 @@ class ReportsController extends Controller
 
         return [
             'name' => $row['name'],
+            'profile_photo_url' => $row['profile_photo_url'] ?? '',
             'jobs' => (int) $row['jobs'],
             'billed' => $row['billed'],
             'latest_job_at' => $latest?->toIso8601String(),

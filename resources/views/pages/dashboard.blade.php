@@ -7,7 +7,7 @@
         data-dashboard-months="{{ $dashboardTrendMonths }}"
     >
         @if (session('status'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-{{ session('status_tone', 'success') }}">
                 <p class="font-semibold">{{ session('status') }}</p>
             </div>
         @endif

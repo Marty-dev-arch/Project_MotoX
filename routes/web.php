@@ -9,6 +9,7 @@ use App\Http\Controllers\JobOrderController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\SystemLogController;
 use App\Http\Controllers\WorkshopFrontendController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,8 +27,6 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/reset-password', [AuthController::class, 'resetPassword'])->name('password.update');
     Route::get('/auth/google/redirect', [AuthController::class, 'redirectToGoogle'])->name('google.redirect');
     Route::get('/auth/google/callback', [AuthController::class, 'handleGoogleCallback'])->name('google.callback');
-    Route::get('/aunth/google/redirect', [AuthController::class, 'redirectToGoogle']);
-    Route::get('/aunth/google/callback', [AuthController::class, 'handleGoogleCallback']);
     Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
     Route::post('/register', [AuthController::class, 'register'])->name('register.store');
 });
@@ -70,6 +69,9 @@ Route::middleware(['auth', 'no-cache'])->group(function (): void {
         Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
         Route::get('/reports/metrics', [ReportsController::class, 'metrics'])->name('reports.metrics');
         Route::get('/reports/export', [ReportsController::class, 'export'])->name('reports.export');
+        Route::get('/logs', [SystemLogController::class, 'index'])->name('logs');
+        Route::delete('/logs', [SystemLogController::class, 'destroyAll'])->name('logs.destroy-all');
+        Route::delete('/logs/{log}', [SystemLogController::class, 'destroy'])->name('logs.destroy');
         Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
         Route::post('/settings', [SettingsController::class, 'update'])->name('settings.update');
     });

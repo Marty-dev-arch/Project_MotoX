@@ -3,8 +3,14 @@
 @section('content')
     <section class="space-y-6" data-customers-metrics-url="{{ $customersMetricsUrl }}">
         @if (session('status'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-{{ session('status_tone', 'success') }}">
                 <p class="font-semibold">{{ session('status') }}</p>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="auth-alert auth-alert-danger">
+                <p class="font-semibold">{{ $errors->first() }}</p>
             </div>
         @endif
 
@@ -153,11 +159,16 @@
                                         @endif
                                         <div>
                                             <p class="font-semibold text-slate-900">{{ $customer->name }}</p>
-                                            <p class="text-xs text-slate-500">{{ $customer->email ?: 'No email' }}</p>
                                         </div>
                                     </div>
                                 </td>
-                                <td>{{ $customer->phone ?: 'No phone' }}</td>
+                                <td>
+                                    <div class="space-y-1 text-sm">
+                                        <p class="font-semibold text-slate-900">{{ $customer->phone ?: 'No phone' }}</p>
+                                        <p class="text-xs text-slate-500">{{ $customer->email ?: 'No email' }}</p>
+                                        <p class="text-xs text-slate-500">{{ $customer->address ?: 'No address' }}</p>
+                                    </div>
+                                </td>
                                 <td class="max-w-[280px]">
                                     @if (filled($customer->notes))
                                         <p class="line-clamp-2 text-sm text-slate-600" title="{{ $customer->notes }}">{{ $customer->notes }}</p>
@@ -187,13 +198,14 @@
                                         >
                                             <x-icon name="pencil" class="h-4 w-4" />
                                         </a>
-                                        <form method="POST" action="{{ route('customers.destroy', $customer) }}" onsubmit="return confirm('Delete this customer?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="icon-button" aria-label="Delete customer">
-                                                <x-icon name="trash" class="h-4 w-4" />
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="icon-button"
+                                            aria-label="Delete customer"
+                                            data-open-modal="delete-customer-{{ $customer->id }}-modal"
+                                        >
+                                            <x-icon name="trash" class="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -207,6 +219,31 @@
             </div>
         </section>
 
+    @foreach ($customers as $customer)
+        <div class="app-modal hidden" data-modal="delete-customer-{{ $customer->id }}-modal">
+            <div class="app-modal-card max-w-lg">
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <h3 class="text-2xl font-bold text-slate-900">Are you sure?</h3>
+                        <p class="mt-2 text-sm text-slate-500">You are about to delete this Customer.</p>
+                    </div>
+                    <button type="button" class="icon-button" data-close-modal="delete-customer-{{ $customer->id }}-modal" aria-label="Cancel delete customer">
+                        <x-icon name="x" class="h-4 w-4" />
+                    </button>
+                </div>
+
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" class="ghost-button" data-close-modal="delete-customer-{{ $customer->id }}-modal">Cancel</button>
+                    <form method="POST" action="{{ route('customers.destroy', $customer) }}">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="danger-button">Yes, Delete</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    @endforeach
+
     <div class="app-modal hidden" data-modal="create-customer-modal">
         <div class="app-modal-card">
             <div class="flex items-center justify-between gap-3">
@@ -216,8 +253,11 @@
                 </button>
             </div>
 
-            <form method="POST" action="{{ route('customers.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data">
+            <form method="POST" action="{{ route('customers.store') }}" class="mt-6 space-y-4" enctype="multipart/form-data" data-auth-phone-form>
                 @csrf
+                <input type="hidden" name="phone" value="{{ old('phone') }}" data-auth-phone-full>
+                <input type="hidden" name="phone_country" value="{{ old('phone_country', 'ph') }}" data-auth-phone-country>
+                <input type="hidden" name="phone_dial_code" value="{{ old('phone_dial_code', '+63') }}" data-auth-phone-dial-code>
 
                 <label class="part-upload-card customer-upload-card">
                     <span class="part-upload-preview customer-upload-preview">
@@ -240,18 +280,19 @@
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Email</span>
-                        <input type="email" name="email" class="input-shell">
+                        <input type="email" name="email" class="input-shell" required>
                     </label>
                 </div>
 
                 <div class="grid gap-4 md:grid-cols-2">
                     <label class="form-field">
                         <span class="muted-label">Phone</span>
-                        <input type="text" name="phone" class="input-shell">
+                        <input type="tel" class="input-shell" inputmode="numeric" autocomplete="tel-national" data-auth-phone-input>
+                        <span class="text-xs font-semibold text-rose-600 hidden" data-auth-phone-error></span>
                     </label>
                     <label class="form-field">
                         <span class="muted-label">Address</span>
-                        <input type="text" name="address" class="input-shell">
+                        <input type="text" name="address" class="input-shell" required>
                     </label>
                 </div>
 
@@ -278,9 +319,12 @@
                     </a>
                 </div>
 
-                <form method="POST" action="{{ route('customers.update', $editingCustomer) }}" class="mt-6 space-y-4" enctype="multipart/form-data">
+                <form method="POST" action="{{ route('customers.update', $editingCustomer) }}" class="mt-6 space-y-4" enctype="multipart/form-data" data-auth-phone-form>
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="phone" value="{{ old('phone', $editingCustomer->phone) }}" data-auth-phone-full>
+                    <input type="hidden" name="phone_country" value="{{ old('phone_country', 'ph') }}" data-auth-phone-country>
+                    <input type="hidden" name="phone_dial_code" value="{{ old('phone_dial_code', '+63') }}" data-auth-phone-dial-code>
 
                     <label class="part-upload-card customer-upload-card">
                         <span class="part-upload-preview customer-upload-preview">
@@ -314,18 +358,19 @@
                         </label>
                         <label class="form-field">
                             <span class="muted-label">Email</span>
-                            <input type="email" name="email" value="{{ old('email', $editingCustomer->email) }}" class="input-shell">
+                            <input type="email" name="email" value="{{ old('email', $editingCustomer->email) }}" class="input-shell" required>
                         </label>
                     </div>
 
                     <div class="grid gap-4 md:grid-cols-2">
                         <label class="form-field">
                             <span class="muted-label">Phone</span>
-                            <input type="text" name="phone" value="{{ old('phone', $editingCustomer->phone) }}" class="input-shell">
+                            <input type="tel" class="input-shell" inputmode="numeric" autocomplete="tel-national" data-auth-phone-input>
+                            <span class="text-xs font-semibold text-rose-600 hidden" data-auth-phone-error></span>
                         </label>
                         <label class="form-field">
                             <span class="muted-label">Address</span>
-                            <input type="text" name="address" value="{{ old('address', $editingCustomer->address) }}" class="input-shell">
+                            <input type="text" name="address" value="{{ old('address', $editingCustomer->address) }}" class="input-shell" required>
                         </label>
                     </div>
 

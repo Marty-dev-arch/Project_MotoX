@@ -30,14 +30,7 @@ class InventoryMetrics
         $inventoryValue = $parts->sum(
             function (Part $part): float {
                 $stock = max(0, (float) $part->current_stock);
-                $unitPrice = (float) $part->unit_price;
-
-                if ($part->usesBoxConversion()) {
-                    $conversion = max(0.001, (float) $part->pieces_per_box);
-                    $unitPrice = $unitPrice / $conversion;
-                }
-
-                return $stock * $unitPrice;
+                return InventoryUnits::priceForBaseQuantity($part, $stock);
             }
         );
 
@@ -65,7 +58,7 @@ class InventoryMetrics
             ->groupBy(fn (StockMovement $movement): string => $movement->moved_at->timezone('Asia/Manila')->toDateString())
             ->map(fn (Collection $dayRows): array => [
                 'in_total' => $dayRows
-                    ->where('type', StockMovement::TYPE_IN)
+                    ->whereIn('type', [StockMovement::TYPE_IN, StockMovement::TYPE_OPENING])
                     ->sum(fn (StockMovement $movement): float => abs((float) $movement->quantity)),
                 'out_total' => $dayRows
                     ->where('type', StockMovement::TYPE_OUT)
@@ -120,7 +113,7 @@ class InventoryMetrics
             ->groupBy(fn (StockMovement $movement): string => $movement->moved_at->timezone('Asia/Manila')->toDateString())
             ->map(fn (Collection $dayRows): array => [
                 'in_total' => $dayRows
-                    ->where('type', StockMovement::TYPE_IN)
+                    ->whereIn('type', [StockMovement::TYPE_IN, StockMovement::TYPE_OPENING])
                     ->sum(fn (StockMovement $movement): float => abs((float) $movement->quantity)),
                 'out_total' => $dayRows
                     ->where('type', StockMovement::TYPE_OUT)
@@ -174,7 +167,7 @@ class InventoryMetrics
             ->groupBy(fn (StockMovement $movement): string => $movement->moved_at->timezone('Asia/Manila')->format('Y-m'))
             ->map(fn (Collection $monthRows): array => [
                 'in_total' => $monthRows
-                    ->where('type', StockMovement::TYPE_IN)
+                    ->whereIn('type', [StockMovement::TYPE_IN, StockMovement::TYPE_OPENING])
                     ->sum(fn (StockMovement $movement): float => abs((float) $movement->quantity)),
                 'out_total' => $monthRows
                     ->where('type', StockMovement::TYPE_OUT)

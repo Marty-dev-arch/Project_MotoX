@@ -36,7 +36,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('password.update') }}" method="POST" class="mt-8 space-y-5">
+                <form action="{{ route('password.update') }}" method="POST" class="mt-8 space-y-5" data-auth-password-form>
                     @csrf
 
                     <label class="form-field gap-2.5">
@@ -51,7 +51,7 @@
                         <span class="auth-label">New Password</span>
                         <div class="auth-input-wrap">
                             <x-icon name="lock" class="h-5 w-5 text-slate-500" />
-                            <input id="reset-password" type="password" name="password" class="auth-input auth-input-password" placeholder="At least 8 characters" required>
+                            <input id="reset-password" type="password" name="password" class="auth-input auth-input-password" placeholder="8-16 characters" required minlength="8" maxlength="16" data-auth-password>
                             <button
                                 type="button"
                                 class="password-toggle"
@@ -63,13 +63,20 @@
                                 <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                             </button>
                         </div>
+                        <ul class="auth-validation-list" data-auth-password-rules>
+                            <li data-password-rule="length">8 to 16 characters</li>
+                            <li data-password-rule="lower">One lowercase letter</li>
+                            <li data-password-rule="upper">One uppercase letter</li>
+                            <li data-password-rule="number">One number</li>
+                            <li data-password-rule="special">One special character: ! @ # $ % &amp; *</li>
+                        </ul>
                     </label>
 
                     <label class="form-field gap-2.5">
                         <span class="auth-label">Confirm Password</span>
                         <div class="auth-input-wrap">
                             <x-icon name="lock" class="h-5 w-5 text-slate-500" />
-                            <input id="reset-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat new password" required>
+                            <input id="reset-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat new password" required minlength="8" maxlength="16" data-auth-password-confirmation>
                             <button
                                 type="button"
                                 class="password-toggle"
@@ -81,6 +88,7 @@
                                 <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                             </button>
                         </div>
+                        <p class="auth-inline-error hidden" data-auth-password-match>Password confirmation does not match.</p>
                     </label>
 
                     <button type="submit" class="auth-submit mt-1">

@@ -2,6 +2,11 @@
 
 namespace App\Providers;
 
+use App\Models\Customer;
+use App\Models\JobOrder;
+use App\Models\Part;
+use App\Models\StockMovement;
+use App\Observers\SystemActionObserver;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -15,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
     
     public function boot(): void
     {
-        
+        Part::observe(SystemActionObserver::class);
+        Customer::observe(SystemActionObserver::class);
+        JobOrder::observe(SystemActionObserver::class);
+        StockMovement::observe(SystemActionObserver::class);
     }
 }

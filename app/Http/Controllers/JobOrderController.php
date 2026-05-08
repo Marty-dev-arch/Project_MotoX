@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsPageData;
 use App\Models\Customer;
 use App\Models\JobOrder;
-use App\Support\SystemNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -112,29 +111,10 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'walk_in_profile_photo_path' => $walkInProfilePhotoPath,
         ]);
 
-        SystemNotifier::notifyShop(
-            $shop,
-            'job.created',
-            'New Job Order',
-            sprintf('%s was created for %s.', $order->order_number, $order->customer?->name ?? 'Walk-in Customer'),
-            'info',
-            ['job_order_id' => $order->id],
-        );
-
-        if ((float) $order->estimated_cost > 0) {
-            SystemNotifier::notifyShop(
-                $shop,
-                'billing.updated',
-                'Billing Updated',
-                sprintf('%s added %s to billing.', $order->order_number, 'PHP '.number_format((float) $order->estimated_cost, 2)),
-                'success',
-                ['job_order_id' => $order->id, 'amount' => (float) $order->estimated_cost],
-            );
-        }
-
         return redirect()
             ->route('job-orders', ['order' => $order->id])
-            ->with('status', 'Job order created.');
+            ->with('status', 'Job order created successfully.')
+            ->with('status_tone', 'success');
     }
 
     public function update(Request $request, JobOrder $jobOrder): RedirectResponse
@@ -145,8 +125,6 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
         $validated = $this->validatePayload($request, $shop->id);
         $isCompleting = $validated['status'] === JobOrder::STATUS_COMPLETED;
-        $originalStatus = $jobOrder->status;
-        $originalAmount = (float) $jobOrder->estimated_cost;
         $walkInProfilePhotoPath = $jobOrder->walk_in_profile_photo_path;
 
         if (! empty($validated['customer_id'])) {
@@ -175,31 +153,10 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'walk_in_profile_photo_path' => $walkInProfilePhotoPath,
         ]);
 
-        if ($originalStatus !== $jobOrder->status) {
-            SystemNotifier::notifyShop(
-                $shop,
-                'job.updated',
-                'Job Order Updated',
-                sprintf('%s status changed to %s.', $jobOrder->order_number, str_replace('_', ' ', $jobOrder->status)),
-                $jobOrder->status === JobOrder::STATUS_COMPLETED ? 'success' : 'info',
-                ['job_order_id' => $jobOrder->id, 'status' => $jobOrder->status],
-            );
-        }
-
-        if ($originalStatus !== $jobOrder->status || $originalAmount !== (float) $jobOrder->estimated_cost) {
-            SystemNotifier::notifyShop(
-                $shop,
-                'billing.updated',
-                'Billing Updated',
-                sprintf('%s billing is now %s.', $jobOrder->order_number, 'PHP '.number_format((float) $jobOrder->estimated_cost, 2)),
-                'success',
-                ['job_order_id' => $jobOrder->id, 'amount' => (float) $jobOrder->estimated_cost],
-            );
-        }
-
         return redirect()
             ->route('job-orders', ['order' => $jobOrder->id])
-            ->with('status', 'Job order updated.');
+            ->with('status', 'Job order updated successfully.')
+            ->with('status_tone', 'success');
     }
 
     public function destroy(Request $request, JobOrder $jobOrder): RedirectResponse
@@ -216,7 +173,8 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
         return redirect()
             ->route('job-orders')
-            ->with('status', 'Job order deleted.');
+            ->with('status', 'Job order deleted successfully.')
+            ->with('status_tone', 'danger');
     }
 
     

@@ -3,7 +3,7 @@
 @section('content')
     <section class="space-y-6">
         @if (session('status'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-{{ session('status_tone', 'success') }}">
                 <p class="font-semibold">{{ session('status') }}</p>
             </div>
         @endif
@@ -27,8 +27,8 @@
             @endphp
 
             <section id="settings" class="panel-card scroll-mt-28 p-6">
-                <h2 class="text-2xl font-bold text-slate-900">Shop Preferences</h2>
-                <p class="mt-1 text-sm text-slate-500">Real settings used by job orders and billing.</p>
+                <h2 class="text-2xl font-bold text-slate-900" data-i18n="Shop Preferences">Shop Preferences</h2>
+                <p class="mt-1 text-sm text-slate-500">Edit your shop settings based on what users need.</p>
 
                 <div class="mt-6 grid gap-6 lg:grid-cols-[180px_1fr] lg:items-start">
                     <div class="shop-avatar-panel">
@@ -112,7 +112,7 @@
                             </label>
                         </div>
 
-                        <div class="mt-4 grid gap-4 md:grid-cols-3">
+                        <div class="mt-4 grid gap-4 md:grid-cols-4">
                             <label class="form-field">
                                 <span class="muted-label">Default Labor Rate (PHP/hr)</span>
                                 <input
@@ -142,6 +142,14 @@
                                 <select name="auto_assign_job_orders" class="input-shell">
                                     <option value="1" @selected((string) old('auto_assign_job_orders', $preferences['auto_assign_job_orders'] ? '1' : '0') === '1')>Enabled</option>
                                     <option value="0" @selected((string) old('auto_assign_job_orders', $preferences['auto_assign_job_orders'] ? '1' : '0') === '0')>Disabled</option>
+                                </select>
+                            </label>
+
+                            <label class="form-field">
+                                <span class="muted-label" data-i18n="Language Preference">Language Preference</span>
+                                <select class="input-shell" data-language-preference>
+                                    <option value="en-US" data-i18n="US English">US English</option>
+                                    <option value="tl-PH" data-i18n="Philippines - Tagalog">Philippines - Tagalog</option>
                                 </select>
                             </label>
                         </div>
@@ -211,7 +219,7 @@
                 </article>
 
                 <article class="panel-card p-6">
-                    <h2 class="text-2xl font-bold text-slate-900">Appearance</h2>
+                    <h2 class="text-2xl font-bold text-slate-900" data-i18n="Appearance">Appearance</h2>
                     <p class="mt-1 text-sm text-slate-500">Switch between dark and light mode.</p>
 
                     <div class="mt-6 grid gap-4 md:grid-cols-2">
@@ -219,14 +227,14 @@
                             <span class="icon-chip appearance-card-icon appearance-card-icon-light">
                                 <x-icon name="sun" class="h-5 w-5 appearance-mode-glyph" />
                             </span>
-                            <span class="text-base font-semibold text-slate-800">Light Mode</span>
+                            <span class="text-base font-semibold text-slate-800" data-i18n="Light Mode">Light Mode</span>
                         </button>
 
                         <button type="button" data-mode="dark" class="appearance-card">
                             <span class="icon-chip appearance-card-icon appearance-card-icon-dark">
                                 <x-icon name="moon" class="h-5 w-5 appearance-mode-glyph" />
                             </span>
-                            <span class="text-base font-semibold text-slate-800">Dark Mode</span>
+                            <span class="text-base font-semibold text-slate-800" data-i18n="Dark Mode">Dark Mode</span>
                         </button>
                     </div>
                 </article>
@@ -234,7 +242,7 @@
 
             <div class="flex justify-end">
                 <button type="submit" class="primary-button">
-                    Save Settings
+                    <span data-i18n="Save Settings">Save Settings</span>
                 </button>
             </div>
         </form>

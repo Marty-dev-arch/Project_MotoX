@@ -70,7 +70,7 @@ class MotorcyclePartsCatalog
                 ],
                 [
                     'name' => $item['name'],
-                    'category' => $item['category'],
+                    'category' => self::normalizeCategory($item['category']),
                     'minimum_stock' => $item['minimum_stock'],
                     'unit_price' => $item['unit_price'],
                     'is_active' => true,
@@ -90,5 +90,15 @@ class MotorcyclePartsCatalog
             }
         }
     }
-}
 
+    private static function normalizeCategory(string $category): string
+    {
+        return match ($category) {
+            'Body', 'Chassis', 'Controls', 'Instrumentation', 'Steering', 'Wheels' => 'Body & Fairings',
+            'Electrical' => 'Electrical Parts',
+            'Engine', 'Exhaust', 'Fuel System', 'Tools' => 'Engine Parts',
+            'Brakes' => 'Brake System',
+            default => 'Lighting & Accessories',
+        };
+    }
+}

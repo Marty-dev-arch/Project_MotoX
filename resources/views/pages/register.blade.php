@@ -51,7 +51,7 @@
                     </div>
                 @endif
 
-                <form action="{{ route('register.store') }}" method="POST" class="mt-8 space-y-5">
+                <form action="{{ route('register.store') }}" method="POST" class="mt-8 space-y-5" data-auth-password-form data-auth-phone-form>
                     @csrf
 
                     <label class="form-field gap-2.5">
@@ -72,19 +72,32 @@
 
                     <div class="auth-grid">
                         <label class="form-field gap-2.5">
+                            <span class="auth-label">Username</span>
+                            <div class="auth-input-wrap">
+                                <x-icon name="id-card" class="h-5 w-5 text-slate-500" />
+                                <input type="text" name="username" class="auth-input" placeholder="motox_owner" value="{{ old('username') }}" autocomplete="username" required>
+                            </div>
+                        </label>
+
+                        <label class="form-field gap-2.5">
                             <span class="auth-label">Email Address</span>
                             <div class="auth-input-wrap">
                                 <x-icon name="user" class="h-5 w-5 text-slate-500" />
                                 <input type="email" name="email" class="auth-input" placeholder="you@example.com" value="{{ old('email') }}" required>
                             </div>
                         </label>
+                    </div>
 
+                    <div class="auth-grid">
                         <label class="form-field gap-2.5">
                             <span class="auth-label">Contact Number</span>
-                            <div class="auth-input-wrap">
-                                <x-icon name="phone" class="h-5 w-5 text-slate-500" />
-                                <input type="text" name="contact_number" class="auth-input" placeholder="+63 912 345 6789" value="{{ old('contact_number') }}">
+                            <div class="auth-input-wrap auth-phone-wrap">
+                                <input type="tel" class="auth-input auth-phone-input" placeholder="912 345 6789" value="{{ old('contact_number') }}" inputmode="numeric" autocomplete="tel" data-auth-phone-input>
+                                <input type="hidden" name="contact_number" value="{{ old('contact_number') }}" data-auth-phone-full>
+                                <input type="hidden" name="contact_country" value="{{ old('contact_country', 'ph') }}" data-auth-phone-country>
+                                <input type="hidden" name="contact_dial_code" value="{{ old('contact_dial_code', '+63') }}" data-auth-phone-dial-code>
                             </div>
+                            <p class="auth-inline-error hidden" data-auth-phone-error></p>
                         </label>
                     </div>
 
@@ -93,7 +106,7 @@
                             <span class="auth-label">Password</span>
                             <div class="auth-input-wrap">
                                 <x-icon name="lock" class="h-5 w-5 text-slate-500" />
-                                <input id="register-password" type="password" name="password" class="auth-input auth-input-password" placeholder="Input 8 character" required>
+                                <input id="register-password" type="password" name="password" class="auth-input auth-input-password" placeholder="8-16 characters" required minlength="8" maxlength="16" data-auth-password>
                                 <button
                                     type="button"
                                     class="password-toggle"
@@ -105,13 +118,20 @@
                                     <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                                 </button>
                             </div>
+                            <ul class="auth-validation-list" data-auth-password-rules>
+                                <li data-password-rule="length">8 to 16 characters</li>
+                                <li data-password-rule="lower">One lowercase letter</li>
+                                <li data-password-rule="upper">One uppercase letter</li>
+                                <li data-password-rule="number">One number</li>
+                                <li data-password-rule="special">One special character: ! @ # $ % &amp; *</li>
+                            </ul>
                         </label>
 
                         <label class="form-field gap-2.5">
                             <span class="auth-label">Confirm Password</span>
                             <div class="auth-input-wrap">
                                 <x-icon name="lock" class="h-5 w-5 text-slate-500" />
-                                <input id="register-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat password" required>
+                                <input id="register-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat password" required minlength="8" maxlength="16" data-auth-password-confirmation>
                                 <button
                                     type="button"
                                     class="password-toggle"
@@ -123,6 +143,7 @@
                                     <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
                                 </button>
                             </div>
+                            <p class="auth-inline-error hidden" data-auth-password-match>Password confirmation does not match.</p>
                         </label>
                     </div>
 

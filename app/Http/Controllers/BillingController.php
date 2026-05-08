@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
@@ -124,6 +125,7 @@ return view('pages.billing', $this->buildPageData('billing', [
                 'customer' => $order->customer?->name ?? 'Walk-in Customer',
                 'customer_phone' => $order->customer?->phone ?? '',
                 'customer_email' => $order->customer?->email ?? '',
+                'customer_photo_url' => $this->customerPhotoUrl($order),
                 'vehicle' => $order->vehicle,
                 'status' => $status,
                 'tone' => $tone,
@@ -161,6 +163,7 @@ return view('pages.billing', $this->buildPageData('billing', [
             'customer' => $invoice['customer'],
             'customer_phone' => $invoice['customer_phone'] ?? '',
             'customer_email' => $invoice['customer_email'] ?? '',
+            'customer_photo_url' => $invoice['customer_photo_url'] ?? '',
             'vehicle' => $invoice['vehicle'],
             'status' => $invoice['status'],
             'tone' => $invoice['tone'],
@@ -171,5 +174,12 @@ return view('pages.billing', $this->buildPageData('billing', [
             'receipt_updated_display' => $invoice['updated_at']?->timezone('Asia/Manila')->format('F j, Y, l h:i A').' PHT',
             'shop_name' => $invoice['shop_name'] ?? 'MotoX',
         ];
+    }
+
+    private function customerPhotoUrl(JobOrder $order): string
+    {
+        $path = $order->customer?->profile_photo_path ?: $order->walk_in_profile_photo_path;
+
+        return $path ? Storage::url($path) : '';
     }
 }

@@ -228,8 +228,8 @@ class AuthController extends Controller
 
         $validated = $request->validate([
             'email' => ['required', 'email'],
-            'password' => ['required', 'string', 'confirmed', 'min:8', 'max:255'],
-        ]);
+            'password' => $this->passwordValidationRules(['required', 'confirmed']),
+        ], $this->passwordValidationMessages());
 
         $email = strtolower(trim((string) $validated['email']));
         if ($email !== strtolower(trim((string) $verified['email']))) {
@@ -397,16 +397,30 @@ class AuthController extends Controller
         $validated = $request->validate([
             'shop_name' => ['required', 'string', 'max:120'],
             'owner_name' => ['required', 'string', 'max:120'],
+            'username' => [
+                'required',
+                'string',
+                'max:60',
+                'regex:/^[A-Za-z0-9_.-]+$/',
+                Rule::unique(User::class, 'username'),
+            ],
             'email' => ['required', 'email', 'max:255', Rule::unique(User::class, 'email')],
-            'contact_number' => ['nullable', 'string', 'max:40'],
-            'password' => ['required', 'string', 'confirmed', 'min:8', 'max:255'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,14}$/'],
+            'contact_country' => ['nullable', 'required_with:contact_number', 'string', 'size:2', 'regex:/^[a-z]{2}$/i'],
+            'contact_dial_code' => ['nullable', 'required_with:contact_number', 'string', 'max:6', 'regex:/^\+[1-9]\d{0,4}$/'],
+            'password' => $this->passwordValidationRules(['required', 'confirmed']),
             'terms' => ['accepted'],
+        ], [
+            ...$this->passwordValidationMessages(),
+            'contact_number.regex' => 'Enter a valid international contact number for the selected country.',
+            'contact_country.required_with' => 'Select the country code for the contact number.',
+            'contact_dial_code.required_with' => 'Select the dial code for the contact number.',
         ]);
 
         DB::transaction(function () use ($validated): void {
             $user = User::query()->create([
                 'name' => $validated['owner_name'],
-                'username' => $this->uniqueUsernameFor($validated['email'], $validated['owner_name']),
+                'username' => strtolower(trim($validated['username'])),
                 'email' => $validated['email'],
                 'password' => $validated['password'],
                 'role' => 'admin',
@@ -434,7 +448,7 @@ class AuthController extends Controller
         $request->session()->invalidate();
         $request->session()->regenerateToken();
 
-        return redirect()->route('login');
+        return redirect()->route('landing');
     }
 
     private function isGoogleOauthConfigured(): bool
@@ -553,6 +567,37 @@ class AuthController extends Controller
         }
 
         return 'dashboard';
+    }
+
+    /**
+     * @param  array<int, string>  $prefixRules
+     * @return array<int, string>
+     */
+    private function passwordValidationRules(array $prefixRules = []): array
+    {
+        return [
+            ...$prefixRules,
+            'string',
+            'min:8',
+            'max:16',
+            'regex:/[a-z]/',
+            'regex:/[A-Z]/',
+            'regex:/[0-9]/',
+            'regex:/[!@#$%&*]/',
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function passwordValidationMessages(): array
+    {
+        return [
+            'password.min' => 'Password must be at least 8 characters.',
+            'password.max' => 'Password must not be more than 16 characters.',
+            'password.regex' => 'Password must include lowercase, uppercase, number, and one special character from ! @ # $ % & *.',
+            'password.confirmed' => 'Password confirmation does not match.',
+        ];
     }
 
     private function uniqueUsernameFor(string $email, string $fallbackName): string

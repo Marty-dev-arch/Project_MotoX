@@ -21,7 +21,7 @@
                 <div class="relative">
                     <button type="button" class="page-filter-button" data-date-filter-trigger="billing">
                         <x-icon name="calendar" class="h-4 w-4" />
-                        <span>Filter by Date</span>
+                        <span data-i18n="Filter by Date">Filter by Date</span>
                         <x-icon name="chevron-down" class="h-4 w-4" />
                     </button>
                     <div class="page-filter-menu hidden" data-date-filter-menu="billing">
@@ -32,6 +32,11 @@
                         <button type="button" data-date-filter="yearly">Yearly</button>
                     </div>
                 </div>
+
+                <button type="button" class="page-export-button" data-download-visible-receipt>
+                    <x-icon name="printer" class="h-4 w-4" />
+                    <span data-i18n="Print Receipt">Print Receipt</span>
+                </button>
 
             </div>
         </div>
@@ -74,7 +79,6 @@
                             <th>Status</th>
                             <th>Amount</th>
                             <th>Updated</th>
-                            <th data-print-skip>Receipt</th>
                         </tr>
                     </thead>
                     <tbody data-billing-rows>
@@ -83,39 +87,40 @@
                                 data-billing-row
                                 data-item-date="{{ $invoice['updated_at']->toIso8601String() }}"
                                 data-search="{{ strtolower($invoice['invoice_number'].' '.$invoice['order_number'].' '.$invoice['customer'].' '.$invoice['vehicle'].' '.$invoice['status']) }}"
+                                data-receipt-invoice="{{ $invoice['invoice_number'] }}"
+                                data-receipt-order="{{ $invoice['order_number'] }}"
+                                data-receipt-customer="{{ $invoice['customer'] }}"
+                                data-receipt-phone="{{ $invoice['customer_phone'] ?? '' }}"
+                                data-receipt-email="{{ $invoice['customer_email'] ?? '' }}"
+                                data-receipt-photo="{{ $invoice['customer_photo_url'] ?? '' }}"
+                                data-receipt-vehicle="{{ $invoice['vehicle'] }}"
+                                data-receipt-status="{{ $invoice['status'] }}"
+                                data-receipt-amount="PHP {{ number_format($invoice['amount'], 2) }}"
+                                data-receipt-updated="{{ $invoice['updated_at']->timezone('Asia/Manila')->format('F j, Y, l h:i A') }} PHT"
+                                data-receipt-shop="{{ $invoice['shop_name'] ?? 'MotoX' }}"
                             >
                                 <td class="font-semibold text-slate-900">{{ $invoice['invoice_number'] }}</td>
                                 <td>{{ $invoice['order_number'] }}</td>
-                                <td>{{ $invoice['customer'] }}</td>
+                                <td>
+                                    <div class="flex items-center gap-3">
+                                        @if (! empty($invoice['customer_photo_url']))
+                                            <img src="{{ $invoice['customer_photo_url'] }}" alt="{{ $invoice['customer'] }} profile" class="h-10 w-10 rounded-full object-cover">
+                                        @else
+                                            <span class="inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-900 text-xs font-black text-white">
+                                                {{ strtoupper(collect(explode(' ', $invoice['customer']))->filter()->map(fn (string $part): string => mb_substr($part, 0, 1))->take(2)->implode('') ?: 'CU') }}
+                                            </span>
+                                        @endif
+                                        <span>{{ $invoice['customer'] }}</span>
+                                    </div>
+                                </td>
                                 <td>{{ $invoice['vehicle'] }}</td>
                                 <td><x-badge :tone="$invoice['tone']">{{ $invoice['status'] }}</x-badge></td>
                                 <td class="font-semibold text-slate-900">PHP {{ number_format($invoice['amount'], 2) }}</td>
                                 <td>{{ $invoice['updated_at']->timezone('Asia/Manila')->format('M d, Y h:i A') }} PHT</td>
-                                <td data-print-skip>
-                                    <button
-                                        type="button"
-                                        class="icon-button h-9 w-9"
-                                        title="Print receipt"
-                                        aria-label="Print receipt for {{ $invoice['invoice_number'] }}"
-                                        data-print-receipt
-                                        data-receipt-invoice="{{ $invoice['invoice_number'] }}"
-                                        data-receipt-order="{{ $invoice['order_number'] }}"
-                                        data-receipt-customer="{{ $invoice['customer'] }}"
-                                        data-receipt-phone="{{ $invoice['customer_phone'] ?? '' }}"
-                                        data-receipt-email="{{ $invoice['customer_email'] ?? '' }}"
-                                        data-receipt-vehicle="{{ $invoice['vehicle'] }}"
-                                        data-receipt-status="{{ $invoice['status'] }}"
-                                        data-receipt-amount="PHP {{ number_format($invoice['amount'], 2) }}"
-                                        data-receipt-updated="{{ $invoice['updated_at']->timezone('Asia/Manila')->format('F j, Y, l h:i A') }} PHT"
-                                        data-receipt-shop="{{ $invoice['shop_name'] ?? 'MotoX' }}"
-                                    >
-                                        <x-icon name="printer" class="h-4 w-4" />
-                                    </button>
-                                </td>
                             </tr>
                         @empty
                             <tr data-empty-row>
-                                <td colspan="8" class="py-10 text-center text-sm text-slate-500">No billable job orders yet.</td>
+                                <td colspan="7" class="py-10 text-center text-sm text-slate-500">No billable job orders yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

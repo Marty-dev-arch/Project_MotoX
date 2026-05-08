@@ -21,7 +21,7 @@
 
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="app-shell transition-colors duration-200" data-system-action-status="{{ session('status') ? '1' : '0' }}">
+    <body class="app-shell transition-colors duration-200" data-system-action-status="{{ session('status') ? '1' : '0' }}" data-current-page="{{ $currentPage ?? '' }}">
         @php
             $topbarUser = auth()->user();
             $topbarAvatarUrl = $topbarUser?->avatar_path
@@ -47,20 +47,20 @@
                                         data-header-menu-trigger="notifications"
                                         aria-expanded="false"
                                     >
-                                        <span class="absolute right-2 top-2 h-2 w-2 rounded-full bg-brand-500" data-notification-dot></span>
+                                        <span class="notification-dot-static hidden" data-notification-dot></span>
                                         <span class="notification-count-badge hidden" data-notification-count-badge>0</span>
                                         <x-icon name="bell" class="h-5 w-5" />
                                     </button>
                                     <div class="header-menu-panel notification-menu-panel hidden" data-header-menu-panel="notifications" data-notifications-url="{{ route('notifications.index') }}" data-notifications-read-url="{{ route('notifications.read-all') }}" data-notifications-delete-template="{{ url('/notifications/__ID__') }}">
                                         <div class="flex items-center justify-between gap-3">
-                                            <p class="header-menu-title">Notifications</p>
+                                        <p class="header-menu-title" data-i18n="Notifications">Notifications</p>
                                             <span class="notification-count-pill" data-notification-count-label>0 unread</span>
                                         </div>
                                         <div class="notification-list-scroll mt-3 space-y-2" data-notification-list aria-live="polite">
-                                            <p class="text-xs text-slate-500">Loading notifications...</p>
+                                            <p class="text-xs text-slate-500" data-i18n="Loading notifications...">Loading notifications...</p>
                                         </div>
-                                        <button type="button" class="header-menu-link w-full text-left" data-mark-notifications-read>Mark all as read</button>
-                                        <a href="{{ route('settings') }}#notifications" class="header-menu-link">Notification settings</a>
+                                        <button type="button" class="header-menu-link w-full text-left" data-mark-notifications-read data-i18n="Mark all as read">Mark all as read</button>
+                                        <a href="{{ route('settings') }}#notifications" class="header-menu-link" data-i18n="Notification settings">Notification settings</a>
                                     </div>
                                 </div>
 
@@ -76,9 +76,9 @@
                                         <x-icon name="settings" class="h-5 w-5" />
                                     </button>
                                     <div class="header-menu-panel hidden" data-header-menu-panel="settings">
-                                        <p class="header-menu-title">Quick Settings</p>
-                                        <a href="{{ route('settings') }}#settings" class="header-menu-link">Open settings page</a>
-                                        <a href="{{ route('settings') }}#profile" class="header-menu-link">Edit shop profile</a>
+                                        <p class="header-menu-title" data-i18n="Quick Settings">Quick Settings</p>
+                                        <a href="{{ route('settings') }}#settings" class="header-menu-link" data-i18n="Open settings page">Open settings page</a>
+                                        <a href="{{ route('settings') }}#profile" class="header-menu-link" data-i18n="Edit shop profile">Edit shop profile</a>
                                     </div>
                                 </div>
 
@@ -98,9 +98,9 @@
                                         @endif
                                     </button>
                                     <div class="header-menu-panel hidden" data-header-menu-panel="profile">
-                                        <p class="header-menu-title">Profile</p>
-                                        <a href="{{ route('settings') }}#profile" class="header-menu-link">View profile</a>
-                                        <a href="{{ route('settings') }}#settings" class="header-menu-link">Account preferences</a>
+                                        <p class="header-menu-title" data-i18n="Profile">Profile</p>
+                                        <a href="{{ route('settings') }}#profile" class="header-menu-link" data-i18n="View profile">View profile</a>
+                                        <a href="{{ route('settings') }}#settings" class="header-menu-link" data-i18n="Account preferences">Account preferences</a>
                                     </div>
                                 </div>
 
@@ -114,13 +114,14 @@
                         </div>
 
                         @if ($showHeaderSearch ?? true)
-                            <div class="pb-50 pl-28 pr-10 lg:hidden">
+                            <div class="pb-5 pl-28 pr-10 lg:hidden">
                                 <label class="search-shell flex items-center gap-4">
                                     <x-icon name="search" class="h-5 w-5 text-slate-400" />
                                     <input
                                         type="text"
                                         value=""
                                         placeholder="{{ $searchPlaceholder ?? 'Search anything...' }}"
+                                        data-i18n-placeholder="{{ $searchPlaceholder ?? 'Search anything...' }}"
                                         class="w-full border-0 bg-transparent p-0 text-sm text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-0"
                                     >
                                 </label>
@@ -153,9 +154,38 @@
                 <span class="logout-loading-mark">
                     <x-icon name="car" class="h-6 w-6" />
                 </span>
-                <span class="logout-loading-title">Logging out</span>
-                <span class="logout-loading-text">logging out...</span>
+                <span class="logout-loading-title" data-i18n="Logging out">Logging out</span>
+                <span class="logout-loading-text" data-i18n="logging out...">logging out...</span>
                 <span class="logout-loading-bar"><span></span></span>
+            </div>
+        </div>
+
+        <div class="app-modal hidden" data-confirm-modal>
+            <div class="app-modal-card max-w-md">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-2xl font-bold text-slate-900" data-confirm-title>Are you sure?</h3>
+                        <p class="mt-2 text-sm text-slate-500" data-confirm-body>You are about to delete this item.</p>
+                    </div>
+                    <button type="button" class="icon-button" data-confirm-cancel aria-label="Cancel">
+                        <x-icon name="x" class="h-4 w-4" />
+                    </button>
+                </div>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" class="ghost-button" data-confirm-cancel data-i18n="Cancel">Cancel</button>
+                    <button type="button" class="danger-button" data-confirm-action>Yes, Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="app-modal hidden" data-logout-confirm-modal>
+            <div class="app-modal-card max-w-md logout-confirm-card">
+                <h3 class="text-2xl font-bold text-slate-900" data-i18n="Are you sure you want to log out?">Are you sure you want to log out?</h3>
+                <p class="mt-2 text-sm text-slate-500" data-i18n="You will be logged out of MotoX.">You will be logged out of MotoX.</p>
+                <div class="mt-6 flex justify-end gap-3">
+                    <button type="button" class="ghost-button" data-cancel-logout data-i18n="Cancel">Cancel</button>
+                    <button type="button" class="primary-button" data-confirm-logout data-i18n="Log Out">Log Out</button>
+                </div>
             </div>
         </div>
 

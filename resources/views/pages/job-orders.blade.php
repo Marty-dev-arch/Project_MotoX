@@ -3,8 +3,14 @@
 @section('content')
     <section class="space-y-6" data-joborders-metrics-url="{{ $jobOrdersMetricsUrl }}">
         @if (session('status'))
-            <div class="auth-alert">
+            <div class="auth-alert auth-alert-{{ session('status_tone', 'success') }}">
                 <p class="font-semibold">{{ session('status') }}</p>
+            </div>
+        @endif
+
+        @if ($errors->any())
+            <div class="auth-alert auth-alert-danger">
+                <p class="font-semibold">{{ $errors->first() }}</p>
             </div>
         @endif
 
@@ -167,13 +173,14 @@
                                         <a href="{{ route('job-orders', ['edit' => $order->id, 'order' => $order->id]) }}" class="icon-button" aria-label="Edit job order">
                                             <x-icon name="pencil" class="h-4 w-4" />
                                         </a>
-                                        <form method="POST" action="{{ route('job-orders.destroy', $order) }}" onsubmit="return confirm('Delete this job order?');">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="icon-button" aria-label="Delete job order">
-                                                <x-icon name="trash" class="h-4 w-4" />
-                                            </button>
-                                        </form>
+                                        <button
+                                            type="button"
+                                            class="icon-button"
+                                            aria-label="Delete job order"
+                                            data-open-modal="delete-job-order-{{ $order->id }}-modal"
+                                        >
+                                            <x-icon name="trash" class="h-4 w-4" />
+                                        </button>
                                     </div>
                                 </td>
                             </tr>
@@ -186,6 +193,31 @@
                 </table>
             </div>
 </section>
+
+@foreach ($orders as $order)
+    <div class="app-modal hidden" data-modal="delete-job-order-{{ $order->id }}-modal">
+        <div class="app-modal-card max-w-lg">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <h3 class="text-2xl font-bold text-slate-900">Are you sure?</h3>
+                    <p class="mt-2 text-sm text-slate-500">You are about to delete this Job Order.</p>
+                </div>
+                <button type="button" class="icon-button" data-close-modal="delete-job-order-{{ $order->id }}-modal" aria-label="Cancel delete job order">
+                    <x-icon name="x" class="h-4 w-4" />
+                </button>
+            </div>
+
+            <div class="mt-6 flex justify-end gap-3">
+                <button type="button" class="ghost-button" data-close-modal="delete-job-order-{{ $order->id }}-modal">Cancel</button>
+                <form method="POST" action="{{ route('job-orders.destroy', $order) }}">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="danger-button">Yes, Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+@endforeach
 
 <div class="app-modal {{ $isCreating ? '' : 'hidden' }}" data-modal="create-joborder-modal">
         <div class="app-modal-card">

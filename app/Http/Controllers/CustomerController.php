@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsPageData;
 use App\Models\Customer;
 use App\Models\JobOrder;
-use App\Support\SystemNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -117,18 +116,10 @@ class CustomerController extends Controller
             'profile_photo_path' => $profilePhotoPath,
         ]);
 
-        SystemNotifier::notifyShop(
-            $shop,
-            'customer.created',
-            'Customer Added',
-            sprintf('%s was added to the customer directory.', $customer->name),
-            'success',
-            ['customer_id' => $customer->id],
-        );
-
         return redirect()
             ->route('customers', ['customer' => $customer->id])
-            ->with('status', 'Customer added successfully.');
+            ->with('status', 'Customer added successfully.')
+            ->with('status_tone', 'success');
     }
 
     public function update(Request $request, Customer $customer): RedirectResponse
@@ -157,18 +148,10 @@ class CustomerController extends Controller
             'profile_photo_path' => $profilePhotoPath,
         ]);
 
-        SystemNotifier::notifyShop(
-            $shop,
-            'customer.updated',
-            'Customer Updated',
-            sprintf('%s profile was updated.', $customer->name),
-            'success',
-            ['customer_id' => $customer->id],
-        );
-
         return redirect()
             ->route('customers', ['customer' => $customer->id])
-            ->with('status', 'Customer updated.');
+            ->with('status', 'Customer updated successfully.')
+            ->with('status_tone', 'success');
     }
 
     public function destroy(Request $request, Customer $customer): RedirectResponse
@@ -184,17 +167,10 @@ class CustomerController extends Controller
 
         $customer->delete();
 
-        SystemNotifier::notifyShop(
-            $shop,
-            'customer.deleted',
-            'Customer Deleted',
-            sprintf('%s was removed from the customer directory.', $customerName),
-            'warning',
-        );
-
         return redirect()
             ->route('customers')
-            ->with('status', 'Customer deleted.');
+            ->with('status', 'Customer deleted successfully.')
+            ->with('status_tone', 'danger');
     }
 
     private function validatePayload(Request $request, int $shopId, ?int $ignoreCustomerId = null): array
@@ -202,15 +178,17 @@ class CustomerController extends Controller
         return $request->validate([
             'name' => ['required', 'string', 'max:140'],
             'email' => [
-                'nullable',
+                'required',
                 'email',
                 'max:255',
                 Rule::unique('customers', 'email')
                     ->where(fn ($query) => $query->where('shop_id', $shopId))
                     ->ignore($ignoreCustomerId),
             ],
-            'phone' => ['nullable', 'string', 'max:40'],
-            'address' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:40', 'regex:/^\+[1-9]\d{6,14}$/'],
+            'phone_country' => ['nullable', 'string', 'size:2'],
+            'phone_dial_code' => ['nullable', 'string', 'max:8', 'regex:/^\+\d{1,4}$/'],
+            'address' => ['required', 'string', 'max:255'],
             'notes' => ['nullable', 'string', 'max:2000'],
             'profile_photo' => ['nullable', 'image', 'max:2048'],
         ]);

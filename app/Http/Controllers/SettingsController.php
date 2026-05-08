@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Http\Controllers\Concerns\BuildsPageData;
-use App\Support\SystemNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -106,17 +105,9 @@ class SettingsController extends Controller
             'notify_billing_updates' => (bool) ($validated['notify_billing_updates'] ?? false),
         ]);
 
-        SystemNotifier::notifyUser(
-            $user,
-            $shop,
-            'settings.updated',
-            'Settings Updated',
-            'Your shop profile and preferences were saved.',
-            'success',
-        );
-
         return redirect()
             ->route('settings')
-            ->with('status', 'Settings updated.');
+            ->with('status', 'Settings updated.')
+            ->with('status_tone', 'success');
     }
 }

@@ -185,6 +185,7 @@ return array_merge([
             ['label' => 'Inventory', 'route' => 'inventory', 'icon' => 'inventory'],
             ['label' => 'Billing', 'route' => 'billing', 'icon' => 'billing'],
             ['label' => 'Reports', 'route' => 'reports', 'icon' => 'reports'],
+            ['label' => 'Logs', 'route' => 'logs', 'icon' => 'file'],
             ['label' => 'Settings', 'route' => 'settings', 'icon' => 'settings'],
         ];
     }
