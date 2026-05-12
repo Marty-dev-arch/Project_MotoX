@@ -30,7 +30,7 @@ class WorkshopDemo
     public static function supportLinks(): array
     {
         return [
-            ['label' => 'Support', 'icon' => 'support', 'href' => '#'],
+            ['label' => 'Support', 'icon' => 'support', 'href' => route('support')],
         ];
     }
 

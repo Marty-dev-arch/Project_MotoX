@@ -6,6 +6,7 @@ use App\Models\Part;
 use App\Models\Shop;
 use App\Models\SystemNotification;
 use App\Models\User;
+use App\Models\JobOrder;
 
 class SystemNotifier
 {
@@ -52,6 +53,55 @@ class SystemNotifier
                 true,
             );
         }
+    }
+
+    public static function notifyBillingUpdated(Shop $shop, JobOrder $order, string $action = 'updated'): void
+    {
+        if (! $shop->notify_billing_updates || (float) $order->estimated_cost <= 0) {
+            return;
+        }
+
+        $customer = $order->customer?->name ?? 'Walk-in Customer';
+        $amount = 'PHP '.number_format((float) $order->estimated_cost, 2);
+        $isCreated = $action === 'created';
+
+        self::notifyShop(
+            $shop,
+            $isCreated ? 'billing.created' : 'billing.updated',
+            $isCreated ? 'New Billing Record' : 'Billing Updated',
+            sprintf('%s now has %s for %s.', $order->order_number, $amount, $customer),
+            'success',
+            [
+                'order_id' => $order->id,
+                'customer_id' => $order->customer_id,
+                'amount' => (float) $order->estimated_cost,
+            ],
+        );
+    }
+
+    public static function notifyTopBillingCustomer(Shop $shop, ?array $topCustomer): void
+    {
+        if (! $shop->notify_billing_updates || empty($topCustomer['customer_id'])) {
+            return;
+        }
+
+        self::notifyShop(
+            $shop,
+            'report.top_customer',
+            'Top Billing Customer',
+            sprintf(
+                '%s is now the top billing customer with PHP %s.',
+                $topCustomer['name'] ?? 'Customer',
+                number_format((float) ($topCustomer['total_billed'] ?? 0), 2),
+            ),
+            'info',
+            [
+                'customer_id' => (int) $topCustomer['customer_id'],
+                'total_billed' => (float) ($topCustomer['total_billed'] ?? 0),
+                'jobs' => (int) ($topCustomer['jobs'] ?? 0),
+            ],
+            true,
+        );
     }
 
     public static function notifyShop(

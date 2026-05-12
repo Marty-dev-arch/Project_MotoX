@@ -180,6 +180,12 @@
             <path d="M20 21H4" />
             @break
 
+        @case('download')
+            <path d="M12 3v12" />
+            <path d="m7 10 5 5 5-5" />
+            <path d="M5 21h14" />
+            @break
+
         @case('moon')
             <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
             @break

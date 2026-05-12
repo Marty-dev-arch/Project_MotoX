@@ -22,8 +22,8 @@ class DashboardController extends Controller
             ->get();
 
         $summary = InventoryMetrics::summarizeParts($parts);
-        $selectedTrendMonths = $this->normalizeTrendMonths((int) $request->integer('months', 3));
-        $trend = InventoryMetrics::movementTrendForMonths($shop, $selectedTrendMonths);
+        $selectedTrendRange = $this->normalizeTrendRange((string) $request->query('range', $request->query('months', $this->defaultTrendRange())));
+        $trend = InventoryMetrics::movementTrendForDashboardRange($shop, $selectedTrendRange);
         $lowStockByCategory = InventoryMetrics::lowStockByCategory($parts);
         $revenueStats = $this->revenueStats($shop->id);
 
@@ -68,8 +68,9 @@ return view('pages.dashboard', $this->baseData([
                 ],
             ],
             'trend' => $trend,
-            'dashboardTrendRanges' => $this->dashboardTrendRanges($selectedTrendMonths),
-            'dashboardTrendMonths' => $selectedTrendMonths,
+            'dashboardTrendRanges' => $this->dashboardTrendRanges($selectedTrendRange),
+            'dashboardTrendRange' => $selectedTrendRange,
+            'dashboardTrendMonths' => is_numeric($selectedTrendRange) ? (int) $selectedTrendRange : 3,
             'lowStockByCategory' => $lowStockByCategory,
             'revenueStats' => $revenueStats,
             'lowStockParts' => $parts
@@ -87,7 +88,7 @@ return view('pages.dashboard', $this->baseData([
         $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
 
-        $months = $this->normalizeTrendMonths((int) $request->integer('months', 3));
+        $range = $this->normalizeTrendRange((string) $request->query('range', $request->query('months', $this->defaultTrendRange())));
 
         $parts = InventoryMetrics::partsWithStockQuery($shop)->get();
         $summary = InventoryMetrics::summarizeParts($parts);
@@ -99,28 +100,42 @@ return view('pages.dashboard', $this->baseData([
                 'out_of_stock' => number_format($summary['outOfStock']),
                 'inventory_value' => InventoryMetrics::formatCurrency($summary['inventoryValue']),
             ],
-            'trend' => InventoryMetrics::movementTrendForMonths($shop, $months),
+            'trend' => InventoryMetrics::movementTrendForDashboardRange($shop, $range),
             'low_stock_by_category' => InventoryMetrics::lowStockByCategory($parts),
             'revenue_stats' => $this->revenueStats($shop->id),
-            'trend_range_months' => $months,
+            'trend_range' => $range,
+            'trend_range_months' => is_numeric($range) ? (int) $range : null,
             'updated_at' => now('Asia/Manila')->toIso8601String(),
         ]);
     }
 
-    private function dashboardTrendRanges(int $selectedMonths): array
+    private function dashboardTrendRanges(string $selectedRange): array
     {
-        return collect([3, 6, 12])
-            ->map(fn (int $months): array => [
-                'months' => $months,
-                'label' => $months.'M',
-                'active' => $months === $selectedMonths,
+        return collect([
+            ['value' => 'jan-jun', 'label' => 'Jan-Jun'],
+            ['value' => 'jul-dec', 'label' => 'Jul-Dec'],
+        ])
+            ->map(fn (array $range): array => [
+                'value' => $range['value'],
+                'months' => is_numeric($range['value']) ? (int) $range['value'] : null,
+                'label' => $range['label'],
+                'active' => $range['value'] === $selectedRange,
             ])
             ->all();
     }
 
-    private function normalizeTrendMonths(int $months): int
+    private function normalizeTrendRange(string $range): string
     {
-        return in_array($months, [3, 6, 12], true) ? $months : 3;
+        $normalized = strtolower(trim($range));
+
+        return in_array($normalized, ['jan-jun', 'jul-dec'], true)
+            ? $normalized
+            : $this->defaultTrendRange();
+    }
+
+    private function defaultTrendRange(): string
+    {
+        return (int) now('Asia/Manila')->format('n') > 6 ? 'jul-dec' : 'jan-jun';
     }
 
     private function revenueStats(int $shopId): array
@@ -193,7 +208,7 @@ return array_merge([
     private function supportItems(): array
     {
         return [
-            ['label' => 'Support', 'icon' => 'support', 'href' => '#'],
+            ['label' => 'Support', 'icon' => 'support', 'href' => route('support')],
         ];
     }
 }

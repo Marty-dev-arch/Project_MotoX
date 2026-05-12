@@ -46,14 +46,36 @@
                 </a>
             @endforeach
         </nav>
+
+        <div class="sidebar-utility">
+            <a
+                href="{{ route('support') }}"
+                title="Help Me"
+                @class([
+                    'sidebar-help-link',
+                    'sidebar-link-active' => request()->routeIs('support'),
+                ])
+            >
+                <x-icon name="support" class="h-5 w-5" />
+                <span class="sidebar-text" data-i18n="Help Me">Help Me</span>
+            </a>
+
+            <button
+                type="button"
+                class="sidebar-theme-toggle"
+                aria-label="Switch theme"
+                title="Switch theme"
+                data-theme-toggle
+                aria-pressed="false"
+            >
+                <span class="theme-toggle-track">
+                    <span class="theme-toggle-thumb">
+                        <x-icon name="sun" class="theme-toggle-icon theme-toggle-icon-light h-3.5 w-3.5" />
+                        <x-icon name="moon" class="theme-toggle-icon theme-toggle-icon-dark h-3.5 w-3.5" />
+                    </span>
+                </span>
+            </button>
+        </div>
     </div>
 
-    <div class="sidebar-support mt-auto space-y-2">
-        @foreach ($supportLinks as $link)
-            <a href="{{ $link['href'] }}" class="sidebar-link sidebar-link-secondary" title="{{ $link['label'] }}">
-                <x-icon :name="$link['icon']" class="h-5 w-5" />
-                <span class="sidebar-text">{{ $link['label'] }}</span>
-            </a>
-        @endforeach
-    </div>
 </aside>

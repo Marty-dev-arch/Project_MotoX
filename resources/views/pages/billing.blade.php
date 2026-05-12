@@ -33,11 +33,6 @@
                     </div>
                 </div>
 
-                <button type="button" class="page-export-button" data-download-visible-receipt>
-                    <x-icon name="printer" class="h-4 w-4" />
-                    <span data-i18n="Print Receipt">Print Receipt</span>
-                </button>
-
             </div>
         </div>
 
@@ -69,16 +64,17 @@
             </div>
 
             <div class="overflow-x-auto">
-                <table class="soft-table w-full min-w-[980px]">
+                <table class="soft-table w-full min-w-[1040px]">
                     <thead>
                         <tr class="table-heading">
                             <th>Invoice #</th>
-                            <th>Job Order</th>
+                            <th>Job Order #</th>
                             <th>Customer</th>
                             <th>Vehicle</th>
                             <th>Status</th>
                             <th>Amount</th>
                             <th>Updated</th>
+                            <th data-print-skip>Actions</th>
                         </tr>
                     </thead>
                     <tbody data-billing-rows>
@@ -87,6 +83,7 @@
                                 data-billing-row
                                 data-item-date="{{ $invoice['updated_at']->toIso8601String() }}"
                                 data-search="{{ strtolower($invoice['invoice_number'].' '.$invoice['order_number'].' '.$invoice['customer'].' '.$invoice['vehicle'].' '.$invoice['status']) }}"
+                                data-receipt-key="{{ $invoice['invoice_number'] }}"
                                 data-receipt-invoice="{{ $invoice['invoice_number'] }}"
                                 data-receipt-order="{{ $invoice['order_number'] }}"
                                 data-receipt-customer="{{ $invoice['customer'] }}"
@@ -96,6 +93,7 @@
                                 data-receipt-vehicle="{{ $invoice['vehicle'] }}"
                                 data-receipt-status="{{ $invoice['status'] }}"
                                 data-receipt-amount="PHP {{ number_format($invoice['amount'], 2) }}"
+                                data-receipt-amount-value="{{ number_format($invoice['amount'], 2, '.', '') }}"
                                 data-receipt-updated="{{ $invoice['updated_at']->timezone('Asia/Manila')->format('F j, Y, l h:i A') }} PHT"
                                 data-receipt-shop="{{ $invoice['shop_name'] ?? 'MotoX' }}"
                             >
@@ -117,10 +115,18 @@
                                 <td><x-badge :tone="$invoice['tone']">{{ $invoice['status'] }}</x-badge></td>
                                 <td class="font-semibold text-slate-900">PHP {{ number_format($invoice['amount'], 2) }}</td>
                                 <td>{{ $invoice['updated_at']->timezone('Asia/Manila')->format('M d, Y h:i A') }} PHT</td>
+                                <td data-print-skip>
+                                    <div class="billing-action-buttons">
+                                        <button type="button" class="receipt-action-button receipt-action-button-primary" data-download-receipt aria-label="Download receipt for {{ $invoice['customer'] }}">
+                                            <x-icon name="download" class="h-4 w-4" />
+                                            <span>Receipt</span>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
                         @empty
                             <tr data-empty-row>
-                                <td colspan="7" class="py-10 text-center text-sm text-slate-500">No billable job orders yet.</td>
+                                <td colspan="8" class="py-10 text-center text-sm text-slate-500">No billable job orders yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

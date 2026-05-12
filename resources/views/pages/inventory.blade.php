@@ -67,7 +67,7 @@
         </div>
 
         <div class="grid gap-6 xl:grid-cols-[1fr_1fr]">
-            <section class="panel-card p-5 sm:p-6">
+            <section class="panel-card p-5 sm:p-6 inventory-compact-panel">
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-900">Category Snapshot</h2>
@@ -88,7 +88,7 @@
                 </div>
             </section>
 
-            <section class="panel-card p-5 sm:p-6">
+            <section class="panel-card p-5 sm:p-6 inventory-compact-panel">
                 <div class="flex items-center justify-between gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-900">Recent Stock Movements</h2>
@@ -101,12 +101,24 @@
                         @php
                             $delta = $movement->delta();
                             $tone = $delta > 0 ? 'success' : ($delta < 0 ? 'danger' : 'accent');
+                            $movementPartImageUrl = $movement->part?->image_path && Storage::disk('public')->exists($movement->part->image_path)
+                                ? Storage::url($movement->part->image_path)
+                                : null;
                         @endphp
                         <article class="rounded-2xl border border-slate-100 bg-white px-4 py-3">
                             <div class="flex items-center justify-between gap-3">
-                                <div>
-                                    <p class="font-semibold text-slate-900">{{ $movement->part?->name ?? 'Part Removed' }}</p>
-                                    <p class="text-sm text-slate-500">{{ ucfirst($movement->type) }} &middot; {{ $movement->reason ?: 'Stock update' }}</p>
+                                <div class="flex min-w-0 items-center gap-3">
+                                    @if ($movementPartImageUrl)
+                                        <img src="{{ $movementPartImageUrl }}" alt="{{ $movement->part?->name ?? 'Part' }}" class="stock-movement-thumb" loading="lazy" decoding="async">
+                                    @else
+                                        <span class="stock-movement-thumb stock-movement-thumb-empty">
+                                            <x-icon name="image" class="h-5 w-5" />
+                                        </span>
+                                    @endif
+                                    <div class="min-w-0">
+                                        <p class="truncate font-semibold text-slate-900">{{ $movement->part?->name ?? 'Part Removed' }}</p>
+                                        <p class="truncate text-sm text-slate-500">{{ ucfirst($movement->type) }} &middot; {{ $movement->reason ?: 'Stock update' }}</p>
+                                    </div>
                                 </div>
                                 <div class="text-right">
                                     <x-badge :tone="$tone">
@@ -124,7 +136,7 @@
         </div>
 
         @if ($alerts->isNotEmpty())
-            <section class="panel-card p-5 sm:p-6">
+            <section class="panel-card p-5 sm:p-6 inventory-compact-panel">
                 <div class="flex flex-wrap items-center justify-between gap-4">
                     <div>
                         <h2 class="text-2xl font-bold text-slate-900">Restock Queue</h2>
@@ -143,7 +155,7 @@
                             $displayUnitLabel = $part->unit_label ?: 'box';
                             $editStockMode = 'box_piece';
                         @endphp
-                        <article class="detail-card">
+                        <article class="detail-card inventory-restock-card">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="min-w-0">
                                     <p class="truncate text-base font-bold text-slate-900">{{ $part->name }}</p>
@@ -242,7 +254,7 @@
                                 <td class="font-semibold text-slate-900">
                                     PHP {{ number_format((float) ($part->unit_price_per_box ?? $part->unit_price), 2) }}
                                     <span class="block text-xs text-slate-500">per box</span>
-                                    <span class="block text-xs text-slate-500">PHP {{ number_format((float) ($part->unit_price_per_piece ?? 0), 2) }} per piece</span>
+                                    <span class="block text-xs text-slate-500">PHP {{ number_format((float) ($part->unit_price_per_piece ?? 0), 2) }} per pieces</span>
                                 </td>
                                 <td><x-badge :tone="$tone">{{ $status }}</x-badge></td>
                                 <td>

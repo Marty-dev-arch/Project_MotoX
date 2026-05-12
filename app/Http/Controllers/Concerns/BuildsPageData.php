@@ -47,7 +47,7 @@ protected function buildPageData(string $currentPage, array $data, bool $showTop
     private function supportItems(): array
     {
         return [
-            ['label' => 'Support', 'icon' => 'support', 'href' => '#'],
+            ['label' => 'Support', 'icon' => 'support', 'href' => route('support')],
         ];
     }
 }

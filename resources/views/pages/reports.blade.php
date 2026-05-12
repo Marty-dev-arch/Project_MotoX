@@ -36,7 +36,7 @@
                 <div class="relative">
                     <button type="button" class="page-export-button" data-report-download-trigger>
                         <x-icon name="export" class="h-4 w-4" />
-                        <span>Download</span>
+                        <span>Export</span>
                         <x-icon name="chevron-down" class="h-4 w-4" />
                     </button>
                     <div class="page-filter-menu hidden" data-report-download-menu>
@@ -68,17 +68,22 @@
             </article>
         </div>
 
-        <div class="grid gap-6 xl:grid-cols-[1fr_0.9fr]">
+        <div class="grid items-start gap-6 xl:grid-cols-[1fr_0.9fr]">
             <section class="panel-card p-5 sm:p-6">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-900">Graphical Chart Revenue Flow</h2>
-                    <p class="mt-1 text-sm text-slate-500">movement monitor based on completed job orders.</p>
-                </div>
+                <div class="flex flex-wrap items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-slate-900">Graphical Chart Revenue Flow</h2>
+                        <p class="mt-1 text-sm text-slate-500">movement monitor based on completed job orders.</p>
+                    </div>
 
-                <div class="mt-4 budget-range-pills">
-                    <button type="button" class="budget-range-pill" data-report-range="3">3M</button>
-                    <button type="button" class="budget-range-pill budget-range-pill-active" data-report-range="6">6M</button>
-                    <button type="button" class="budget-range-pill" data-report-range="12">12M</button>
+                    <label class="report-range-select" aria-label="Choose month range">
+                        <x-icon name="calendar" class="h-4 w-4" />
+                        <select data-report-range-select>
+                            <option value="jan-jun">Jan-Jun</option>
+                            <option value="jul-dec">Jul-Dec</option>
+                        </select>
+                        <x-icon name="chevron-down" class="h-4 w-4" />
+                    </label>
                 </div>
 
                 <div
@@ -103,16 +108,17 @@
                 </div>
             </section>
 
-            <section class="panel-card p-5 sm:p-6">
+            <section class="panel-card report-status-panel p-5 sm:p-6">
                 <div>
                     <h2 class="text-2xl font-bold text-slate-900">Status Breakdown</h2>
                     <p class="mt-1 text-sm text-slate-500">Current job order distribution.</p>
                 </div>
 
-                <div class="mt-6 space-y-3" data-report-status-breakdown>
+                <div class="report-status-list mt-5" data-report-status-breakdown>
                     @foreach ($statusBreakdown as $row)
                         @php
-                            $tone = match (strtolower(str_replace(' ', '_', $row['status']))) {
+                            $statusKey = $row['key'] ?? strtolower(str_replace(' ', '_', $row['status']));
+                            $tone = match ($statusKey) {
                                 'completed' => 'success',
                                 'in_progress' => 'accent',
                                 'cancelled' => 'danger',
@@ -120,11 +126,35 @@
                             };
                         @endphp
                         <article
-                            class="flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3"
-                            data-report-status="{{ strtolower(str_replace(' ', '_', $row['status'])) }}"
+                            class="report-status-card"
+                            data-report-status="{{ $statusKey }}"
                         >
-                            <p class="font-semibold text-slate-900">{{ $row['status'] }}</p>
-                            <x-badge :tone="$tone" data-report-status-count>{{ $row['count'] }}</x-badge>
+                            <div class="report-status-card-head">
+                                <div>
+                                    <p class="font-semibold text-slate-900">{{ $row['status'] }}</p>
+                                    <p class="text-xs text-slate-500">Latest job orders</p>
+                                </div>
+                                <x-badge :tone="$tone" data-report-status-count>{{ $row['count'] }}</x-badge>
+                            </div>
+
+                            <div class="report-status-orders" data-report-status-orders>
+                                @forelse (($row['orders'] ?? []) as $order)
+                                    <div class="report-status-order">
+                                        @if (! empty($order['profile_photo_url']))
+                                            <img src="{{ $order['profile_photo_url'] }}" alt="{{ $order['customer'] }} profile" class="report-status-avatar" loading="lazy" decoding="async">
+                                        @else
+                                            <span class="report-status-avatar report-status-avatar-fallback">{{ $order['initials'] ?? 'WI' }}</span>
+                                        @endif
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-bold text-slate-900">{{ $order['customer'] }}</p>
+                                            <p class="truncate text-xs text-slate-500">{{ $order['order_number'] }} - {{ $order['vehicle'] ?: 'No vehicle' }}</p>
+                                        </div>
+                                        <span class="report-status-date">{{ $order['date_display'] ?? '-' }}</span>
+                                    </div>
+                                @empty
+                                    <p class="report-status-empty">No job orders in this status.</p>
+                                @endforelse
+                            </div>
                         </article>
                     @endforeach
                 </div>

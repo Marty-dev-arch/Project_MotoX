@@ -397,13 +397,6 @@ class AuthController extends Controller
         $validated = $request->validate([
             'shop_name' => ['required', 'string', 'max:120'],
             'owner_name' => ['required', 'string', 'max:120'],
-            'username' => [
-                'required',
-                'string',
-                'max:60',
-                'regex:/^[A-Za-z0-9_.-]+$/',
-                Rule::unique(User::class, 'username'),
-            ],
             'email' => ['required', 'email', 'max:255', Rule::unique(User::class, 'email')],
             'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^\+[1-9]\d{6,14}$/'],
             'contact_country' => ['nullable', 'required_with:contact_number', 'string', 'size:2', 'regex:/^[a-z]{2}$/i'],
@@ -420,7 +413,7 @@ class AuthController extends Controller
         DB::transaction(function () use ($validated): void {
             $user = User::query()->create([
                 'name' => $validated['owner_name'],
-                'username' => strtolower(trim($validated['username'])),
+                'username' => $this->uniqueUsernameFor($validated['email'], $validated['owner_name']),
                 'email' => $validated['email'],
                 'password' => $validated['password'],
                 'role' => 'admin',

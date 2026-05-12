@@ -159,11 +159,14 @@ class CustomerController extends Controller
         $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $customer = $this->shopCustomer($customer, $shop->id);
-        $customerName = $customer->name;
 
-        if ($customer->profile_photo_path) {
-            Storage::disk('public')->delete($customer->profile_photo_path);
-        }
+        JobOrder::query()
+            ->forShop($shop)
+            ->where('customer_id', $customer->id)
+            ->get()
+            ->each(function (JobOrder $order): void {
+                $order->delete();
+            });
 
         $customer->delete();
 

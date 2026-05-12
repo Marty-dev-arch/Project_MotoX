@@ -7,7 +7,7 @@
                 <x-icon name="car" class="h-7 w-7" />
             </span>
             <span class="landing-refresh-brand">MotoX</span>
-            <span class="landing-refresh-text"> please wait. Loading.... </span>
+            <span class="landing-refresh-text"> </span>
             <span class="landing-refresh-progress"><span></span></span>
         </div>
     </div>
@@ -232,9 +232,9 @@
                         <a href="https://www.tiktok.com/@roeyycy123" target="_blank" rel="noopener noreferrer" aria-label="MotoX TikTok"><x-icon name="tiktok" class="h-4 w-4" /></a>
                     </div>
                     <div class="landing-footer-links">
-                        <a href="#contact">Terms</a>
-                        <a href="#contact">Privacy</a>
-                        <a href="#contact">Cookies</a>
+                        <a href="{{ route('policies') }}">Policies</a>
+                        <a href="{{ route('privacy') }}">Privacy</a>
+                        <a href="{{ route('cookies') }}">Cookies</a>
                     </div>
                 </div>
 

@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Http\Controllers\Concerns\BuildsPageData;
 use App\Models\Customer;
 use App\Models\JobOrder;
+use App\Models\Shop;
+use App\Support\SystemNotifier;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -111,6 +113,15 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'walk_in_profile_photo_path' => $walkInProfilePhotoPath,
         ]);
 
+        $freshOrder = $order->fresh('customer');
+        if ($freshOrder) {
+            SystemNotifier::notifyBillingUpdated($shop, $freshOrder, 'created');
+
+            if ($freshOrder->status === JobOrder::STATUS_COMPLETED) {
+                SystemNotifier::notifyTopBillingCustomer($shop, $this->currentTopBillingCustomer($shop));
+            }
+        }
+
         return redirect()
             ->route('job-orders', ['order' => $order->id])
             ->with('status', 'Job order created successfully.')
@@ -125,6 +136,10 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
 
         $validated = $this->validatePayload($request, $shop->id);
         $isCompleting = $validated['status'] === JobOrder::STATUS_COMPLETED;
+        $wasCompleted = $jobOrder->status === JobOrder::STATUS_COMPLETED;
+        $billingChanged = $jobOrder->customer_id !== ($validated['customer_id'] ? (int) $validated['customer_id'] : null)
+            || $jobOrder->status !== $validated['status']
+            || (float) $jobOrder->estimated_cost !== (float) $validated['estimated_cost'];
         $walkInProfilePhotoPath = $jobOrder->walk_in_profile_photo_path;
 
         if (! empty($validated['customer_id'])) {
@@ -153,6 +168,15 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
             'walk_in_profile_photo_path' => $walkInProfilePhotoPath,
         ]);
 
+        $freshOrder = $jobOrder->fresh('customer');
+        if ($freshOrder && $billingChanged) {
+            SystemNotifier::notifyBillingUpdated($shop, $freshOrder, 'updated');
+
+            if ($freshOrder->status === JobOrder::STATUS_COMPLETED || $wasCompleted) {
+                SystemNotifier::notifyTopBillingCustomer($shop, $this->currentTopBillingCustomer($shop));
+            }
+        }
+
         return redirect()
             ->route('job-orders', ['order' => $jobOrder->id])
             ->with('status', 'Job order updated successfully.')
@@ -164,10 +188,6 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
         $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $jobOrder = $this->shopOrder($jobOrder, $shop->id);
-
-        if ($jobOrder->walk_in_profile_photo_path) {
-            Storage::disk('public')->delete($jobOrder->walk_in_profile_photo_path);
-        }
 
         $jobOrder->delete();
 
@@ -218,5 +238,36 @@ return view('pages.job-orders', $this->buildPageData('job-orders', [
         $next = max(1, $numeric + 1);
 
         return 'JO-'.str_pad((string) $next, 5, '0', STR_PAD_LEFT);
+    }
+
+    private function currentTopBillingCustomer(Shop $shop): ?array
+    {
+        $customer = Customer::query()
+            ->forShop($shop)
+            ->withCount(['jobOrders as completed_jobs_count' => function ($query): void {
+                $query->where('status', JobOrder::STATUS_COMPLETED)
+                    ->whereNotNull('completed_at');
+            }])
+            ->withSum(['jobOrders as completed_jobs_sum' => function ($query): void {
+                $query->where('status', JobOrder::STATUS_COMPLETED)
+                    ->whereNotNull('completed_at');
+            }], 'estimated_cost')
+            ->whereHas('jobOrders', function ($query): void {
+                $query->where('status', JobOrder::STATUS_COMPLETED)
+                    ->whereNotNull('completed_at');
+            })
+            ->orderByDesc('completed_jobs_sum')
+            ->first();
+
+        if (! $customer) {
+            return null;
+        }
+
+        return [
+            'customer_id' => $customer->id,
+            'name' => $customer->name,
+            'jobs' => (int) $customer->completed_jobs_count,
+            'total_billed' => (float) ($customer->completed_jobs_sum ?? 0),
+        ];
     }
 }

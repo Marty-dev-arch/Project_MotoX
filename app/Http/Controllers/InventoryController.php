@@ -9,6 +9,7 @@ use App\Support\InventoryUnits;
 use App\Support\SystemNotifier;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -107,7 +108,7 @@ class InventoryController extends Controller
             $imagePath = $request->file('image')->storePublicly('parts', 'public');
         }
 
-        $part = Part::query()->create([
+        $part = Part::query()->create($this->filterPartColumns([
             'shop_id' => $shop->id,
             'sku' => strtoupper(trim($validated['sku'])),
             'name' => trim($validated['name']),
@@ -126,7 +127,7 @@ class InventoryController extends Controller
             'unit_price_basis' => $validated['unit_price_basis'],
             'notes' => isset($validated['notes']) && $validated['notes'] !== null ? trim($validated['notes']) : null,
             'is_active' => (bool) ($validated['is_active'] ?? true),
-        ]);
+        ]));
 
         $initialBoxes = (int) $validated['initial_stock'];
         $initialPieces = InventoryUnits::toBaseQuantity($part, (float) $initialBoxes, 'box');
@@ -194,7 +195,7 @@ class InventoryController extends Controller
             }
         }
 
-        $part->update([
+        $part->update($this->filterPartColumns([
             'sku' => strtoupper(trim($validated['sku'])),
             'name' => trim($validated['name']),
             'category' => trim($validated['category']),
@@ -212,7 +213,7 @@ class InventoryController extends Controller
             'unit_price_basis' => $validated['unit_price_basis'],
             'notes' => isset($validated['notes']) && $validated['notes'] !== null ? trim($validated['notes']) : null,
             'is_active' => (bool) ($validated['is_active'] ?? true),
-        ]);
+        ]));
 
         $freshPart = InventoryMetrics::partsWithStockQuery($shop->id)
             ->where('parts.id', $part->id)
@@ -232,10 +233,6 @@ class InventoryController extends Controller
         $shop = $request->user()->workspaceShop();
         abort_if($shop === null, 403, 'Shop profile not found.');
         $part = $this->shopPart($part, $shop->id);
-
-        if ($part->image_path) {
-            Storage::disk('public')->delete($part->image_path);
-        }
 
         $part->delete();
 
@@ -394,6 +391,13 @@ class InventoryController extends Controller
         return (float) ($stockRow?->current_stock ?? 0);
     }
 
+    private function filterPartColumns(array $attributes): array
+    {
+        $columns = array_flip(Schema::getColumnListing('parts'));
+
+        return array_intersect_key($attributes, $columns);
+    }
+
     
     private function baseData(string $page, array $pageData): array
     {
@@ -437,7 +441,7 @@ class InventoryController extends Controller
     private function supportItems(): array
     {
         return [
-            ['label' => 'Support', 'icon' => 'support', 'href' => '#'],
+            ['label' => 'Support', 'icon' => 'support', 'href' => route('support')],
         ];
     }
 }

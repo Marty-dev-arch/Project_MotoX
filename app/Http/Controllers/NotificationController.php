@@ -81,7 +81,7 @@ class NotificationController extends Controller
     private function baseQuery(?int $shopId, int $userId)
     {
         return SystemNotification::query()
-            ->whereIn('type', ['stock.low', 'stock.out'])
+            ->whereIn('type', ['stock.low', 'stock.out', 'billing.created', 'billing.updated', 'report.top_customer'])
             ->where(function ($query) use ($shopId, $userId): void {
                 $query->where('user_id', $userId);
 

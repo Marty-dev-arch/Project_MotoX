@@ -86,6 +86,9 @@ class SystemActionObserver
             [
                 'part_id' => $movement->part_id,
                 'part_name' => $part?->name,
+                'part_sku' => $part?->sku,
+                'part_category' => $part?->category,
+                'part_image_path' => $part?->image_path,
                 'type' => $movement->type,
                 'quantity' => (string) $movement->quantity,
                 'reason' => $movement->reason,
@@ -172,9 +175,17 @@ class SystemActionObserver
      */
     private function snapshot(Model $model): array
     {
-        return collect($model->getAttributes())
+        $snapshot = collect($model->getAttributes())
             ->except(['password', 'remember_token'])
             ->all();
+
+        if ($model instanceof JobOrder) {
+            $customer = $model->customer;
+            $snapshot['customer_name'] = $customer?->name;
+            $snapshot['customer_profile_photo_path'] = $customer?->profile_photo_path;
+        }
+
+        return $snapshot;
     }
 
     private function formatValue(mixed $value): string

@@ -15,6 +15,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [WorkshopFrontendController::class, 'landing'])->name('landing');
 Route::get('/metrics/landing', [WorkshopFrontendController::class, 'landingMetrics'])->name('landing.metrics');
+Route::get('/policies', [WorkshopFrontendController::class, 'policies'])->name('policies');
+Route::get('/privacy', [WorkshopFrontendController::class, 'privacy'])->name('privacy');
+Route::get('/cookies', [WorkshopFrontendController::class, 'cookies'])->name('cookies');
+Route::get('/support', [WorkshopFrontendController::class, 'support'])->name('support');
 
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');

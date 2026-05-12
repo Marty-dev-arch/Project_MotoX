@@ -70,23 +70,13 @@
                         </div>
                     </label>
 
-                    <div class="auth-grid">
-                        <label class="form-field gap-2.5">
-                            <span class="auth-label">Username</span>
-                            <div class="auth-input-wrap">
-                                <x-icon name="id-card" class="h-5 w-5 text-slate-500" />
-                                <input type="text" name="username" class="auth-input" placeholder="motox_owner" value="{{ old('username') }}" autocomplete="username" required>
-                            </div>
-                        </label>
-
-                        <label class="form-field gap-2.5">
-                            <span class="auth-label">Email Address</span>
-                            <div class="auth-input-wrap">
-                                <x-icon name="user" class="h-5 w-5 text-slate-500" />
-                                <input type="email" name="email" class="auth-input" placeholder="you@example.com" value="{{ old('email') }}" required>
-                            </div>
-                        </label>
-                    </div>
+                    <label class="form-field gap-2.5">
+                        <span class="auth-label">Email Address</span>
+                        <div class="auth-input-wrap">
+                            <x-icon name="user" class="h-5 w-5 text-slate-500" />
+                            <input type="email" name="email" class="auth-input" placeholder="you@example.com" value="{{ old('email') }}" required>
+                        </div>
+                    </label>
 
                     <div class="auth-grid">
                         <label class="form-field gap-2.5">
@@ -119,11 +109,10 @@
                                 </button>
                             </div>
                             <ul class="auth-validation-list" data-auth-password-rules>
-                                <li data-password-rule="length">8 to 16 characters</li>
-                                <li data-password-rule="lower">One lowercase letter</li>
-                                <li data-password-rule="upper">One uppercase letter</li>
-                                <li data-password-rule="number">One number</li>
-                                <li data-password-rule="special">One special character: ! @ # $ % &amp; *</li>
+                                <li data-password-rule="lower">must contain lowercase</li>
+                                <li data-password-rule="upper">must contain uppercase</li>
+                                <li data-password-rule="number">must contain a number</li>
+                                <li data-password-rule="special">must contain a special character</li>
                             </ul>
                         </label>
 
@@ -152,9 +141,9 @@
                         <span class="auth-consent-dot" aria-hidden="true"></span>
                         <span>
                             I agree to the
-                            <a href="{{ route('landing') }}#contact">Terms</a>
+                            <a href="{{ route('policies') }}">Terms</a>
                             &amp;
-                            <a href="{{ route('landing') }}#contact">Privacy Policy</a>
+                            <a href="{{ route('privacy') }}">Privacy Policy</a>
                         </span>
                     </label>
 

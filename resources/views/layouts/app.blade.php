@@ -37,7 +37,7 @@
                 @if ($showTopbar ?? true)
                     <header class="sticky top-0 z-20 border-b border-white/60 bg-slate-100/90 backdrop-blur-xl">
                         <div class="flex w-full items-center gap-3 px-4 py-4 sm:px-6 lg:px-8">
-                             <div class="ml-auto flex items-center gap-5 sm:gap-8">
+                             <div class="ml-auto flex items-center gap-3 sm:gap-4">
                                 <div class="header-menu-shell">
                                     <button
                                         class="icon-button"

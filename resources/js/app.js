@@ -5,6 +5,7 @@ import 'intl-tel-input/styles';
 document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
     const modeButtons = [...document.querySelectorAll('[data-mode]')];
+    const themeToggleButtons = [...document.querySelectorAll('[data-theme-toggle]')];
 
     initializeCustomersFilters();
     
@@ -25,6 +26,12 @@ document.addEventListener('DOMContentLoaded', () => {
         modeButtons.forEach((button) => {
             button.classList.toggle('appearance-card-active', button.dataset.mode === theme);
         });
+
+        themeToggleButtons.forEach((button) => {
+            button.setAttribute('aria-pressed', theme === 'dark' ? 'true' : 'false');
+            button.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+            button.setAttribute('title', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
+        });
     };
 
     const savedTheme = normalizeTheme(localStorage.getItem('theme'));
@@ -36,6 +43,14 @@ document.addEventListener('DOMContentLoaded', () => {
             const theme = normalizeTheme(button.dataset.mode);
             applyTheme(theme);
             setActiveModeButton(theme);
+        });
+    });
+
+    themeToggleButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const nextTheme = html.classList.contains('dark') ? 'light' : 'dark';
+            applyTheme(nextTheme);
+            setActiveModeButton(nextTheme);
         });
     });
 
@@ -67,6 +82,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeImageUploadPreviews();
     initializeJobOrderCustomerPhotos();
     initializeRegistrationPopup();
+    initializeLogsFilters();
 });
 
 function initializeModalControls() {
@@ -393,7 +409,6 @@ function initializeLanguagePreference() {
             'Log Out': 'Mag Log Out',
             'Logging out': 'Nagla-log out',
             'logging out...': 'nagla-log out...',
-            'Print Receipt': 'I-download ang Resibo',
             'Filter by Date': 'I-filter ayon sa Petsa',
             'Add Part': 'Magdagdag ng Part',
             'Create Customer': 'Gumawa ng Customer',
@@ -407,6 +422,8 @@ function initializeLanguagePreference() {
             'Settings': 'Settings',
             'Logs': 'Logs',
             'Support': 'Support',
+            'Help Me': 'Tulungan Ako',
+            'Receipt': 'Resibo',
             'New Job Order': 'Bagong Job Order',
             'Total Customers': 'Kabuuang Customer',
             'Active Jobs': 'Aktibong Trabaho',
@@ -686,7 +703,10 @@ function initializeLogoutLoading() {
 }
 
 function receiptDataFromButton(button) {
-    const data = button.dataset;
+    const source = button instanceof HTMLElement && button.dataset.receiptInvoice
+        ? button
+        : button.closest?.('[data-billing-row]') ?? button;
+    const data = source.dataset ?? {};
 
     return {
         invoice: data.receiptInvoice || '',
@@ -698,6 +718,7 @@ function receiptDataFromButton(button) {
         vehicle: data.receiptVehicle || '',
         status: data.receiptStatus || '',
         amount: data.receiptAmount || 'PHP 0.00',
+        amountValue: Number(data.receiptAmountValue || 0),
         updated: data.receiptUpdated || '',
         shop: data.receiptShop || 'MotoX',
     };
@@ -711,41 +732,110 @@ function buildReceiptNode(data) {
         .replaceAll('"', '&quot;')
         .replaceAll("'", '&#039;');
 
-    const rows = [
-        ['Invoice', data.invoice],
-        ['Job Order', data.order],
-        ['Customer', data.customer],
-        ['Phone', data.phone || '-'],
-        ['Email', data.email || '-'],
-        ['Vehicle', data.vehicle],
-        ['Status', data.status],
-        ['Updated', data.updated],
-    ];
+    const total = Number.isFinite(data.amountValue) && data.amountValue > 0
+        ? data.amountValue
+        : Number(String(data.amount).replace(/[^0-9.]/g, '')) || 0;
+    const isPaid = String(data.status).toLowerCase() === 'paid';
+    const collected = isPaid ? total : 0;
+    const remaining = Math.max(0, total - collected);
+    const progress = total > 0 ? Math.round((collected / total) * 100) : 0;
+    const money = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'PHP',
+        minimumFractionDigits: 2,
+    });
+    const statusLabel = isPaid ? 'PAID' : 'PENDING';
+    const progressBoxes = Array.from({ length: 12 }, (_, index) => {
+        const filled = ((index + 1) / 12) * 100 <= progress;
+        return `<span class="${filled ? 'receipt-box-filled' : ''}"></span>`;
+    }).join('');
 
     const node = document.createElement('section');
     node.className = 'receipt-capture-card';
     node.innerHTML = `
-        <h1>${escapeHtml(data.shop || 'MotoX')}</h1>
-        <p class="receipt-capture-muted">Official customer receipt</p>
-        ${data.photo ? `<img src="${escapeHtml(data.photo)}" alt="${escapeHtml(data.customer)} profile" class="receipt-capture-avatar">` : ''}
-        <div class="receipt-capture-total">
-            <span>Total Amount</span>
-            <strong>${escapeHtml(data.amount || 'PHP 0.00')}</strong>
+        <h1>${escapeHtml(data.customer || 'Customer')}</h1>
+        <div class="receipt-capture-balance">${escapeHtml(money.format(remaining))} REMAINING</div>
+
+        <div class="receipt-capture-rule"></div>
+        <div class="receipt-capture-summary">
+            <span>TOTAL AMOUNT</span><strong>${escapeHtml(money.format(total))}</strong>
+            <span>COLLECTED</span><strong>${escapeHtml(money.format(collected))}</strong>
+            <span>STILL OWED</span><strong>${escapeHtml(money.format(remaining))}</strong>
         </div>
-        <table>
-            <tbody>
-                ${rows.map(([label, value]) => `
-                    <tr>
-                        <td>${escapeHtml(label)}</td>
-                        <td>${escapeHtml(value || '-')}</td>
-                    </tr>
-                `).join('')}
-            </tbody>
-        </table>
-        <p class="receipt-capture-footer">Thank you for choosing ${escapeHtml(data.shop || 'MotoX')}.</p>
+
+        <div class="receipt-capture-progress">
+            <div><span>COLLECTION PROGRESS</span><strong>${progress}%</strong></div>
+            <div class="receipt-progress-boxes">${progressBoxes}</div>
+        </div>
+
+        <div class="receipt-capture-section">
+            <div class="receipt-capture-section-head"><span>ITEMS OWED</span><span>AMOUNT</span></div>
+            <div class="receipt-capture-item">
+                <small>${escapeHtml(data.updated || '-')}</small>
+                <div><strong>${escapeHtml(data.order || data.invoice || 'Job order')}</strong><b>${escapeHtml(money.format(total))}</b></div>
+                <em>${escapeHtml(data.vehicle || 'Service record')}</em>
+            </div>
+        </div>
+
+        <div class="receipt-capture-total-row">
+            <span>ITEMS TOTAL</span>
+            <strong>${escapeHtml(money.format(total))}</strong>
+        </div>
+
+        <div class="receipt-capture-section">
+            <div class="receipt-capture-section-head"><span>PAYMENT HISTORY</span></div>
+            <div class="receipt-capture-payment">
+                <span>${isPaid ? 'Marked paid from completed job order' : 'No payments yet'}</span>
+                <strong>${escapeHtml(money.format(collected))}</strong>
+            </div>
+        </div>
+
+        <div class="receipt-capture-total-row">
+            <span>TOTAL PAID</span>
+            <strong>${escapeHtml(money.format(collected))}</strong>
+        </div>
+
+        <div class="receipt-capture-meta">
+            <span>INVOICE</span><strong>${escapeHtml(data.invoice || '-')}</strong>
+            <span>JOB ORDER</span><strong>${escapeHtml(data.order || '-')}</strong>
+            <span>STATUS</span><strong>${escapeHtml(data.status || '-')}</strong>
+        </div>
+
+        <div class="receipt-capture-note">
+            <span>NOTE</span>
+            <strong>${escapeHtml(data.shop || 'MotoX')} receipt for ${escapeHtml(data.customer || 'customer')}</strong>
+        </div>
+
+        <div class="receipt-capture-stamp">${statusLabel}</div>
+        <div class="receipt-capture-codes">
+            <div class="receipt-capture-barcode" aria-label="Receipt barcode for ${escapeHtml(data.invoice || data.customer || 'receipt')}"></div>
+        </div>
+        <p class="receipt-capture-footer">PRINTED BY ${escapeHtml(data.shop || 'MOTOX').toUpperCase()} ON ${escapeHtml(new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' }))} PHT</p>
     `;
 
     return node;
+}
+
+async function renderReceiptCanvas(source) {
+    if (!(source instanceof HTMLElement)) {
+        return null;
+    }
+
+    const host = document.createElement('div');
+    host.className = 'receipt-capture-host';
+    const receiptNode = buildReceiptNode(receiptDataFromButton(source));
+    host.appendChild(receiptNode);
+    document.body.appendChild(host);
+
+    try {
+        return await html2canvas(receiptNode, {
+            backgroundColor: '#ffffff',
+            scale: Math.max(2, window.devicePixelRatio || 1),
+            useCORS: true,
+        });
+    } finally {
+        host.remove();
+    }
 }
 
 async function downloadReceiptPng(source) {
@@ -758,20 +848,15 @@ async function downloadReceiptPng(source) {
         source.setAttribute('aria-busy', 'true');
     }
 
-    const host = document.createElement('div');
-    host.className = 'receipt-capture-host';
-    const receiptNode = buildReceiptNode(receiptDataFromButton(source));
-    host.appendChild(receiptNode);
-    document.body.appendChild(host);
-
     try {
-        const canvas = await html2canvas(receiptNode, {
-            backgroundColor: '#ffffff',
-            scale: Math.max(2, window.devicePixelRatio || 1),
-            useCORS: true,
-        });
+        const canvas = await renderReceiptCanvas(source);
+        if (!canvas) {
+            return;
+        }
+
         const link = document.createElement('a');
-        const filename = (source.dataset.receiptInvoice || 'motox-receipt')
+        const receiptData = receiptDataFromButton(source);
+        const filename = (receiptData.invoice || receiptData.customer || 'motox-receipt')
             .toLowerCase()
             .replace(/[^a-z0-9]+/g, '-')
             .replace(/^-+|-+$/g, '');
@@ -779,7 +864,64 @@ async function downloadReceiptPng(source) {
         link.download = `${filename || 'motox-receipt'}.png`;
         link.click();
     } finally {
-        host.remove();
+        if (source instanceof HTMLButtonElement) {
+            source.disabled = false;
+            source.removeAttribute('aria-busy');
+        }
+    }
+}
+
+async function printReceiptPng(source) {
+    if (!(source instanceof HTMLElement)) {
+        return;
+    }
+
+    if (source instanceof HTMLButtonElement) {
+        source.disabled = true;
+        source.setAttribute('aria-busy', 'true');
+    }
+
+    try {
+        const canvas = await renderReceiptCanvas(source);
+        if (!canvas) {
+            return;
+        }
+
+        const receiptData = receiptDataFromButton(source);
+        const printWindow = window.open('', '_blank', 'width=520,height=760');
+
+        if (!printWindow) {
+            downloadReceiptPng(source);
+            return;
+        }
+
+        printWindow.document.write(`
+            <!doctype html>
+            <html>
+                <head>
+                    <title>${String(receiptData.invoice || receiptData.customer || 'MotoX Receipt').replace(/[<>]/g, '')}</title>
+                    <style>
+                        body { margin: 0; background: #f8fafc; display: grid; min-height: 100vh; place-items: center; }
+                        img { width: min(430px, 94vw); height: auto; background: #fff; box-shadow: 0 16px 45px rgba(15, 23, 42, 0.16); }
+                        @media print {
+                            body { background: #fff; min-height: auto; }
+                            img { width: 100%; max-width: 430px; box-shadow: none; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <img src="${canvas.toDataURL('image/png')}" alt="MotoX receipt">
+                    <script>
+                        window.addEventListener('load', () => {
+                            window.focus();
+                            window.print();
+                        });
+                    <\/script>
+                </body>
+            </html>
+        `);
+        printWindow.document.close();
+    } finally {
         if (source instanceof HTMLButtonElement) {
             source.disabled = false;
             source.removeAttribute('aria-busy');
@@ -1039,6 +1181,14 @@ function escapeHtml(value) {
         .replaceAll("'", '&#039;');
 }
 
+function chartSvgSize(container) {
+    const bounds = container instanceof HTMLElement ? container.getBoundingClientRect() : null;
+    const width = Math.max(720, Math.round((bounds?.width || 1020) - 40));
+    const height = Math.round(Math.min(320, Math.max(230, window.innerWidth * 0.28)));
+
+    return { width, height };
+}
+
 function initializeDashboardPolling() {
     const dashboardRoot = document.querySelector('[data-dashboard-metrics-url]');
     if (!(dashboardRoot instanceof HTMLElement)) {
@@ -1058,59 +1208,70 @@ function initializeDashboardPolling() {
     };
 
     const trendContainer = dashboardRoot.querySelector('[data-chart="movement"]');
-    const lowStockContainer = dashboardRoot.querySelector('[data-chart="low-stock"]');
     const updatedAtNode = dashboardRoot.querySelector('[data-updated-at]');
     const rangeButtons = [...dashboardRoot.querySelectorAll('[data-dashboard-range]')];
+    const rangeSelect = dashboardRoot.querySelector('[data-dashboard-range-select]');
     const revenueCards = [...dashboardRoot.querySelectorAll('[data-dashboard-revenue-card]')];
-    const rangeStorageKey = 'motox.dashboard.trend.months';
-    const allowedTrendRanges = [3, 6, 12];
+    const rangeStorageKey = 'motox.dashboard.trend.range';
+    const legacyRangeStorageKey = 'motox.dashboard.trend.months';
+    const allowedTrendRanges = ['jan-jun', 'jul-dec'];
 
     const normalizeTrendRange = (value) => {
-        const parsed = Number.parseInt(String(value ?? ''), 10);
-        return allowedTrendRanges.includes(parsed) ? parsed : 3;
+        const normalized = String(value ?? '').trim().toLowerCase();
+        return allowedTrendRanges.includes(normalized) ? normalized : 'jan-jun';
     };
 
-    let selectedTrendRange = normalizeTrendRange(dashboardRoot.dataset.dashboardMonths);
+    let selectedTrendRange = normalizeTrendRange(dashboardRoot.dataset.dashboardRange ?? dashboardRoot.dataset.dashboardMonths);
 
-    const setActiveRangeButton = (months) => {
+    const setActiveRangeControl = (range) => {
         rangeButtons.forEach((button) => {
-            const buttonMonths = normalizeTrendRange(button.dataset.dashboardRange);
-            button.classList.toggle('budget-range-pill-active', buttonMonths === months);
+            const buttonRange = normalizeTrendRange(button.dataset.dashboardRange);
+            button.classList.toggle('budget-range-pill-active', buttonRange === range);
         });
+
+        if (rangeSelect instanceof HTMLSelectElement) {
+            rangeSelect.value = normalizeTrendRange(range);
+        }
     };
 
     try {
-        selectedTrendRange = normalizeTrendRange(localStorage.getItem(rangeStorageKey) ?? selectedTrendRange);
+        selectedTrendRange = normalizeTrendRange(
+            localStorage.getItem(rangeStorageKey)
+                ?? localStorage.getItem(legacyRangeStorageKey)
+                ?? selectedTrendRange
+        );
     } catch (error) {
-        selectedTrendRange = normalizeTrendRange(dashboardRoot.dataset.dashboardMonths);
+        selectedTrendRange = normalizeTrendRange(dashboardRoot.dataset.dashboardRange ?? dashboardRoot.dataset.dashboardMonths);
     }
 
-    setActiveRangeButton(selectedTrendRange);
+    setActiveRangeControl(selectedTrendRange);
 
     const renderTrendChart = (trend) => {
         if (!(trendContainer instanceof HTMLElement)) {
             return;
         }
 
-        if (!Array.isArray(trend) || !trend.length) {
-            trendContainer.innerHTML = '<p class="text-sm text-slate-500">No movement data available.</p>';
-            return;
-        }
+        const rows = Array.isArray(trend) && trend.length
+            ? trend
+            : [{ label: 'Now', date_label: 'Current stock flow', in: 0, out: 0 }];
 
-        const seriesIn = trend.map((row) => Math.max(0, Number(row.in || 0)));
-        const seriesOut = trend.map((row) => Math.max(0, Number(row.out || 0)));
-        const maxValue = Math.max(1, ...seriesIn, ...seriesOut);
+        const seriesIn = rows.map((row) => Math.max(0, Number(row.in || 0)));
+        const seriesOut = rows.map((row) => Math.max(0, Number(row.out || 0)));
+        const observedMaxValue = Math.max(...seriesIn, ...seriesOut);
+        const scaleBase = Math.max(1, observedMaxValue);
+        const maxPercent = 100;
+        const percentAxisValues = Array.from({ length: 6 }, (_, index) => 100 - (index * 20));
 
-        const width = 980;
-        const height = 280;
-        const padding = { top: 18, right: 18, bottom: 34, left: 18 };
+        const { width, height } = chartSvgSize(trendContainer);
+        const padding = { top: 18, right: 18, bottom: 34, left: 82 };
         const chartWidth = width - padding.left - padding.right;
         const chartHeight = height - padding.top - padding.bottom;
-        const stepX = trend.length > 1 ? chartWidth / (trend.length - 1) : 0;
+        const stepX = rows.length > 1 ? chartWidth / (rows.length - 1) : 0;
 
         const mapPoint = (value, index) => {
-            const x = padding.left + (stepX * index);
-            const y = padding.top + ((1 - (value / maxValue)) * chartHeight);
+            const x = rows.length > 1 ? padding.left + (stepX * index) : padding.left + (chartWidth / 2);
+            const percent = Math.min(maxPercent, Math.max(0, (value / scaleBase) * 100));
+            const y = padding.top + ((1 - (percent / maxPercent)) * chartHeight);
 
             return { x, y };
         };
@@ -1130,18 +1291,25 @@ function initializeDashboardPolling() {
 
             return `M ${start.x.toFixed(2)} ${baselineY.toFixed(2)} ${linePath} L ${end.x.toFixed(2)} ${baselineY.toFixed(2)} Z`;
         };
+        const numberFormatter = new Intl.NumberFormat('en-US');
 
         const horizontalGrid = Array.from({ length: 6 }, (_, index) => {
             const y = padding.top + ((chartHeight / 5) * index);
-            return `<line class="budget-grid-line" x1="${padding.left}" y1="${y.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${y.toFixed(2)}"></line>`;
+            const labelValue = percentAxisValues[index] ?? 0;
+
+            return `
+                <text class="budget-grid-label" x="${(padding.left - 12).toFixed(2)}" y="${(y + 4).toFixed(2)}">${numberFormatter.format(labelValue)}%</text>
+                <line class="budget-grid-line" x1="${padding.left}" y1="${y.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${y.toFixed(2)}"></line>
+            `;
         }).join('');
 
-        const verticalGrid = trend.map((_, index) => {
+        const verticalGrid = rows.map((_, index) => {
             const x = padding.left + (stepX * index);
             return `<line class="budget-grid-line-vertical" x1="${x.toFixed(2)}" y1="${padding.top}" x2="${x.toFixed(2)}" y2="${baselineY.toFixed(2)}"></line>`;
         }).join('');
 
-        const focusIndex = Math.max(0, trend.length - 1);
+        const latestMovementIndex = rows.reduce((latest, row, index) => ((Number(row?.in || 0) > 0 || Number(row?.out || 0) > 0) ? index : latest), -1);
+        const focusIndex = Math.max(0, latestMovementIndex >= 0 ? latestMovementIndex : rows.length - 1);
         const focusIn = inPoints[focusIndex] ?? inPoints[inPoints.length - 1];
         const focusOut = outPoints[focusIndex] ?? outPoints[outPoints.length - 1];
         const focusX = focusIn?.x ?? padding.left;
@@ -1166,7 +1334,6 @@ function initializeDashboardPolling() {
             minimumFractionDigits: 1,
             maximumFractionDigits: 1,
         });
-        const numberFormatter = new Intl.NumberFormat('en-US');
         const formatDelta = (value) => `${value >= 0 ? '+' : ''}${percentageFormatter.format(value)}%`;
 
         const formatFullDate = (row) => {
@@ -1186,28 +1353,29 @@ function initializeDashboardPolling() {
             return `${month} ${focusDate.getDate()}, ${focusDate.getFullYear()}, ${weekday}`;
         };
 
-        const focusRow = trend[focusIndex] ?? trend[trend.length - 1];
+        const focusRow = rows[focusIndex] ?? rows[rows.length - 1];
         const dateLabel = formatFullDate(focusRow);
 
-        const axisLabels = trend.map((row, index) => `
+        const axisLabels = rows.map((row, index) => `
             <span class="budget-axis-label ${index === focusIndex ? 'budget-axis-label-active' : ''}">
                 ${escapeHtml(row.label ?? '')}
             </span>
         `).join('');
         const dateLabelFor = (row) => formatFullDate(row);
 
-        trendContainer.style.setProperty('--budget-count', String(Math.max(1, trend.length)));
+        trendContainer.style.setProperty('--budget-count', String(Math.max(1, rows.length)));
         trendContainer.innerHTML = `
             <div class="budget-chart-shell">
                 <svg viewBox="0 0 ${width} ${height}" class="budget-chart-svg" role="img" aria-label="Stock in and stock out trend chart">
                     <defs>
                         <linearGradient id="budgetGradientIn" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgba(14, 116, 144, 0.24)" />
-                            <stop offset="100%" stop-color="rgba(14, 116, 144, 0.02)" />
+                            <stop offset="0%" stop-color="rgba(34, 197, 94, 0.32)" />
+                            <stop offset="58%" stop-color="rgba(16, 185, 129, 0.14)" />
+                            <stop offset="100%" stop-color="rgba(34, 197, 94, 0.035)" />
                         </linearGradient>
                         <linearGradient id="budgetGradientOut" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgba(239, 68, 68, 0.22)" />
-                            <stop offset="100%" stop-color="rgba(239, 68, 68, 0.02)" />
+                            <stop offset="0%" stop-color="rgba(253, 186, 116, 0.24)" />
+                            <stop offset="100%" stop-color="rgba(234, 88, 12, 0.03)" />
                         </linearGradient>
                     </defs>
                     ${horizontalGrid}
@@ -1266,7 +1434,7 @@ function initializeDashboardPolling() {
         const setFocusIndex = (index) => {
             const pointIn = inPoints[index];
             const pointOut = outPoints[index];
-            const row = trend[index] ?? {};
+            const row = rows[index] ?? {};
             const currentStockIn = seriesIn[index] ?? 0;
             const currentStockOut = seriesOut[index] ?? 0;
             const previousStockIn = seriesIn[Math.max(0, index - 1)] ?? 0;
@@ -1334,36 +1502,6 @@ function initializeDashboardPolling() {
         }
     };
 
-    const renderLowStockChart = (rows) => {
-        if (!(lowStockContainer instanceof HTMLElement)) {
-            return;
-        }
-
-        if (!Array.isArray(rows) || !rows.length) {
-            lowStockContainer.innerHTML = '<p class="text-sm text-slate-500">All categories are currently above minimum stock.</p>';
-            return;
-        }
-
-        const maxCount = Math.max(1, ...rows.map((row) => Number(row.count || 0)));
-
-        lowStockContainer.innerHTML = rows.map((row) => {
-            const count = Number(row.count || 0);
-            const width = Math.max(12, (count / maxCount) * 100);
-
-            return `
-                <article>
-                    <div class="mb-2 flex items-center justify-between">
-                        <p class="text-sm font-semibold text-slate-800">${escapeHtml(row.category ?? 'Unknown')}</p>
-                        <p class="text-sm font-bold text-brand-700">${count}</p>
-                    </div>
-                    <div class="low-stock-meter">
-                        <div class="low-stock-meter-fill" style="width: ${width}%"></div>
-                    </div>
-                </article>
-            `;
-        }).join('');
-    };
-
     const applyRevenueStats = (rows) => {
         if (!Array.isArray(rows) || !rows.length) {
             return;
@@ -1395,12 +1533,11 @@ function initializeDashboardPolling() {
         }
 
         renderTrendChart(payload?.trend ?? []);
-        renderLowStockChart(payload?.low_stock_by_category ?? []);
         applyRevenueStats(payload?.revenue_stats ?? []);
 
-        if (typeof payload?.trend_range_months === 'number') {
-            selectedTrendRange = normalizeTrendRange(payload.trend_range_months);
-            setActiveRangeButton(selectedTrendRange);
+        if (typeof payload?.trend_range === 'string' || typeof payload?.trend_range_months === 'number') {
+            selectedTrendRange = normalizeTrendRange(payload.trend_range ?? payload.trend_range_months);
+            setActiveRangeControl(selectedTrendRange);
         }
 
         if (updatedAtNode instanceof HTMLElement && payload?.updated_at) {
@@ -1411,15 +1548,15 @@ function initializeDashboardPolling() {
         }
     };
 
-    const buildMetricsUrl = (months = selectedTrendRange) => {
+    const buildMetricsUrl = (range = selectedTrendRange) => {
         const url = new URL(metricsUrl, window.location.origin);
-        url.searchParams.set('months', String(normalizeTrendRange(months)));
+        url.searchParams.set('range', normalizeTrendRange(range));
         return `${url.pathname}${url.search}`;
     };
 
-    const fetchMetrics = async (months = selectedTrendRange) => {
+    const fetchMetrics = async (range = selectedTrendRange) => {
         try {
-            const response = await fetch(buildMetricsUrl(months), {
+            const response = await fetch(buildMetricsUrl(range), {
                 headers: {
                     Accept: 'application/json',
                 },
@@ -1438,19 +1575,37 @@ function initializeDashboardPolling() {
 
     rangeButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            const months = normalizeTrendRange(button.dataset.dashboardRange);
-            selectedTrendRange = months;
-            setActiveRangeButton(months);
+            const range = normalizeTrendRange(button.dataset.dashboardRange);
+            selectedTrendRange = range;
+            setActiveRangeControl(range);
 
             try {
-                localStorage.setItem(rangeStorageKey, String(months));
+                localStorage.setItem(rangeStorageKey, range);
+                localStorage.removeItem(legacyRangeStorageKey);
             } catch (error) {
                 console.warn('Unable to persist dashboard trend range', error);
             }
 
-            fetchMetrics(months);
+            fetchMetrics(range);
         });
     });
+
+    if (rangeSelect instanceof HTMLSelectElement) {
+        rangeSelect.addEventListener('change', () => {
+            const range = normalizeTrendRange(rangeSelect.value);
+            selectedTrendRange = range;
+            setActiveRangeControl(range);
+
+            try {
+                localStorage.setItem(rangeStorageKey, range);
+                localStorage.removeItem(legacyRangeStorageKey);
+            } catch (error) {
+                console.warn('Unable to persist dashboard trend range', error);
+            }
+
+            fetchMetrics(range);
+        });
+    }
 
     if (trendContainer instanceof HTMLElement) {
         try {
@@ -1731,6 +1886,9 @@ function initializeReportsRevenueChart() {
     const rangeButtons = reportsRoot instanceof HTMLElement
         ? [...reportsRoot.querySelectorAll('[data-report-range]')]
         : [...document.querySelectorAll('[data-report-range]')];
+    const rangeSelect = reportsRoot instanceof HTMLElement
+        ? reportsRoot.querySelector('[data-report-range-select]')
+        : document.querySelector('[data-report-range-select]');
     const periodButtons = reportsRoot instanceof HTMLElement
         ? [...reportsRoot.querySelectorAll('[data-report-period]')]
         : [...document.querySelectorAll('[data-report-period]')];
@@ -1752,13 +1910,14 @@ function initializeReportsRevenueChart() {
     };
     const updatedAtNode = reportsRoot?.querySelector('[data-reports-updated-at]');
 
-    const reportRangeStorageKey = 'motox.reports.range.months';
+    const reportRangeStorageKey = 'motox.reports.range.half';
+    const legacyReportRangeStorageKey = 'motox.reports.range.months';
     const reportPeriodStorageKey = 'motox.reports.period';
-    const allowedRanges = [3, 6, 12];
+    const allowedRanges = ['jan-jun', 'jul-dec'];
     const allowedPeriods = ['all', 'daily', 'weekly', 'monthly', 'yearly'];
     const normalizeRange = (value) => {
-        const parsed = Number.parseInt(String(value ?? ''), 10);
-        return allowedRanges.includes(parsed) ? parsed : 6;
+        const normalized = String(value ?? '').trim().toLowerCase();
+        return allowedRanges.includes(normalized) ? normalized : 'jan-jun';
     };
     const normalizePeriod = (value) => {
         const normalized = normalizePeriodFilter(value);
@@ -1766,7 +1925,7 @@ function initializeReportsRevenueChart() {
     };
 
     let series = [];
-    let selectedMonths = 6;
+    let selectedRange = 'jan-jun';
     let selectedPeriod = 'all';
 
     try {
@@ -1779,9 +1938,12 @@ function initializeReportsRevenueChart() {
     }
 
     try {
-        selectedMonths = normalizeRange(localStorage.getItem(reportRangeStorageKey));
+        selectedRange = normalizeRange(
+            localStorage.getItem(reportRangeStorageKey)
+                ?? localStorage.getItem(legacyReportRangeStorageKey)
+        );
     } catch (error) {
-        selectedMonths = 6;
+        selectedRange = 'jan-jun';
     }
 
     try {
@@ -1803,10 +1965,14 @@ function initializeReportsRevenueChart() {
         maximumFractionDigits: 1,
     });
 
-    const setActiveRange = (months) => {
+    const setActiveRange = (range) => {
         rangeButtons.forEach((button) => {
-            button.classList.toggle('budget-range-pill-active', normalizeRange(button.dataset.reportRange) === months);
+            button.classList.toggle('budget-range-pill-active', normalizeRange(button.dataset.reportRange) === range);
         });
+
+        if (rangeSelect instanceof HTMLSelectElement) {
+            rangeSelect.value = normalizeRange(range);
+        }
     };
 
     const setActivePeriod = (period) => {
@@ -1820,8 +1986,32 @@ function initializeReportsRevenueChart() {
             return;
         }
 
+        const renderStatusOrders = (orders) => {
+            if (!Array.isArray(orders) || !orders.length) {
+                return '<p class="report-status-empty">No job orders in this status.</p>';
+            }
+
+            return orders.map((order) => {
+                const customer = escapeHtml(order?.customer ?? 'Walk-in Customer');
+                const image = order?.profile_photo_url
+                    ? `<img src="${escapeHtml(order.profile_photo_url)}" alt="${customer} profile" class="report-status-avatar" loading="lazy" decoding="async">`
+                    : `<span class="report-status-avatar report-status-avatar-fallback">${escapeHtml(order?.initials ?? 'WI')}</span>`;
+
+                return `
+                    <div class="report-status-order">
+                        ${image}
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-bold text-slate-900">${customer}</p>
+                            <p class="truncate text-xs text-slate-500">${escapeHtml(order?.order_number ?? '-')} - ${escapeHtml(order?.vehicle || 'No vehicle')}</p>
+                        </div>
+                        <span class="report-status-date">${escapeHtml(order?.date_display ?? '-')}</span>
+                    </div>
+                `;
+            }).join('');
+        };
+
         rows.forEach((row) => {
-            const key = String(row?.status ?? '')
+            const key = String(row?.key ?? row?.status ?? '')
                 .trim()
                 .toLowerCase()
                 .replace(/\s+/g, '_');
@@ -1839,22 +2029,39 @@ function initializeReportsRevenueChart() {
             if (countNode instanceof HTMLElement) {
                 countNode.textContent = countFormatter.format(Number(row?.count ?? 0));
             }
+
+            const ordersNode = target.querySelector('[data-report-status-orders]');
+            if (ordersNode instanceof HTMLElement) {
+                ordersNode.innerHTML = renderStatusOrders(row?.orders);
+            }
         });
     };
 
-    const renderSeries = (months) => {
+    const rangeLabel = (range) => normalizeRange(range) === 'jul-dec' ? 'Jul-Dec' : 'Jan-Jun';
+
+    const seriesForRange = (range) => {
+        const normalized = normalizeRange(range);
+        const start = normalized === 'jul-dec' ? 6 : 0;
+
+        return series.slice(start, start + 6);
+    };
+
+    const renderSeries = (range) => {
         if (!series.length) {
             chartContainer.innerHTML = '<p class="text-sm text-slate-500">No monthly revenue data available yet.</p>';
             return;
         }
 
-        const windowedSeries = series.slice(-months);
+        const normalizedRange = normalizeRange(range);
+        const windowedSeries = seriesForRange(normalizedRange);
         const values = windowedSeries.map((row) => Math.max(0, Number(row?.value || 0)));
-        const maxValue = Math.max(1, ...values);
+        const peakValue = Math.max(0, ...values);
+        const scaleBase = Math.max(1, peakValue);
+        const maxPercent = 100;
+        const axisValues = Array.from({ length: 6 }, (_, index) => 100 - (index * 20));
 
-        const width = 980;
-        const height = 280;
-        const padding = { top: 20, right: 18, bottom: 34, left: 18 };
+        const { width, height } = chartSvgSize(chartContainer);
+        const padding = { top: 20, right: 18, bottom: 34, left: 82 };
         const chartWidth = width - padding.left - padding.right;
         const chartHeight = height - padding.top - padding.bottom;
         const stepX = windowedSeries.length > 1 ? chartWidth / (windowedSeries.length - 1) : 0;
@@ -1862,7 +2069,8 @@ function initializeReportsRevenueChart() {
 
         const points = values.map((value, index) => {
             const x = padding.left + (stepX * index);
-            const y = padding.top + ((1 - (value / maxValue)) * chartHeight);
+            const percent = Math.min(maxPercent, Math.max(0, (value / scaleBase) * 100));
+            const y = padding.top + ((1 - (percent / maxPercent)) * chartHeight);
 
             return { x, y };
         });
@@ -1876,7 +2084,11 @@ function initializeReportsRevenueChart() {
 
         const horizontalGrid = Array.from({ length: 6 }, (_, index) => {
             const y = padding.top + ((chartHeight / 5) * index);
-            return `<line class="budget-grid-line" x1="${padding.left}" y1="${y.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${y.toFixed(2)}"></line>`;
+            const labelValue = axisValues[index] ?? 0;
+            return `
+                <text class="budget-grid-label" x="${(padding.left - 12).toFixed(2)}" y="${(y + 4).toFixed(2)}">${labelValue}%</text>
+                <line class="budget-grid-line" x1="${padding.left}" y1="${y.toFixed(2)}" x2="${(width - padding.right).toFixed(2)}" y2="${y.toFixed(2)}"></line>
+            `;
         }).join('');
 
         const verticalGrid = windowedSeries.map((_, index) => {
@@ -1887,7 +2099,8 @@ function initializeReportsRevenueChart() {
         const axisLabels = windowedSeries.map((row) => `
             <span class="budget-axis-label">${escapeHtml(row?.label ?? '')}</span>
         `).join('');
-        const focusIndex = Math.max(0, points.length - 1);
+        const lastRevenueIndex = values.reduce((latest, value, index) => value > 0 ? index : latest, -1);
+        const focusIndex = Math.max(0, lastRevenueIndex >= 0 ? lastRevenueIndex : points.length - 1);
         const focusPoint = points[focusIndex] ?? points[points.length - 1];
         const focusRow = windowedSeries[focusIndex] ?? windowedSeries[windowedSeries.length - 1] ?? {};
         const focusValue = values[focusIndex] ?? 0;
@@ -1909,17 +2122,18 @@ function initializeReportsRevenueChart() {
                 <svg viewBox="0 0 ${width} ${height}" class="budget-chart-svg" role="img" aria-label="Monthly revenue trend chart">
                     <defs>
                         <linearGradient id="reportRevenueGradient" x1="0" y1="0" x2="0" y2="1">
-                            <stop offset="0%" stop-color="rgba(14, 116, 144, 0.26)" />
-                            <stop offset="100%" stop-color="rgba(14, 116, 144, 0.03)" />
+                            <stop offset="0%" stop-color="rgba(251, 191, 36, 0.34)" />
+                            <stop offset="58%" stop-color="rgba(249, 115, 22, 0.16)" />
+                            <stop offset="100%" stop-color="rgba(249, 115, 22, 0.035)" />
                         </linearGradient>
                     </defs>
                     ${horizontalGrid}
                     ${verticalGrid}
                     <path d="${areaPath}" fill="url(#reportRevenueGradient)"></path>
-                    <polyline class="budget-line budget-line-in" points="${linePoints}"></polyline>
+                    <polyline class="budget-line budget-line-revenue budget-line-pencil" points="${linePoints}"></polyline>
                     ${focusPoint ? `<line class="budget-guide-line" data-report-guide x1="${focusPoint.x.toFixed(2)}" y1="${padding.top}" x2="${focusPoint.x.toFixed(2)}" y2="${baselineY.toFixed(2)}"></line>` : ''}
-                    ${points.map((point, index) => `<circle class="budget-point budget-point-in budget-point-hoverable" data-report-point="${index}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4.5"></circle>`).join('')}
-                    ${focusPoint ? `<circle class="budget-point budget-point-in budget-point-focus" data-report-focus cx="${focusPoint.x.toFixed(2)}" cy="${focusPoint.y.toFixed(2)}" r="6"></circle>` : ''}
+                    ${points.map((point, index) => `<circle class="budget-point budget-point-revenue budget-point-hoverable" data-report-point="${index}" cx="${point.x.toFixed(2)}" cy="${point.y.toFixed(2)}" r="4.5"></circle>`).join('')}
+                    ${focusPoint ? `<circle class="budget-point budget-point-revenue budget-point-focus" data-report-focus cx="${focusPoint.x.toFixed(2)}" cy="${focusPoint.y.toFixed(2)}" r="6"></circle>` : ''}
                 </svg>
                 <article class="budget-tooltip-card" data-report-tooltip style="left: ${tooltipLeft}%;">
                     <div class="budget-tooltip-head">
@@ -1937,9 +2151,10 @@ function initializeReportsRevenueChart() {
                 </article>
             </div>
             <div class="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-500">
-                <span class="inline-flex items-center gap-2"><i class="budget-legend-dot budget-legend-dot-in"></i>Revenue</span>
-                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Peak PHP ${moneyFormatter.format(maxValue)}</span>
-                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">${months}-Month Window</span>
+                <span class="inline-flex items-center gap-2"><i class="budget-legend-dot budget-legend-dot-revenue"></i>Revenue</span>
+                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Scale 0-100%</span>
+                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">Peak PHP ${moneyFormatter.format(peakValue)}</span>
+                <span class="text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">${rangeLabel(normalizedRange)} Window</span>
             </div>
             <div class="budget-axis-row">${axisLabels}</div>
         `;
@@ -2055,7 +2270,7 @@ function initializeReportsRevenueChart() {
             window.MotoXLiveTables.replaceRows('reports', payload.top_customers);
         }
 
-        renderSeries(selectedMonths);
+        renderSeries(selectedRange);
     };
 
     const buildMetricsUrl = (period) => {
@@ -2085,24 +2300,41 @@ function initializeReportsRevenueChart() {
         }
     };
 
-    setActiveRange(selectedMonths);
+    setActiveRange(selectedRange);
     setActivePeriod(selectedPeriod);
-    renderSeries(selectedMonths);
+    renderSeries(selectedRange);
 
     rangeButtons.forEach((button) => {
         button.addEventListener('click', () => {
-            const months = normalizeRange(button.dataset.reportRange);
-            selectedMonths = months;
-            setActiveRange(months);
-            renderSeries(months);
+            const range = normalizeRange(button.dataset.reportRange);
+            selectedRange = range;
+            setActiveRange(range);
+            renderSeries(range);
 
             try {
-                localStorage.setItem(reportRangeStorageKey, String(months));
+                localStorage.setItem(reportRangeStorageKey, range);
+                localStorage.removeItem(legacyReportRangeStorageKey);
             } catch (error) {
                 console.warn('Unable to persist reports trend range', error);
             }
         });
     });
+
+    if (rangeSelect instanceof HTMLSelectElement) {
+        rangeSelect.addEventListener('change', () => {
+            const range = normalizeRange(rangeSelect.value);
+            selectedRange = range;
+            setActiveRange(range);
+            renderSeries(range);
+
+            try {
+                localStorage.setItem(reportRangeStorageKey, range);
+                localStorage.removeItem(legacyReportRangeStorageKey);
+            } catch (error) {
+                console.warn('Unable to persist reports trend range', error);
+            }
+        });
+    }
 
     const downloadTrigger = document.querySelector('[data-report-download-trigger]');
     const downloadMenu = document.querySelector('[data-report-download-menu]');
@@ -2137,10 +2369,11 @@ function initializeReportsRevenueChart() {
 
             window.requestAnimationFrame(() => {
                 exportReportRevenueChartToPng({
-                    filename: `motox-report-chart-${selectedPeriod}-${selectedMonths}m.png`,
-                    months: selectedMonths,
+                    filename: `motox-report-chart-${selectedPeriod}-${selectedRange}.png`,
+                    months: 6,
+                    rangeLabel: rangeLabel(selectedRange),
                     period: selectedPeriod,
-                    series: series.slice(-selectedMonths),
+                    series: seriesForRange(selectedRange),
                     summary: {
                         latest: summaryNodes.latest instanceof HTMLElement ? summaryNodes.latest.textContent : '',
                         average: summaryNodes.average instanceof HTMLElement ? summaryNodes.average.textContent : '',
@@ -2194,7 +2427,7 @@ function initializeReportsRevenueChart() {
     }
 }
 
-async function exportReportRevenueChartToPng({ filename, months, period, series, summary }) {
+async function exportReportRevenueChartToPng({ filename, months, rangeLabel, period, series, summary }) {
     const rows = Array.isArray(series) ? series : [];
     const width = 1400;
     const height = 820;
@@ -2223,10 +2456,10 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
 
     context.fillStyle = '#64748b';
     context.font = '600 20px Manrope, Arial, sans-serif';
-    context.fillText(`${periodLabel(period)} - ${months}-month window`, 92, 160);
+    context.fillText(`${periodLabel(period)} - ${rangeLabel || `${months}-month`} window`, 92, 160);
 
     context.textAlign = 'right';
-    context.fillStyle = '#0f766e';
+    context.fillStyle = '#f97316';
     context.font = '800 26px Manrope, Arial, sans-serif';
     context.fillText('MotoX Reports', width - 92, 126);
     context.fillStyle = '#94a3b8';
@@ -2244,7 +2477,8 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
         height: 360,
     };
     const values = rows.map((row) => Math.max(0, Number(row?.value || 0)));
-    const maxValue = Math.max(1, ...values);
+    const peakValue = Math.max(0, ...values);
+    const scaleBase = Math.max(1, peakValue);
     const moneyFormatter = new Intl.NumberFormat('en-US', {
         maximumFractionDigits: 2,
         minimumFractionDigits: 2,
@@ -2257,12 +2491,12 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
 
     for (let index = 0; index <= 5; index += 1) {
         const y = chart.y + ((chart.height / 5) * index);
-        const value = maxValue - ((maxValue / 5) * index);
+        const value = 100 - (index * 20);
         context.beginPath();
         context.moveTo(chart.x, y);
         context.lineTo(chart.x + chart.width, y);
         context.stroke();
-        context.fillText(`PHP ${compactCurrency(value)}`, chart.x, y - 8);
+        context.fillText(`${value}%`, chart.x, y - 8);
     }
 
     if (!rows.length) {
@@ -2275,12 +2509,13 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
         const stepX = rows.length > 1 ? chart.width / (rows.length - 1) : 0;
         const points = values.map((value, index) => ({
             x: chart.x + (stepX * index),
-            y: chart.y + ((1 - (value / maxValue)) * chart.height),
+            y: chart.y + ((1 - (Math.min(100, Math.max(0, (value / scaleBase) * 100)) / 100)) * chart.height),
         }));
 
         const areaGradient = context.createLinearGradient(0, chart.y, 0, chart.y + chart.height);
-        areaGradient.addColorStop(0, 'rgba(14, 116, 144, 0.26)');
-        areaGradient.addColorStop(1, 'rgba(14, 116, 144, 0.03)');
+        areaGradient.addColorStop(0, 'rgba(251, 191, 36, 0.34)');
+        areaGradient.addColorStop(0.58, 'rgba(249, 115, 22, 0.16)');
+        areaGradient.addColorStop(1, 'rgba(249, 115, 22, 0.035)');
 
         context.beginPath();
         context.moveTo(points[0].x, chart.y + chart.height);
@@ -2299,7 +2534,7 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
 
             context.lineTo(point.x, point.y);
         });
-        context.strokeStyle = '#0e7490';
+        context.strokeStyle = '#f59e0b';
         context.lineWidth = 5;
         context.lineJoin = 'round';
         context.lineCap = 'round';
@@ -2310,12 +2545,13 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
             context.arc(point.x, point.y, 7, 0, Math.PI * 2);
             context.fillStyle = '#ffffff';
             context.fill();
-            context.strokeStyle = '#0e7490';
+            context.strokeStyle = '#f59e0b';
             context.lineWidth = 4;
             context.stroke();
         });
 
-        const focusIndex = points.length - 1;
+        const lastRevenueIndex = values.reduce((latest, value, index) => value > 0 ? index : latest, -1);
+        const focusIndex = Math.max(0, lastRevenueIndex >= 0 ? lastRevenueIndex : points.length - 1);
         const focusPoint = points[focusIndex];
         const focusRow = rows[focusIndex] ?? {};
         const focusValue = values[focusIndex] ?? 0;
@@ -2329,7 +2565,7 @@ async function exportReportRevenueChartToPng({ filename, months, period, series,
         context.fillStyle = '#ffffff';
         context.font = '800 25px Manrope, Arial, sans-serif';
         drawClampedText(context, `PHP ${moneyFormatter.format(focusValue)}`, tooltipX + 18, tooltipY + 66, 224);
-        context.fillStyle = '#67e8f9';
+        context.fillStyle = '#fdba74';
         context.font = '700 14px Manrope, Arial, sans-serif';
         context.fillText('Revenue', tooltipX + 18, tooltipY + 88);
 
@@ -2699,6 +2935,21 @@ function initializeHeaderMenus() {
     };
 
     triggers.forEach((trigger) => {
+        let closeTimer = null;
+        const openMenu = () => {
+            const name = trigger.dataset.headerMenuTrigger;
+            const panel = name ? document.querySelector(`[data-header-menu-panel="${name}"]`) : null;
+
+            if (!(panel instanceof HTMLElement)) {
+                return;
+            }
+
+            window.clearTimeout(closeTimer);
+            closeAllMenus();
+            panel.classList.remove('hidden');
+            trigger.setAttribute('aria-expanded', 'true');
+        };
+
         trigger.addEventListener('click', (event) => {
             event.stopPropagation();
 
@@ -2717,6 +2968,14 @@ function initializeHeaderMenus() {
                 trigger.setAttribute('aria-expanded', 'true');
             }
         });
+
+        const shell = trigger.closest('.header-menu-shell');
+        if (shell instanceof HTMLElement) {
+            shell.addEventListener('mouseenter', openMenu);
+            shell.addEventListener('mouseleave', () => {
+                closeTimer = window.setTimeout(closeAllMenus, 180);
+            });
+        }
     });
 
     document.addEventListener('click', (event) => {
@@ -2922,8 +3181,6 @@ function initializeNotificationActions() {
     let audioContext = null;
     let hasFetchedNotifications = false;
     let pendingNotificationSounds = 0;
-    const currentPage = String(document.body?.dataset.currentPage || '').trim();
-    const notificationSoundAllowed = !['billing', 'reports'].includes(currentPage);
 
     if (!notificationsUrl) {
         return;
@@ -3006,15 +3263,15 @@ function initializeNotificationActions() {
                 oscillator.type = 'sine';
                 oscillator.frequency.setValueAtTime(frequency, context.currentTime + startOffset);
                 gain.gain.setValueAtTime(0.0001, context.currentTime + startOffset);
-                gain.gain.exponentialRampToValueAtTime(0.16, context.currentTime + startOffset + 0.015);
-                gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + startOffset + 0.16);
+                gain.gain.exponentialRampToValueAtTime(0.24, context.currentTime + startOffset + 0.015);
+                gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + startOffset + 0.2);
                 oscillator.connect(gain);
                 gain.connect(context.destination);
                 oscillator.start(context.currentTime + startOffset);
-                oscillator.stop(context.currentTime + startOffset + 0.18);
+                oscillator.stop(context.currentTime + startOffset + 0.22);
             };
 
-            const boundedRepeatCount = Math.min(3, Math.max(1, repeatCount));
+            const boundedRepeatCount = Math.min(5, Math.max(1, repeatCount));
             for (let index = 0; index < boundedRepeatCount; index += 1) {
                 const offset = index * 0.46;
                 playTone(880, offset);
@@ -3187,7 +3444,11 @@ function initializeNotificationActions() {
             newNotificationCount = unreadCount - lastUnreadCount;
         }
 
-        if (notificationSoundAllowed && unreadCount > 0 && newNotificationCount > 0) {
+        if (newNotificationCount === 0 && !hasFetchedNotifications && unreadCount > 0 && Array.isArray(items) && items.length > 0) {
+            newNotificationCount = Math.min(3, unreadCount);
+        }
+
+        if (unreadCount > 0 && newNotificationCount > 0) {
             playNotificationSound(newNotificationCount);
         }
 
@@ -3799,7 +4060,7 @@ function initializeLiveTables() {
             tbody: document.querySelector('[data-billing-rows]'),
             input: document.getElementById('billing-search-input'),
             exportUrl: document.querySelector('[data-billing-export-url]')?.dataset.billingExportUrl || '',
-            emptyColspan: 7,
+            emptyColspan: 8,
             emptyText: 'No billable job orders match the current filters.',
             filename: 'motox-billing.csv',
             title: 'MotoX Billing',
@@ -3820,6 +4081,7 @@ function initializeLiveTables() {
                             data-billing-row
                             data-item-date="${escapeHtml(invoice.updated_at || '')}"
                             data-search="${escapeHtml(search)}"
+                            data-receipt-key="${escapeHtml(invoice.invoice_number)}"
                             data-receipt-invoice="${escapeHtml(invoice.invoice_number)}"
                             data-receipt-order="${escapeHtml(invoice.order_number)}"
                             data-receipt-customer="${escapeHtml(invoice.customer)}"
@@ -3829,6 +4091,7 @@ function initializeLiveTables() {
                             data-receipt-vehicle="${escapeHtml(invoice.vehicle)}"
                             data-receipt-status="${escapeHtml(invoice.status)}"
                             data-receipt-amount="${escapeHtml(invoice.amount_display)}"
+                            data-receipt-amount-value="${escapeHtml(invoice.amount)}"
                             data-receipt-updated="${escapeHtml(invoice.receipt_updated_display || invoice.updated_display)}"
                             data-receipt-shop="${escapeHtml(invoice.shop_name || 'MotoX')}"
                         >
@@ -3846,6 +4109,18 @@ function initializeLiveTables() {
                             <td>${renderBadge(invoice.status, invoice.tone)}</td>
                             <td class="font-semibold text-slate-900">${escapeHtml(invoice.amount_display)}</td>
                             <td>${escapeHtml(invoice.updated_display)}</td>
+                            <td data-print-skip>
+                                <div class="billing-action-buttons">
+                                    <button type="button" class="receipt-action-button receipt-action-button-primary" data-download-receipt aria-label="Download receipt for ${escapeHtml(invoice.customer)}">
+                                        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                            <path d="M12 3v12" />
+                                            <path d="m7 10 5 5 5-5" />
+                                            <path d="M5 21h14" />
+                                        </svg>
+                                        <span>Receipt</span>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -3951,18 +4226,21 @@ function initializeLiveTables() {
         }
 
         if (page === 'billing') {
-            const receiptToolbarButton = document.querySelector('[data-download-visible-receipt]');
-            if (receiptToolbarButton instanceof HTMLButtonElement) {
-                receiptToolbarButton.addEventListener('click', () => {
-                    const firstVisibleReceiptRow = getRows('billing')
-                        .filter((row) => row.style.display !== 'none')
-                        .find((row) => row instanceof HTMLTableRowElement);
+            config.tbody?.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof Element)) {
+                    return;
+                }
 
-                    if (firstVisibleReceiptRow instanceof HTMLTableRowElement) {
-                        downloadReceiptPng(firstVisibleReceiptRow);
-                    }
-                });
-            }
+                const button = target.closest('[data-download-receipt]');
+                if (!(button instanceof HTMLButtonElement)) {
+                    return;
+                }
+
+                event.preventDefault();
+                downloadReceiptPng(button);
+            });
+
         }
 
         applyFilters(page);
@@ -4016,7 +4294,7 @@ function visibleTableData(config) {
 }
 
 function printBillingReceipt(button) {
-    downloadReceiptPng(button);
+    printReceiptPng(button);
 }
 
 function exportVisibleTable(config) {
@@ -4210,6 +4488,133 @@ function initializeImageUploadPreviews() {
             showPreview(file);
         });
     });
+}
+
+function initializeLogsFilters() {
+    const bind = () => {
+        const form = document.querySelector('[data-logs-filter-form]');
+        const searchInput = document.querySelector('[data-logs-live-search]');
+        const filterSelect = document.querySelector('[data-logs-filter-select]');
+        const dateTrigger = document.querySelector('[data-logs-date-trigger]');
+        const dateMenu = document.querySelector('[data-logs-date-menu]');
+        let pendingRequest = null;
+
+        const fetchLogs = async (url, focusSearch = false) => {
+            const main = document.querySelector('main');
+            if (!(main instanceof HTMLElement)) {
+                window.location.href = url;
+                return;
+            }
+
+            if (pendingRequest instanceof AbortController) {
+                pendingRequest.abort();
+            }
+            pendingRequest = new AbortController();
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                    signal: pendingRequest.signal,
+                });
+
+                if (!response.ok) {
+                    window.location.href = url;
+                    return;
+                }
+
+                const html = await response.text();
+                const doc = new DOMParser().parseFromString(html, 'text/html');
+                const nextMain = doc.querySelector('main');
+                if (!(nextMain instanceof HTMLElement)) {
+                    window.location.href = url;
+                    return;
+                }
+
+                main.innerHTML = nextMain.innerHTML;
+                window.history.replaceState(null, '', url);
+                initializeModalControls();
+                bind();
+
+                if (focusSearch) {
+                    const nextSearchInput = document.querySelector('[data-logs-live-search]');
+                    if (nextSearchInput instanceof HTMLInputElement) {
+                        nextSearchInput.focus();
+                        nextSearchInput.setSelectionRange(nextSearchInput.value.length, nextSearchInput.value.length);
+                    }
+                }
+            } catch (error) {
+                if (error?.name !== 'AbortError') {
+                    console.warn('Logs filtering failed', error);
+                }
+            }
+        };
+
+        if (form instanceof HTMLFormElement && searchInput instanceof HTMLInputElement) {
+        let searchTimer = null;
+        form.addEventListener('submit', (event) => {
+            event.preventDefault();
+            fetchLogs(`${form.action}?${new URLSearchParams(new FormData(form)).toString()}`, true);
+        });
+
+        searchInput.addEventListener('input', () => {
+            window.clearTimeout(searchTimer);
+            searchTimer = window.setTimeout(() => {
+                fetchLogs(`${form.action}?${new URLSearchParams(new FormData(form)).toString()}`, true);
+            }, 650);
+        });
+        }
+
+        if (form instanceof HTMLFormElement && filterSelect instanceof HTMLSelectElement) {
+            filterSelect.addEventListener('change', () => {
+                fetchLogs(`${form.action}?${new URLSearchParams(new FormData(form)).toString()}`, false);
+            });
+        }
+
+        if (dateTrigger instanceof HTMLButtonElement && dateMenu instanceof HTMLElement) {
+        dateTrigger.addEventListener('click', (event) => {
+            event.stopPropagation();
+            const willOpen = dateMenu.classList.contains('hidden');
+            dateMenu.classList.toggle('hidden', !willOpen);
+            dateTrigger.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        });
+
+        if (!window.MotoXLogsDateOutsideClickBound) {
+            window.MotoXLogsDateOutsideClickBound = true;
+            document.addEventListener('click', (event) => {
+                document.querySelectorAll('[data-logs-date-menu]').forEach((menu) => {
+                    const trigger = document.querySelector('[data-logs-date-trigger]');
+                    if (!(menu instanceof HTMLElement) || !(trigger instanceof HTMLElement)) {
+                        return;
+                    }
+
+                    if (menu.contains(event.target) || trigger.contains(event.target)) {
+                        return;
+                    }
+
+                    menu.classList.add('hidden');
+                    trigger.setAttribute('aria-expanded', 'false');
+                });
+            });
+        }
+
+            dateMenu.addEventListener('click', (event) => {
+                const target = event.target;
+                if (!(target instanceof Element)) {
+                    return;
+                }
+
+                const link = target.closest('a');
+                if (!(link instanceof HTMLAnchorElement)) {
+                    return;
+                }
+
+                event.preventDefault();
+                fetchLogs(link.href, false);
+            });
+        }
+    };
+
+    bind();
 }
 
 function initializeJobOrderCustomerPhotos() {

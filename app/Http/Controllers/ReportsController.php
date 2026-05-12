@@ -179,9 +179,9 @@ class ReportsController extends Controller
             ? (($growthBaseRevenue - $previousPeriodRevenue) / $previousPeriodRevenue) * 100
             : ($growthBaseRevenue > 0 ? 100 : 0);
 
-        $monthly = collect(range(11, 0))
-            ->map(function (int $offset) use ($completedOrders, $now): array {
-                $start = $now->copy()->subMonths($offset)->startOfMonth();
+        $monthly = collect(range(1, 12))
+            ->map(function (int $month) use ($completedOrders, $now): array {
+                $start = $now->copy()->month($month)->startOfMonth();
                 $end = $start->isSameMonth($now)
                     ? $now->copy()
                     : $start->copy()->endOfMonth();
@@ -214,13 +214,28 @@ class ReportsController extends Controller
         ])->values();
 
         $peakMonth = $monthlyTrend->sortByDesc('value')->first();
-        $averageMonthly = (float) $monthlyTrend->avg('value');
-        $recentMonth = (float) ($monthlyTrend->last()['value'] ?? 0);
+        $elapsedMonths = $monthlyTrend
+            ->filter(fn (array $row): bool => \Illuminate\Support\Carbon::parse($row['date_token'], 'Asia/Manila')->startOfMonth()->lessThanOrEqualTo($now->copy()->startOfMonth()));
+        $averageMonthly = (float) $elapsedMonths->avg('value');
+        $recentMonth = (float) ($elapsedMonths->last()['value'] ?? 0);
 
-        $statusBreakdown = collect(JobOrder::statuses())->map(fn (string $status): array => [
-            'status' => str_replace('_', ' ', ucfirst($status)),
-            'count' => $orders->where('status', $status)->count(),
-        ])->values();
+        $statusBreakdown = collect(JobOrder::statuses())->map(function (string $status) use ($orders): array {
+            $statusOrders = $orders
+                ->where('status', $status)
+                ->sortByDesc(fn (JobOrder $order): int => $order->updated_at?->timestamp ?? $order->created_at?->timestamp ?? 0)
+                ->values();
+
+            return [
+                'key' => $status,
+                'status' => str_replace('_', ' ', ucfirst($status)),
+                'count' => $statusOrders->count(),
+                'orders' => $statusOrders
+                    ->take(3)
+                    ->map(fn (JobOrder $order): array => $this->statusOrderPayload($order))
+                    ->values()
+                    ->all(),
+            ];
+        })->values();
 
         $topCustomersQuery = Customer::query()
             ->forShop($shop)
@@ -351,6 +366,29 @@ class ReportsController extends Controller
             'billed' => $row['billed'],
             'latest_job_at' => $latest?->toIso8601String(),
             'latest_display' => $row['latest_display'] ?? ($latest?->timezone('Asia/Manila')->format('M d, Y') ?? now('Asia/Manila')->format('M d, Y')),
+        ];
+    }
+
+    private function statusOrderPayload(JobOrder $order): array
+    {
+        $customerName = $order->customer?->name ?? 'Walk-in Customer';
+        $photoPath = $order->customer?->profile_photo_path ?: $order->walk_in_profile_photo_path;
+        $initials = collect(explode(' ', $customerName))
+            ->filter()
+            ->map(fn (string $part): string => mb_substr($part, 0, 1))
+            ->take(2)
+            ->implode('');
+
+        return [
+            'order_number' => $order->order_number,
+            'customer' => $customerName,
+            'vehicle' => $order->vehicle,
+            'status' => $order->status,
+            'profile_photo_url' => $photoPath ? Storage::url($photoPath) : '',
+            'initials' => strtoupper($initials ?: 'WI'),
+            'date_display' => ($order->scheduled_for ?: $order->completed_at ?: $order->updated_at)
+                ? ($order->scheduled_for ?: $order->completed_at ?: $order->updated_at)->timezone('Asia/Manila')->format('M d')
+                : '-',
         ];
     }
 }

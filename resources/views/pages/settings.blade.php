@@ -166,7 +166,7 @@
                 </div>
             </section>
 
-            <section class="grid gap-6 lg:grid-cols-2">
+            <section>
                 <article id="notifications" class="panel-card scroll-mt-28 p-6">
                     <div class="flex items-center gap-3">
                         <span class="icon-chip appearance-card-icon">
@@ -215,27 +215,6 @@
                                 </select>
                             </label>
                         </div>
-                    </div>
-                </article>
-
-                <article class="panel-card p-6">
-                    <h2 class="text-2xl font-bold text-slate-900" data-i18n="Appearance">Appearance</h2>
-                    <p class="mt-1 text-sm text-slate-500">Switch between dark and light mode.</p>
-
-                    <div class="mt-6 grid gap-4 md:grid-cols-2">
-                        <button type="button" data-mode="light" class="appearance-card appearance-card-active">
-                            <span class="icon-chip appearance-card-icon appearance-card-icon-light">
-                                <x-icon name="sun" class="h-5 w-5 appearance-mode-glyph" />
-                            </span>
-                            <span class="text-base font-semibold text-slate-800" data-i18n="Light Mode">Light Mode</span>
-                        </button>
-
-                        <button type="button" data-mode="dark" class="appearance-card">
-                            <span class="icon-chip appearance-card-icon appearance-card-icon-dark">
-                                <x-icon name="moon" class="h-5 w-5 appearance-mode-glyph" />
-                            </span>
-                            <span class="text-base font-semibold text-slate-800" data-i18n="Dark Mode">Dark Mode</span>
-                        </button>
                     </div>
                 </article>
             </section>
