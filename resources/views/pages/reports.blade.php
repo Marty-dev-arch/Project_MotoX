@@ -41,7 +41,7 @@
                     </button>
                     <div class="page-filter-menu hidden" data-report-download-menu>
                         <button type="button" data-export-csv="reports">CSV File</button>
-                        <button type="button" data-download-report-png>Report Chart PNG</button>
+                        <button type="button" data-download-report-png>Chart PNG</button>
                     </div>
                 </div>
             </div>
@@ -132,7 +132,6 @@
                             <div class="report-status-card-head">
                                 <div>
                                     <p class="font-semibold text-slate-900">{{ $row['status'] }}</p>
-                                    <p class="text-xs text-slate-500">Latest job orders</p>
                                 </div>
                                 <x-badge :tone="$tone" data-report-status-count>{{ $row['count'] }}</x-badge>
                             </div>

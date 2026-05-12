@@ -1,6 +1,49 @@
-import html2canvas from 'html2canvas';
-import intlTelInput from 'intl-tel-input/intlTelInputWithUtils';
 import 'intl-tel-input/styles';
+
+let html2canvasLoader = null;
+let intlTelInputLoader = null;
+
+function loadHtml2Canvas() {
+    if (!html2canvasLoader) {
+        html2canvasLoader = import('html2canvas').then((module) => module.default || module);
+    }
+
+    return html2canvasLoader;
+}
+
+function loadIntlTelInput() {
+    if (!intlTelInputLoader) {
+        intlTelInputLoader = import('intl-tel-input/intlTelInputWithUtils').then((module) => module.default || module);
+    }
+
+    return intlTelInputLoader;
+}
+
+function startVisiblePolling(callback, intervalMs) {
+    let running = false;
+
+    const run = async () => {
+        if (document.hidden || running) {
+            return;
+        }
+
+        running = true;
+        try {
+            await callback();
+        } finally {
+            running = false;
+        }
+    };
+
+    const intervalId = window.setInterval(run, intervalMs);
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            run();
+        }
+    });
+
+    return intervalId;
+}
 
 document.addEventListener('DOMContentLoaded', () => {
     const html = document.documentElement;
@@ -828,6 +871,8 @@ async function renderReceiptCanvas(source) {
     document.body.appendChild(host);
 
     try {
+        const html2canvas = await loadHtml2Canvas();
+
         return await html2canvas(receiptNode, {
             backgroundColor: '#ffffff',
             scale: Math.max(2, window.devicePixelRatio || 1),
@@ -1063,107 +1108,111 @@ function initializeAuthPhoneInputs() {
         return;
     }
 
-    forms.forEach((form) => {
-        if (!(form instanceof HTMLFormElement)) {
-            return;
-        }
-
-        const input = form.querySelector('[data-auth-phone-input]');
-        const fullInput = form.querySelector('[data-auth-phone-full]');
-        const countryInput = form.querySelector('[data-auth-phone-country]');
-        const dialCodeInput = form.querySelector('[data-auth-phone-dial-code]');
-        const error = form.querySelector('[data-auth-phone-error]');
-
-        if (!(input instanceof HTMLInputElement)
-            || !(fullInput instanceof HTMLInputElement)
-            || !(countryInput instanceof HTMLInputElement)
-            || !(dialCodeInput instanceof HTMLInputElement)
-        ) {
-            return;
-        }
-
-        const initialCountry = (countryInput.value || 'ph').toLowerCase();
-        const phone = intlTelInput(input, {
-            initialCountry,
-            separateDialCode: true,
-            nationalMode: true,
-            strictMode: true,
-            formatAsYouType: false,
-        });
-
-        if (fullInput.value) {
-            phone.setNumber(fullInput.value);
-        }
-
-        const selectedDialCode = () => {
-            const data = phone.getSelectedCountryData();
-            return data?.dialCode ? `+${data.dialCode}` : '';
-        };
-
-        const syncCountryFields = () => {
-            const data = phone.getSelectedCountryData();
-            countryInput.value = String(data?.iso2 || '').toLowerCase();
-            dialCodeInput.value = selectedDialCode();
-        };
-
-        const digitsOnly = () => {
-            const digits = input.value.replace(/\D+/g, '');
-            if (input.value !== digits) {
-                input.value = digits;
+    loadIntlTelInput().then((intlTelInput) => {
+        forms.forEach((form) => {
+            if (!(form instanceof HTMLFormElement)) {
+                return;
             }
 
-            return digits;
-        };
+            const input = form.querySelector('[data-auth-phone-input]');
+            const fullInput = form.querySelector('[data-auth-phone-full]');
+            const countryInput = form.querySelector('[data-auth-phone-country]');
+            const dialCodeInput = form.querySelector('[data-auth-phone-dial-code]');
+            const error = form.querySelector('[data-auth-phone-error]');
 
-        const setPhoneError = (message = '') => {
-            input.setCustomValidity(message);
-
-            if (error instanceof HTMLElement) {
-                error.textContent = message;
-                error.classList.toggle('hidden', message === '');
+            if (!(input instanceof HTMLInputElement)
+                || !(fullInput instanceof HTMLInputElement)
+                || !(countryInput instanceof HTMLInputElement)
+                || !(dialCodeInput instanceof HTMLInputElement)
+            ) {
+                return;
             }
-        };
 
-        const validate = (showErrors = true) => {
-            const digits = digitsOnly();
-            syncCountryFields();
+            const initialCountry = (countryInput.value || 'ph').toLowerCase();
+            const phone = intlTelInput(input, {
+                initialCountry,
+                separateDialCode: true,
+                nationalMode: true,
+                strictMode: true,
+                formatAsYouType: false,
+            });
 
-            if (digits === '') {
-                fullInput.value = '';
+            if (fullInput.value) {
+                phone.setNumber(fullInput.value);
+            }
+
+            const selectedDialCode = () => {
+                const data = phone.getSelectedCountryData();
+                return data?.dialCode ? `+${data.dialCode}` : '';
+            };
+
+            const syncCountryFields = () => {
+                const data = phone.getSelectedCountryData();
+                countryInput.value = String(data?.iso2 || '').toLowerCase();
+                dialCodeInput.value = selectedDialCode();
+            };
+
+            const digitsOnly = () => {
+                const digits = input.value.replace(/\D+/g, '');
+                if (input.value !== digits) {
+                    input.value = digits;
+                }
+
+                return digits;
+            };
+
+            const setPhoneError = (message = '') => {
+                input.setCustomValidity(message);
+
+                if (error instanceof HTMLElement) {
+                    error.textContent = message;
+                    error.classList.toggle('hidden', message === '');
+                }
+            };
+
+            const validate = (showErrors = true) => {
+                const digits = digitsOnly();
+                syncCountryFields();
+
+                if (digits === '') {
+                    fullInput.value = '';
+                    setPhoneError('');
+                    return true;
+                }
+
+                if (!/^\d+$/.test(digits)) {
+                    const message = 'Contact number can contain numbers only.';
+                    setPhoneError(showErrors ? message : '');
+                    return false;
+                }
+
+                const isValid = phone.isValidNumber();
+                if (!isValid) {
+                    const message = 'Enter a valid phone number for the selected country.';
+                    setPhoneError(showErrors ? message : '');
+                    return false;
+                }
+
+                fullInput.value = phone.getNumber();
                 setPhoneError('');
                 return true;
-            }
+            };
 
-            if (!/^\d+$/.test(digits)) {
-                const message = 'Contact number can contain numbers only.';
-                setPhoneError(showErrors ? message : '');
-                return false;
-            }
+            input.addEventListener('input', () => validate(true));
+            input.addEventListener('blur', () => validate(true));
+            input.addEventListener('countrychange', () => validate(input.value.trim() !== ''));
 
-            const isValid = phone.isValidNumber();
-            if (!isValid) {
-                const message = 'Enter a valid phone number for the selected country.';
-                setPhoneError(showErrors ? message : '');
-                return false;
-            }
+            form.addEventListener('submit', (event) => {
+                if (!validate(true)) {
+                    event.preventDefault();
+                    input.reportValidity();
+                }
+            });
 
-            fullInput.value = phone.getNumber();
-            setPhoneError('');
-            return true;
-        };
-
-        input.addEventListener('input', () => validate(true));
-        input.addEventListener('blur', () => validate(true));
-        input.addEventListener('countrychange', () => validate(input.value.trim() !== ''));
-
-        form.addEventListener('submit', (event) => {
-            if (!validate(true)) {
-                event.preventDefault();
-                input.reportValidity();
-            }
+            validate(false);
         });
-
-        validate(false);
+    }).catch((error) => {
+        console.warn('Phone input helper unavailable', error);
     });
 }
 
@@ -1617,9 +1666,7 @@ function initializeDashboardPolling() {
     }
 
     fetchMetrics(selectedTrendRange);
-    window.setInterval(() => {
-        fetchMetrics(selectedTrendRange);
-    }, 5000);
+    startVisiblePolling(() => fetchMetrics(selectedTrendRange), 15000);
 }
 
 function initializeBillingPolling() {
@@ -1750,7 +1797,7 @@ function initializeBillingPolling() {
 
     setActivePeriodButton(selectedPeriod);
     fetchMetrics(selectedPeriod);
-    window.setInterval(fetchMetrics, 2000);
+    startVisiblePolling(() => fetchMetrics(selectedPeriod), 10000);
 }
 
 function initializeCustomersPolling() {
@@ -1801,7 +1848,7 @@ function initializeCustomersPolling() {
     };
 
     fetchMetrics();
-    window.setInterval(fetchMetrics, 12000);
+    startVisiblePolling(fetchMetrics, 20000);
 }
 
 function initializeJobOrdersPolling() {
@@ -1869,7 +1916,7 @@ function initializeJobOrdersPolling() {
     };
 
     fetchMetrics();
-    window.setInterval(fetchMetrics, 12000);
+    startVisiblePolling(fetchMetrics, 20000);
 }
 
 function initializeReportsRevenueChart() {
@@ -2423,7 +2470,7 @@ function initializeReportsRevenueChart() {
 
     fetchMetrics();
     if (metricsUrl) {
-        window.setInterval(fetchMetrics, 7000);
+        startVisiblePolling(fetchMetrics, 20000);
     }
 }
 
@@ -2737,7 +2784,7 @@ function initializeLandingMetricsPolling() {
     };
 
     fetchMetrics();
-    window.setInterval(fetchMetrics, 15000);
+    startVisiblePolling(fetchMetrics, 30000);
 }
 
 function initializeLandingRefreshLoader() {
@@ -3564,7 +3611,7 @@ function initializeNotificationActions() {
 
     window.MotoXRefreshNotifications = fetchNotifications;
     fetchNotifications();
-    window.setInterval(fetchNotifications, 2000);
+    startVisiblePolling(fetchNotifications, 10000);
 }
 
 function initializeCustomersFilters() {
