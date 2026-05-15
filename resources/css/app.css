@@ -11013,7 +11013,7 @@
 
     .auth-input-wrap:has(.password-toggle) {
         min-height: 3.35rem !important;
-        padding-right: 4.45rem !important;
+        padding-right: 3.65rem !important;
     }
 
     .auth-input-wrap .password-toggle,
@@ -11022,46 +11022,44 @@
     .auth-input-wrap .password-toggle-active,
     .auth-input-wrap .password-toggle-active:hover {
         position: absolute !important;
-        top: 50% !important;
-        right: 0.52rem !important;
-        bottom: auto !important;
+        top: 0.0rem !important;
+        right: 0.7rem !important;
+        bottom: 0.4rem !important;
         display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
-        width: 2.9rem !important;
-        height: 2.9rem !important;
-        min-width: 2.9rem !important;
-        min-height: 2.9rem !important;
+        width: 2rem !important;
+        height: auto !important;
+        min-width: 2rem !important;
+        min-height: 0 !important;
         margin: 0 !important;
         padding: 0 !important;
-        transform: translateY(-50%) !important;
-        border: 1px solid rgba(254, 215, 170, 0.82) !important;
-        border-radius: 0.95rem !important;
-        background: #ffedd5 !important;
-        color: #ea580c !important;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.74),
-            0 12px 22px -20px rgba(194, 65, 12, 0.48) !important;
+        transform: none !important;
+        border: 0 !important;
+        border-radius: 9999px !important;
+        background: transparent !important;
+        color: #64748b !important;
+        box-shadow: none !important;
     }
 
     .auth-input-wrap .password-toggle:hover,
-    .auth-input-wrap .password-toggle:focus-visible {
-        border-color: rgba(251, 146, 60, 0.88) !important;
-        background: #fed7aa !important;
-        color: #c2410c !important;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 247, 237, 0.85),
-            0 14px 26px -20px rgba(194, 65, 12, 0.62) !important;
+    .auth-input-wrap .password-toggle:focus-visible,
+    .auth-input-wrap .password-toggle-active,
+    .auth-input-wrap .password-toggle-active:hover {
+        transform: none !important;
+        background: rgba(255, 255, 255, 0.92) !important;
+        color: #ea580c !important;
+        box-shadow: 0 10px 22px -18px rgba(15, 23, 42, 0.28) !important;
     }
 
     .auth-input-wrap .password-toggle-icon {
         position: static !important;
         inset: auto !important;
         display: block !important;
-        width: 1.48rem !important;
-        height: 1.48rem !important;
+        width: 1.18rem !important;
+        height: 1.18rem !important;
         margin: 0 !important;
-        stroke-width: 2.25px !important;
+        stroke-width: 2.1px !important;
         color: currentColor !important;
         transform: none !important;
         pointer-events: none !important;
@@ -11076,19 +11074,19 @@
     .dark .auth-input-wrap .password-toggle:active,
     .dark .auth-input-wrap .password-toggle-active,
     .dark .auth-input-wrap .password-toggle-active:hover {
-        border-color: rgba(251, 146, 60, 0.42) !important;
-        background: rgba(124, 45, 18, 0.42) !important;
-        color: #fdba74 !important;
-        box-shadow:
-            inset 0 1px 0 rgba(255, 255, 255, 0.08),
-            0 12px 22px -20px rgba(0, 0, 0, 0.72) !important;
+        border: 0 !important;
+        background: transparent !important;
+        color: rgba(226, 232, 240, 0.82) !important;
+        box-shadow: none !important;
     }
 
     .dark .auth-input-wrap .password-toggle:hover,
-    .dark .auth-input-wrap .password-toggle:focus-visible {
-        border-color: rgba(251, 146, 60, 0.78) !important;
-        background: rgba(154, 52, 18, 0.58) !important;
-        color: #fed7aa !important;
+    .dark .auth-input-wrap .password-toggle:focus-visible,
+    .dark .auth-input-wrap .password-toggle-active,
+    .dark .auth-input-wrap .password-toggle-active:hover {
+        background: rgba(30, 41, 59, 0.95) !important;
+        color: #fdba74 !important;
+        box-shadow: 0 10px 22px -18px rgba(2, 6, 23, 0.72) !important;
     }
 
     .logout-loading-overlay {
