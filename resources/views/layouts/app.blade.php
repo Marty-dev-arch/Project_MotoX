@@ -173,7 +173,10 @@
                 </div>
                 <div class="mt-6 flex justify-end gap-3">
                     <button type="button" class="ghost-button" data-confirm-cancel data-i18n="Cancel">Cancel</button>
-                    <button type="button" class="danger-button" data-confirm-action>Yes, Delete</button>
+                    <button type="button" class="danger-button" data-confirm-action>
+                        <x-icon name="trash" class="h-4 w-4" />
+                        <span>Yes, Delete</span>
+                    </button>
                 </div>
             </div>
         </div>

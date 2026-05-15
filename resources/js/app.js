@@ -104,6 +104,9 @@ document.addEventListener('DOMContentLoaded', () => {
     initializePasswordToggles();
     initializeAuthPasswordValidation();
     initializeAuthPhoneInputs();
+    initializeInteractiveLoading();
+    initializeAuthRouteSwitch();
+    initializeAuthOtpInputs();
     initializeDashboardSearch();
     initializeSidebarDateFilters();
     initializeLiveTables();
@@ -593,7 +596,13 @@ function initializeConfirmationModals() {
             body.textContent = form.dataset.confirmBody || 'You are about to delete this item.';
         }
 
-        action.textContent = form.dataset.confirmAction || 'Yes, Delete';
+        const actionLabel = form.dataset.confirmAction || 'Yes, Delete';
+        const actionLabelNode = action.querySelector('span');
+        if (actionLabelNode instanceof HTMLElement) {
+            actionLabelNode.textContent = actionLabel;
+        } else {
+            action.textContent = actionLabel;
+        }
         modal.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');
     };
@@ -617,11 +626,14 @@ function initializeConfirmationModals() {
 
     action.addEventListener('click', () => {
         const form = pendingForm;
-        close();
 
         if (form instanceof HTMLFormElement) {
+            close();
             HTMLFormElement.prototype.submit.call(form);
+            return;
         }
+
+        close();
     });
 
     cancelButtons.forEach((button) => {
@@ -656,12 +668,50 @@ function initializeInventoryFormGuards() {
             }
 
             const submitButton = form.querySelector('button[type="submit"]');
-            if (submitButton instanceof HTMLButtonElement) {
-                submitButton.disabled = true;
-                submitButton.dataset.originalText = submitButton.textContent ?? '';
-                submitButton.textContent = 'Saving...';
-            }
+            setButtonLoading(submitButton);
         });
+    });
+}
+
+function setButtonLoading(button) {
+    return;
+}
+
+function initializeInteractiveLoading() {
+    document.addEventListener('submit', (event) => {
+        const form = event.target;
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        window.queueMicrotask(() => {
+            if (event.defaultPrevented || !form.checkValidity()) {
+                return;
+            }
+
+            setButtonLoading(form.querySelector('button[type="submit"].auth-submit, button[type="submit"].primary-button, button[type="submit"].danger-button'));
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (!(event.target instanceof Element)) {
+            return;
+        }
+
+        const link = event.target.closest('a.google-login-btn');
+        if (!(link instanceof HTMLAnchorElement)
+            || link.getAttribute('aria-disabled') === 'true'
+            || event.defaultPrevented
+            || event.metaKey
+            || event.ctrlKey
+            || event.shiftKey
+            || event.altKey
+            || link.target === '_blank'
+        ) {
+            return;
+        }
+
+        setButtonLoading(link);
     });
 }
 
@@ -1042,6 +1092,101 @@ function initializeAuthPasswordValidation() {
         special: (value) => /[!@#$%&*]/.test(value),
     };
 
+    const describeMissingRules = (ruleResults) => {
+        const labels = {
+            lower: 'lowercase letter',
+            upper: 'uppercase letter',
+            number: 'number',
+            special: 'special character',
+        };
+        const missing = Object.entries(labels)
+            .filter(([rule]) => !ruleResults[rule])
+            .map(([, label]) => label);
+
+        if (!missing.length) {
+            return 'Strong password.';
+        }
+
+        if (missing.length === 1) {
+            return `Add one ${missing[0]}.`;
+        }
+
+        return `Add ${missing.slice(0, -1).join(', ')}, and ${missing.at(-1)}.`;
+    };
+
+    const passwordStrengthState = (value, ruleResults) => {
+        if (!value.length) {
+            return {
+                level: 'empty',
+                label: 'Weak',
+                message: 'Password must be at least 8 characters.',
+                progress: 0,
+            };
+        }
+
+        if (!ruleResults.length) {
+            return {
+                level: 'weak',
+                label: 'Weak',
+                message: value.length > 16
+                    ? 'Password must not be more than 16 characters.'
+                    : 'Password must be at least 8 characters.',
+                progress: 22,
+            };
+        }
+
+        const passedRules = Object.values(ruleResults).filter(Boolean).length;
+        if (passedRules >= Object.keys(ruleResults).length) {
+            return {
+                level: 'strong',
+                label: 'Strong',
+                message: 'Strong password.',
+                progress: 100,
+            };
+        }
+
+        return {
+            level: passedRules >= 3 ? 'medium' : 'weak',
+            label: passedRules >= 3 ? 'Medium' : 'Weak',
+            message: describeMissingRules(ruleResults),
+            progress: passedRules >= 3 ? 60 : 34,
+        };
+    };
+
+    const syncPasswordStrengthFeedback = (form, password, ruleResults) => {
+        const feedback = form.querySelector('[data-auth-password-feedback]');
+        if (!(feedback instanceof HTMLElement)) {
+            return;
+        }
+
+        const state = passwordStrengthState(password.value, ruleResults);
+        const fill = feedback.querySelector('[data-auth-password-strength-fill]');
+        const label = feedback.querySelector('[data-auth-password-strength-label]');
+        const message = feedback.querySelector('[data-auth-password-strength-message]');
+        const wrap = password.closest('.auth-input-wrap');
+
+        feedback.dataset.strength = state.level;
+        feedback.style.setProperty('--strength-progress', `${state.progress}%`);
+
+        if (fill instanceof HTMLElement) {
+            fill.style.width = `${state.progress}%`;
+        }
+
+        if (label instanceof HTMLElement) {
+            label.textContent = state.label;
+        }
+
+        if (message instanceof HTMLElement) {
+            message.textContent = state.message;
+        }
+
+        if (wrap instanceof HTMLElement) {
+            wrap.classList.toggle('auth-password-state-weak', state.level === 'weak');
+            wrap.classList.toggle('auth-password-state-medium', state.level === 'medium');
+            wrap.classList.toggle('auth-password-state-strong', state.level === 'strong');
+        }
+    };
+
     forms.forEach((form) => {
         if (!(form instanceof HTMLFormElement)) {
             return;
@@ -1061,6 +1206,7 @@ function initializeAuthPasswordValidation() {
             const ruleResults = Object.fromEntries(
                 Object.entries(checks).map(([key, check]) => [key, check(value)]),
             );
+            syncPasswordStrengthFeedback(form, password, ruleResults);
             const passwordIsValid = Object.values(ruleResults).every(Boolean);
             const confirmationIsValid = !(confirmation instanceof HTMLInputElement)
                 || (confirmation.value.length > 0 && confirmation.value === value);
@@ -1170,6 +1316,10 @@ function initializeAuthPhoneInputs() {
                 }
             };
 
+            const setCountryDropdownOpen = (isOpen) => {
+                form.classList.toggle('auth-country-dropdown-open', isOpen);
+            };
+
             const validate = (showErrors = true) => {
                 const digits = digitsOnly();
                 syncCountryFields();
@@ -1200,9 +1350,15 @@ function initializeAuthPhoneInputs() {
 
             input.addEventListener('input', () => validate(true));
             input.addEventListener('blur', () => validate(true));
-            input.addEventListener('countrychange', () => validate(input.value.trim() !== ''));
+            input.addEventListener('open:countrydropdown', () => setCountryDropdownOpen(true));
+            input.addEventListener('close:countrydropdown', () => setCountryDropdownOpen(false));
+            input.addEventListener('countrychange', () => {
+                validate(input.value.trim() !== '');
+            });
 
             form.addEventListener('submit', (event) => {
+                setCountryDropdownOpen(false);
+
                 if (!validate(true)) {
                     event.preventDefault();
                     input.reportValidity();
@@ -1213,6 +1369,165 @@ function initializeAuthPhoneInputs() {
         });
     }).catch((error) => {
         console.warn('Phone input helper unavailable', error);
+    });
+}
+
+function initializeAuthRouteSwitch() {
+    const layout = document.querySelector('[data-auth-route-switch]');
+
+    if (!(layout instanceof HTMLElement)) {
+        return;
+    }
+
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let isSwitching = false;
+
+    layout.querySelectorAll('[data-auth-route-target]').forEach((trigger) => {
+        if (!(trigger instanceof HTMLAnchorElement)) {
+            return;
+        }
+
+        trigger.addEventListener('click', (event) => {
+            if (reduceMotion || !trigger.href) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (isSwitching) {
+                return;
+            }
+
+            isSwitching = true;
+            const target = trigger.dataset.authRouteTarget === 'register' ? 'register' : 'login';
+            const routeClass = target === 'register' ? 'auth-route-to-register' : 'auth-route-to-login';
+
+            layout.classList.remove(
+                'auth-layout-route-switching',
+                'auth-route-to-register',
+                'auth-route-to-login',
+            );
+            void layout.offsetWidth;
+            layout.classList.add('auth-layout-route-switching', routeClass);
+
+            layout.querySelectorAll('[data-auth-route-target]').forEach((link) => {
+                if (link instanceof HTMLAnchorElement) {
+                    link.setAttribute('aria-disabled', 'true');
+                }
+            });
+
+            window.setTimeout(() => {
+                window.location.href = trigger.href;
+            }, 240);
+        });
+    });
+}
+
+function initializeAuthOtpInputs() {
+    const forms = [...document.querySelectorAll('[data-auth-otp-form]')];
+
+    forms.forEach((form) => {
+        if (!(form instanceof HTMLFormElement)) {
+            return;
+        }
+
+        const codeInput = form.querySelector('[data-auth-otp-code]');
+        const digits = [...form.querySelectorAll('[data-auth-otp-digit]')]
+            .filter((input) => input instanceof HTMLInputElement);
+
+        if (!(codeInput instanceof HTMLInputElement) || digits.length === 0) {
+            return;
+        }
+
+        const syncCode = () => {
+            codeInput.value = digits.map((input) => input.value.replace(/\D+/g, '').slice(0, 1)).join('');
+            return codeInput.value;
+        };
+
+        const setOtpError = (message = '') => {
+            digits.forEach((input, index) => {
+                input.setCustomValidity(index === 0 ? message : '');
+            });
+        };
+
+        const fillDigits = (value, startIndex = 0) => {
+            const nextDigits = String(value || '').replace(/\D+/g, '').slice(0, digits.length - startIndex).split('');
+
+            nextDigits.forEach((digit, offset) => {
+                const input = digits[startIndex + offset];
+                if (input instanceof HTMLInputElement) {
+                    input.value = digit;
+                }
+            });
+
+            const focusIndex = Math.min(startIndex + nextDigits.length, digits.length - 1);
+            digits[focusIndex]?.focus();
+            digits[focusIndex]?.select();
+            setOtpError('');
+            syncCode();
+        };
+
+        digits.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                const value = input.value.replace(/\D+/g, '');
+
+                if (value.length > 1) {
+                    fillDigits(value, index);
+                    return;
+                }
+
+                input.value = value;
+                setOtpError('');
+                syncCode();
+
+                if (value && digits[index + 1]) {
+                    digits[index + 1].focus();
+                    digits[index + 1].select();
+                }
+            });
+
+            input.addEventListener('keydown', (event) => {
+                if (event.key === 'Backspace' && input.value === '' && digits[index - 1]) {
+                    digits[index - 1].focus();
+                    digits[index - 1].select();
+                }
+
+                if (event.key === 'ArrowLeft' && digits[index - 1]) {
+                    event.preventDefault();
+                    digits[index - 1].focus();
+                    digits[index - 1].select();
+                }
+
+                if (event.key === 'ArrowRight' && digits[index + 1]) {
+                    event.preventDefault();
+                    digits[index + 1].focus();
+                    digits[index + 1].select();
+                }
+            });
+
+            input.addEventListener('paste', (event) => {
+                const pasted = event.clipboardData?.getData('text') || '';
+                if (!pasted) {
+                    return;
+                }
+
+                event.preventDefault();
+                fillDigits(pasted, index);
+            });
+        });
+
+        form.addEventListener('submit', (event) => {
+            const code = syncCode();
+
+            if (!/^\d{6}$/.test(code)) {
+                event.preventDefault();
+                setOtpError('Enter the 6-digit OTP code.');
+                digits.find((input) => input.value === '')?.focus();
+                digits[0].reportValidity();
+            }
+        });
+
+        syncCode();
     });
 }
 
@@ -2827,8 +3142,13 @@ function initializeLandingBackgroundMotion() {
         return;
     }
 
+    const landingHeader = landingRoot.querySelector('.landing-mark-header');
+
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
         landingRoot.style.setProperty('--landing-scroll-progress', '0');
+        if (landingHeader instanceof HTMLElement) {
+            landingHeader.classList.toggle('landing-header-scrolled', window.scrollY > 8);
+        }
         return;
     }
 
@@ -2840,6 +3160,9 @@ function initializeLandingBackgroundMotion() {
         const progress = Math.min(1, Math.max(0, scrollTop / scrollHeight));
 
         landingRoot.style.setProperty('--landing-scroll-progress', progress.toFixed(4));
+        if (landingHeader instanceof HTMLElement) {
+            landingHeader.classList.toggle('landing-header-scrolled', scrollTop > 8);
+        }
         ticking = false;
     };
 
@@ -2871,10 +3194,7 @@ function initializeLandingScrollReveal() {
 
     const observer = new IntersectionObserver((entries) => {
         entries.forEach((entry) => {
-            if (entry.isIntersecting) {
-                entry.target.classList.add('is-visible');
-                observer.unobserve(entry.target);
-            }
+            entry.target.classList.toggle('is-visible', entry.isIntersecting);
         });
     }, {
         threshold: 0.18,

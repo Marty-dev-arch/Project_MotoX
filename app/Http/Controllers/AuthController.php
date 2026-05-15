@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\PasswordResetOtp;
+use App\Models\LoginVerificationOtp;
 use App\Models\Shop;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -17,41 +18,56 @@ use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 use Laravel\Socialite\Facades\Socialite;
 use Laravel\Socialite\Two\InvalidStateException;
+use Symfony\Component\HttpFoundation\Cookie;
 use Throwable;
 
 class AuthController extends Controller
 {
-    public function showLogin(): View
+    private const GOOGLE_ACCOUNT_COOKIE = 'motox_google_account';
+
+    public function showLogin(Request $request): View
     {
         return view('pages.login', [
             'pageTitle' => 'Log In',
             'googleOauthConfigured' => $this->isGoogleOauthConfigured(),
             'googleOauthHint' => $this->googleOauthHint(),
+            'googleAccount' => $this->rememberedGoogleAccount($request),
         ]);
     }
 
     public function login(Request $request): RedirectResponse
     {
-        $credentials = $request->validate([
+        $validated = $request->validate([
             'email' => ['required', 'email'],
             'password' => ['required', 'string'],
             'remember' => ['nullable', 'boolean'],
         ]);
 
         $remember = $request->boolean('remember');
-        unset($credentials['remember']);
+        $credentials = [
+            'email' => strtolower(trim((string) $validated['email'])),
+            'password' => (string) $validated['password'],
+        ];
 
-        if (! Auth::attempt($credentials, $remember)) {
+        if (! Auth::validate($credentials)) {
             return back()
                 ->withErrors([
-                    'email' => 'Invalid email or password.',
+                    'email' => 'Invalid email or password',
                 ])
                 ->onlyInput('email');
         }
 
-        if (($request->user()?->role ?? null) === 'client') {
-            Auth::guard('web')->logout();
+        $user = User::query()->where('email', $credentials['email'])->first();
 
+        if (! $user) {
+            return back()
+                ->withErrors([
+                    'email' => 'Invalid email or password',
+                ])
+                ->onlyInput('email');
+        }
+
+        if (($user->role ?? null) === 'client') {
             return back()
                 ->withErrors([
                     'email' => 'Client accounts are no longer supported.',
@@ -59,11 +75,123 @@ class AuthController extends Controller
                 ->onlyInput('email');
         }
 
+        return $this->startLoginVerification($request, $user, $remember, 'password');
+    }
+
+    public function showLoginVerification(Request $request): View|RedirectResponse
+    {
+        $pendingLogin = $this->pendingLogin($request);
+
+        if (! $pendingLogin) {
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Start sign in again to receive a verification code.']);
+        }
+
+        return view('pages.login-verify', [
+            'pageTitle' => 'Security Verification',
+            'email' => (string) $pendingLogin['email'],
+            'maskedEmail' => $this->maskEmail((string) $pendingLogin['email']),
+            'provider' => (string) ($pendingLogin['provider'] ?? 'password'),
+        ]);
+    }
+
+    public function verifyLoginOtp(Request $request): RedirectResponse
+    {
+        $pendingLogin = $this->pendingLogin($request);
+
+        if (! $pendingLogin) {
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Start sign in again to receive a verification code.']);
+        }
+
+        $validated = $request->validate([
+            'otp' => ['required', 'digits:6'],
+        ]);
+
+        $user = User::query()->find((int) $pendingLogin['user_id']);
+        $email = strtolower(trim((string) $pendingLogin['email']));
+
+        if (! $user || strtolower((string) $user->email) !== $email) {
+            $request->session()->forget('login_verification');
+
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Verification session expired. Please sign in again.']);
+        }
+
+        $record = LoginVerificationOtp::query()
+            ->activeFor($user->id, $email)
+            ->latest('id')
+            ->first();
+
+        if (! $record) {
+            return back()
+                ->withErrors(['otp' => 'Verification code is invalid or expired.'])
+                ->withInput();
+        }
+
+        if ($record->attempts >= 5) {
+            return back()
+                ->withErrors(['otp' => 'Too many attempts. Request a new code.'])
+                ->withInput();
+        }
+
+        if (! Hash::check((string) $validated['otp'], $record->otp_hash)) {
+            $record->increment('attempts');
+
+            return back()
+                ->withErrors(['otp' => 'Incorrect verification code.'])
+                ->withInput();
+        }
+
+        $record->update(['consumed_at' => now()]);
+
+        Auth::login($user, (bool) ($pendingLogin['remember'] ?? false));
         $request->session()->regenerate();
+        $request->session()->forget('login_verification');
+        $request->session()->put('auth.provider', (string) ($pendingLogin['provider'] ?? 'password'));
 
-        $target = $this->homeRouteFor($request->user());
+        return redirect()->route($this->homeRouteFor($user));
+    }
 
-        return redirect()->route($target);
+    public function resendLoginOtp(Request $request): RedirectResponse
+    {
+        $pendingLogin = $this->pendingLogin($request);
+
+        if (! $pendingLogin) {
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Start sign in again to receive a verification code.']);
+        }
+
+        $user = User::query()->find((int) $pendingLogin['user_id']);
+        if (! $user) {
+            $request->session()->forget('login_verification');
+
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => 'Verification session expired. Please sign in again.']);
+        }
+
+        if (! $this->canSendResetOtpEmail()) {
+            return back()
+                ->withErrors(['otp' => $this->loginVerificationMailHint()]);
+        }
+
+        try {
+            $message = $this->sendLoginVerificationOtp($request, $user, (string) ($pendingLogin['provider'] ?? 'password'));
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()
+                ->withErrors(['otp' => $this->otpDeliveryErrorMessage($exception)]);
+        }
+
+        return redirect()
+            ->route('login.verify')
+            ->with('status', $message);
     }
 
     public function showForgotPassword(): View
@@ -257,7 +385,7 @@ class AuthController extends Controller
             ->with('status', 'Password updated successfully. Please log in.');
     }
 
-    public function redirectToGoogle(): RedirectResponse
+    public function redirectToGoogle(Request $request): RedirectResponse
     {
         if (! $this->isGoogleOauthConfigured()) {
             return redirect()
@@ -267,11 +395,14 @@ class AuthController extends Controller
                 ]);
         }
 
+        $googleAccount = $this->rememberedGoogleAccount($request);
+        $googleOptions = $googleAccount
+            ? ['login_hint' => $googleAccount['email']]
+            : ['prompt' => 'select_account'];
+
         return Socialite::driver('google')
             ->redirectUrl($this->googleRedirectUrl())
-            ->with([
-                'prompt' => 'select_account',
-            ])
+            ->with($googleOptions)
             ->redirect();
     }
 
@@ -376,19 +507,17 @@ class AuthController extends Controller
             return $user;
         });
 
-        Auth::login($user, false);
-        $request->session()->regenerate();
-        $request->session()->put('auth.provider', 'google');
-
-        $target = $this->homeRouteFor($user);
-
-        return redirect()->route($target);
+        return $this->startLoginVerification($request, $user, false, 'google')
+            ->withCookie($this->googleAccountCookie($displayName, $email));
     }
 
-    public function showRegister(): View
+    public function showRegister(Request $request): View
     {
         return view('pages.register', [
             'pageTitle' => 'Create your account',
+            'googleOauthConfigured' => $this->isGoogleOauthConfigured(),
+            'googleOauthHint' => $this->googleOauthHint(),
+            'googleAccount' => $this->rememberedGoogleAccount($request),
         ]);
     }
 
@@ -444,12 +573,190 @@ class AuthController extends Controller
         return redirect()->route('landing');
     }
 
+    /**
+     * @return array{user_id:int,email:string,remember:bool,provider:string}|null
+     */
+    private function pendingLogin(Request $request): ?array
+    {
+        $pendingLogin = $request->session()->get('login_verification');
+
+        if (! is_array($pendingLogin)
+            || ! isset($pendingLogin['user_id'], $pendingLogin['email'], $pendingLogin['provider'])
+        ) {
+            return null;
+        }
+
+        return [
+            'user_id' => (int) $pendingLogin['user_id'],
+            'email' => (string) $pendingLogin['email'],
+            'remember' => (bool) ($pendingLogin['remember'] ?? false),
+            'provider' => (string) $pendingLogin['provider'],
+        ];
+    }
+
+    private function startLoginVerification(Request $request, User $user, bool $remember, string $provider): RedirectResponse
+    {
+        if (! $this->canSendResetOtpEmail()) {
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => $this->loginVerificationMailHint()])
+                ->withInput($request->only('email'));
+        }
+
+        $request->session()->put('login_verification', [
+            'user_id' => $user->id,
+            'email' => strtolower((string) $user->email),
+            'remember' => $remember,
+            'provider' => $provider,
+            'requested_at' => now()->timestamp,
+        ]);
+
+        try {
+            $message = $this->sendLoginVerificationOtp($request, $user, $provider);
+        } catch (Throwable $exception) {
+            report($exception);
+            $request->session()->forget('login_verification');
+
+            return redirect()
+                ->route('login')
+                ->withErrors(['email' => $this->otpDeliveryErrorMessage($exception)])
+                ->withInput($request->only('email'));
+        }
+
+        return redirect()
+            ->route('login.verify')
+            ->with('status', $message);
+    }
+
+    private function sendLoginVerificationOtp(Request $request, User $user, string $provider): string
+    {
+        $email = strtolower(trim((string) $user->email));
+        $latestOtp = LoginVerificationOtp::query()
+            ->where('user_id', $user->id)
+            ->where('email', $email)
+            ->whereNull('consumed_at')
+            ->latest('id')
+            ->first();
+
+        if ($latestOtp && $latestOtp->created_at?->gt(now()->subMinute())) {
+            return 'A verification code was sent recently. Check your email inbox.';
+        }
+
+        $otp = (string) random_int(100000, 999999);
+        $otpRecord = LoginVerificationOtp::query()->create([
+            'user_id' => $user->id,
+            'email' => $email,
+            'provider' => $provider,
+            'otp_hash' => Hash::make($otp),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(10),
+            'ip_address' => $request->ip(),
+        ]);
+
+        $message = implode("\n", [
+            'MotoX Security Verification',
+            '',
+            "Your verification code is: {$otp}",
+            'This code expires in 10 minutes.',
+            'If you did not try to sign in, change your password immediately.',
+        ]);
+
+        try {
+            Mail::raw($message, function ($mail) use ($email): void {
+                $mail
+                    ->to($email)
+                    ->subject('MotoX Security Verification Code');
+            });
+        } catch (Throwable $exception) {
+            $otpRecord->delete();
+            throw $exception;
+        }
+
+        return 'A 6-digit security code has been sent to '.$this->maskEmail($email).'.';
+    }
+
+    private function loginVerificationMailHint(): ?string
+    {
+        $hint = $this->resetOtpMailHint();
+
+        return $hint ? str_replace('Password reset email', 'Security verification email', $hint) : null;
+    }
+
+    private function maskEmail(string $email): string
+    {
+        $email = strtolower(trim($email));
+        if (! str_contains($email, '@')) {
+            return $email;
+        }
+
+        [$local, $domain] = explode('@', $email, 2);
+        $localMask = Str::substr($local, 0, 1).str_repeat('*', max(3, strlen($local) - 1));
+        $domainParts = explode('.', $domain);
+        $domainName = (string) ($domainParts[0] ?? '');
+        $domainSuffix = count($domainParts) > 1 ? '.'.implode('.', array_slice($domainParts, 1)) : '';
+        $domainMask = Str::substr($domainName, 0, 1).str_repeat('*', max(3, strlen($domainName) - 1));
+
+        return "{$localMask}@{$domainMask}{$domainSuffix}";
+    }
+
     private function isGoogleOauthConfigured(): bool
     {
         return count($this->missingGoogleOauthConfig()) === 0;
     }
 
-    
+    /**
+     * @return array{name:string,email:string,initial:string}|null
+     */
+    private function rememberedGoogleAccount(Request $request): ?array
+    {
+        $payload = $request->cookie(self::GOOGLE_ACCOUNT_COOKIE);
+
+        if (! is_string($payload) || $payload === '') {
+            return null;
+        }
+
+        $account = json_decode($payload, true);
+        if (! is_array($account)) {
+            return null;
+        }
+
+        $email = strtolower(trim((string) ($account['email'] ?? '')));
+        if (! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return null;
+        }
+
+        $name = trim((string) ($account['name'] ?? ''));
+        $name = $name !== '' ? $name : Str::before($email, '@');
+        $initialSource = $name !== '' ? $name : $email;
+        $initial = Str::upper(Str::substr($initialSource, 0, 1));
+
+        return [
+            'name' => Str::limit($name, 80, ''),
+            'email' => $email,
+            'initial' => $initial !== '' ? $initial : 'G',
+        ];
+    }
+
+    private function googleAccountCookie(string $name, string $email): Cookie
+    {
+        $value = json_encode([
+            'name' => trim($name),
+            'email' => strtolower(trim($email)),
+        ]);
+
+        return cookie(
+            self::GOOGLE_ACCOUNT_COOKIE,
+            $value ?: '',
+            60 * 24 * 90,
+            '/',
+            null,
+            (bool) Config::get('session.secure', false),
+            true,
+            false,
+            'Lax',
+        );
+    }
+
     private function missingGoogleOauthConfig(): array
     {
         $missing = [];

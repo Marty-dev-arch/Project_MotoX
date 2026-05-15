@@ -211,8 +211,20 @@
             <path d="m9 18 6-6-6-6" />
             @break
 
+        @case('chevron-left')
+            <path d="m15 18-6-6 6-6" />
+            @break
+
         @case('chevron-down')
             <path d="m6 9 6 6 6-6" />
+            @break
+
+        @case('cookie')
+            <path d="M19.8 12.4A7.8 7.8 0 1 1 11.6 4.2a3.4 3.4 0 0 0 4.2 4.2 3.4 3.4 0 0 0 4 4Z" />
+            <path d="M8.2 10.1h.01" />
+            <path d="M11.6 15.4h.01" />
+            <path d="M14.6 12.6h.01" />
+            <path d="M8.9 16.8h.01" />
             @break
 
         @case('arrow-up')

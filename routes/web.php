@@ -23,6 +23,9 @@ Route::get('/support', [WorkshopFrontendController::class, 'support'])->name('su
 Route::middleware('guest')->group(function (): void {
     Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
     Route::post('/login', [AuthController::class, 'login'])->name('login.store');
+    Route::get('/login/verify', [AuthController::class, 'showLoginVerification'])->name('login.verify');
+    Route::post('/login/verify', [AuthController::class, 'verifyLoginOtp'])->name('login.verify.store');
+    Route::post('/login/verify/resend', [AuthController::class, 'resendLoginOtp'])->name('login.verify.resend');
     Route::get('/forgot-password', [AuthController::class, 'showForgotPassword'])->name('password.request');
     Route::post('/forgot-password', [AuthController::class, 'sendPasswordResetLink'])->name('password.email');
     Route::get('/forgot-password/verify', [AuthController::class, 'showVerifyOtp'])->name('password.otp.form');

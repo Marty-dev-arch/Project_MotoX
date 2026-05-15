@@ -221,6 +221,7 @@
 
             <div class="flex justify-end">
                 <button type="submit" class="primary-button">
+                    <x-icon name="check-circle" class="h-4 w-4" />
                     <span data-i18n="Save Settings">Save Settings</span>
                 </button>
             </div>

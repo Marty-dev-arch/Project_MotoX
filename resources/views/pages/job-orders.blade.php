@@ -47,9 +47,7 @@
         <div class="flex flex-wrap justify-end gap-3">
             <div class="relative w-full md:w-[360px]">
                 <span class="absolute inset-y-0 left-4 flex items-center text-slate-400">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-                    </svg>
+                    <x-icon name="search" class="h-4 w-4" />
 </span>
                 <input
                     type="text"
@@ -60,16 +58,9 @@
             </div>
             <div class="relative">
                 <button type="button" id="filter-date-btn" class="ghost-button flex items-center gap-2">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                        <line x1="16" y1="2" x2="16" y2="6"/>
-                        <line x1="8" y1="2" x2="8" y2="6"/>
-                        <line x1="3" y1="10" x2="21" y2="10"/>
-                    </svg>
+                    <x-icon name="calendar" class="h-4 w-4" />
                     <span>Filter by Date</span>
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="m6 9 6 6 6-6"/>
-                    </svg>
+                    <x-icon name="chevron-down" class="h-4 w-4" />
                 </button>
                 <div id="date-dropdown" class="hidden absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-50">
                     <div class="py-2">
@@ -84,15 +75,9 @@
 
             <div class="relative">
                 <button type="button" id="filter-progress-btn" class="ghost-button flex items-center gap-2">
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="M12 20V10"/>
-                        <path d="M18 20V4"/>
-                        <path d="M6 20v-4"/>
-                    </svg>
+                    <x-icon name="reports" class="h-4 w-4" />
                     <span>Filter by Progress</span>
-                    <svg class="h-4 w-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <path d="m6 9 6 6 6-6"/>
-                    </svg>
+                    <x-icon name="chevron-down" class="h-4 w-4" />
                 </button>
 <div id="progress-dropdown" class="hidden absolute top-full right-0 mt-1 w-48 bg-white rounded-lg shadow-lg border border-slate-200 z-50">
                     <div class="py-2">
@@ -212,7 +197,10 @@
                 <form method="POST" action="{{ route('job-orders.destroy', $order) }}">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="danger-button">Yes, Delete</button>
+                    <button type="submit" class="danger-button">
+                        <x-icon name="trash" class="h-4 w-4" />
+                        <span>Yes, Delete</span>
+                    </button>
                 </form>
             </div>
         </div>
@@ -294,7 +282,10 @@
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" class="ghost-button" data-close-modal="create-joborder-modal">Cancel</button>
-                    <button type="submit" class="primary-button">Create Job Order</button>
+                    <button type="submit" class="primary-button">
+                        <x-icon name="plus" class="h-4 w-4" />
+                        <span>Create Job Order</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -389,7 +380,10 @@
 
                     <div class="flex justify-end gap-3 pt-2">
                         <a href="{{ route('job-orders', ['order' => $editingOrder->id]) }}" class="ghost-button">Cancel</a>
-                        <button type="submit" class="primary-button">Save Job Order</button>
+                        <button type="submit" class="primary-button">
+                            <x-icon name="check-circle" class="h-4 w-4" />
+                            <span>Save Job Order</span>
+                        </button>
                     </div>
                 </form>
             </div>

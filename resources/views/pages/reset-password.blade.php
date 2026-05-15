@@ -4,26 +4,17 @@
     <div class="auth-page-shell">
         <div class="auth-layout">
             <section class="auth-aside">
-                <a href="{{ route('landing') }}" class="landing-brand">
-                    <span class="landing-brand-icon">
-                        <x-icon name="car" class="h-5 w-5" />
-                    </span>
-                    <span class="landing-brand-name">MotoX</span>
-                </a>
-
-                <h2 class="auth-aside-title">Set a new password.</h2>
-                <p class="auth-aside-text">
-                    Create a strong password, then sign in again to continue managing your workshop.
-                </p>
+                <div class="auth-aside-copy">
+                    <h2 class="auth-aside-title">Set a new password.</h2>
+                    <p class="auth-aside-text">
+                        Create a strong password, then sign in again to continue managing your workshop.
+                    </p>
+                </div>
             </section>
 
             <section class="auth-panel">
-                <span class="auth-mark">
-                    <x-icon name="lock" class="h-10 w-10" />
-                </span>
-
-                <h1 class="mt-7 text-center text-4xl font-black tracking-tight text-slate-900 sm:text-5xl">Reset Password</h1>
-                <p class="mt-3 text-center text-base text-slate-500 sm:text-lg">Enter your email and choose a new password.</p>
+                <h1 class="auth-title">Reset Password</h1>
+                <p class="auth-subtitle">Enter your email and choose a new password.</p>
 
                 @if ($errors->any())
                     <div class="auth-alert mt-7">
@@ -36,10 +27,10 @@
                     </div>
                 @endif
 
-                <form action="{{ route('password.update') }}" method="POST" class="mt-8 space-y-5" data-auth-password-form>
+                <form action="{{ route('password.update') }}" method="POST" class="auth-form-stack" data-auth-password-form>
                     @csrf
 
-                    <label class="form-field gap-2.5">
+                    <label class="form-field">
                         <span class="auth-label">Email Address</span>
                         <div class="auth-input-wrap">
                             <x-icon name="user" class="h-5 w-5 text-slate-500" />
@@ -47,59 +38,40 @@
                         </div>
                     </label>
 
-                    <label class="form-field gap-2.5">
+                    <label class="form-field">
                         <span class="auth-label">New Password</span>
                         <div class="auth-input-wrap">
                             <x-icon name="lock" class="h-5 w-5 text-slate-500" />
-                            <input id="reset-password" type="password" name="password" class="auth-input auth-input-password" placeholder="8-16 characters" required minlength="8" maxlength="16" data-auth-password>
-                            <button
-                                type="button"
-                                class="password-toggle"
-                                data-password-toggle
-                                data-target="reset-password"
-                                aria-label="Show password"
-                            >
-                                <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
-                                <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
-                            </button>
+                            <input id="reset-password" type="password" name="password" class="auth-input auth-input-password" placeholder="8-16 characters" required minlength="8" maxlength="16" data-auth-password aria-describedby="reset-password-feedback">
                         </div>
-                        <ul class="auth-validation-list" data-auth-password-rules>
-                            <li data-password-rule="length">8 to 16 characters</li>
-                            <li data-password-rule="lower">One lowercase letter</li>
-                            <li data-password-rule="upper">One uppercase letter</li>
-                            <li data-password-rule="number">One number</li>
-                            <li data-password-rule="special">One special character: ! @ # $ % &amp; *</li>
-                        </ul>
+                        <div class="auth-password-feedback" id="reset-password-feedback" data-auth-password-feedback>
+                            <p class="auth-password-help">Minimum 8 characters</p>
+                            <p class="auth-password-message" data-auth-password-strength-message>Password must be at least 8 characters.</p>
+                            <div class="auth-strength-meter" aria-hidden="true">
+                                <span data-auth-password-strength-fill></span>
+                            </div>
+                            <p class="auth-strength-label" data-auth-password-strength-label>Weak</p>
+                        </div>
                     </label>
 
-                    <label class="form-field gap-2.5">
+                    <label class="form-field">
                         <span class="auth-label">Confirm Password</span>
                         <div class="auth-input-wrap">
                             <x-icon name="lock" class="h-5 w-5 text-slate-500" />
                             <input id="reset-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat new password" required minlength="8" maxlength="16" data-auth-password-confirmation>
-                            <button
-                                type="button"
-                                class="password-toggle"
-                                data-password-toggle
-                                data-target="reset-password-confirmation"
-                                aria-label="Show password"
-                            >
-                                <x-icon name="eye" class="password-toggle-icon hidden" data-password-icon="show" />
-                                <x-icon name="eye-off" class="password-toggle-icon" data-password-icon="hide" />
-                            </button>
                         </div>
                         <p class="auth-inline-error hidden" data-auth-password-match>Password confirmation does not match.</p>
                     </label>
 
                     <button type="submit" class="auth-submit mt-1">
                         <span>Update Password</span>
-                        <x-icon name="chevron-right" class="h-5 w-5" />
+                        <x-icon name="chevron-right" class="h-4 w-4" />
                     </button>
                 </form>
 
                 <p class="mt-8 text-center text-base text-slate-500">
                     Back to
-                    <a href="{{ route('login') }}" class="font-semibold text-brand-700 transition hover:text-brand-800">Log In</a>
+                    <a href="{{ route('login') }}" class="font-semibold text-brand-700 transition hover:text-brand-600">Log In</a>
                 </p>
             </section>
         </div>

@@ -62,7 +62,7 @@ class WorkshopFrontendController extends Controller
         $secondaryRoute = auth()->check() ? 'inventory' : 'login';
 
         return view('pages.landing', [
-            'pageTitle' => 'MotoX | Workshop Operating System',
+            'pageTitle' => 'MotoX - your trusted workshop',
             'projectSnapshot' => $landingMetrics['projectSnapshot'],
             'workspacePulse' => $landingMetrics['workspacePulse'],
             'moduleHighlights' => $moduleHighlights,
@@ -126,31 +126,54 @@ class WorkshopFrontendController extends Controller
             'pageTitle' => 'MotoX Privacy',
             'eyebrow' => 'Data Handling',
             'title' => 'Privacy Policy',
+            'updatedAt' => 'May 15, 2026',
+            'icon' => 'lock',
             'description' => 'MotoX stores workshop information so mechanics can manage customers, vehicles, repairs, stock, billing, and reports in one place.',
             'sections' => [
                 [
-                    'title' => 'Information Used',
-                    'body' => 'The system may store customer names, contact details, vehicle details, profile photos, job order notes, inventory activity, invoices, and payment-related records.',
+                    'title' => 'Introduction',
+                    'body' => 'MotoX is committed to protecting workshop and customer information. This Privacy Policy explains how information is collected, used, protected, and handled when you use the system.',
                 ],
                 [
-                    'title' => 'Purpose',
-                    'body' => 'This information is used to run workshop workflows, prepare receipts, track service history, monitor inventory, and generate operational reports.',
+                    'title' => 'Information We Collect',
+                    'body' => 'MotoX may collect information about you and your workshop in several ways. The information used by the system includes:',
+                    'items' => [
+                        ['label' => 'Personal Data', 'text' => 'Customer names, email addresses, phone numbers, addresses, and profile photos entered by authorized workshop users.'],
+                        ['label' => 'Workshop Records', 'text' => 'Vehicle details, job order notes, inventory activity, billing records, receipts, and service history.'],
+                        ['label' => 'Usage Data', 'text' => 'Basic browser, session, filter, theme, and interaction information needed to keep the application secure and usable.'],
+                    ],
                 ],
                 [
-                    'title' => 'Access',
-                    'body' => 'Only authorized workshop users should access customer and shop records. Remove or update incorrect records when they are no longer needed for operations.',
+                    'title' => 'Use of Your Information',
+                    'body' => 'Having accurate information helps MotoX provide a smooth and reliable workshop workflow. Specifically, information may be used to:',
+                    'items' => [
+                        'Create and manage workshop accounts.',
+                        'Prepare job orders, service records, invoices, and receipts.',
+                        'Track stock movement, low inventory, and billing status.',
+                        'Generate dashboard, report, and history views for authorized users.',
+                        'Improve application reliability, security, and daily usability.',
+                    ],
                 ],
                 [
-                    'title' => 'Photos and Attachments',
-                    'body' => 'Profile photos and part images should be used only to identify customers, walk-ins, vehicles, or stock records inside the workshop workflow.',
+                    'title' => 'Disclosure of Your Information',
+                    'body' => 'MotoX does not sell customer information. Information may be disclosed only in limited operational or legal situations:',
+                    'items' => [
+                        ['label' => 'By Law or to Protect Rights', 'text' => 'If disclosure is required to respond to legal process, protect users, or prevent misuse of the system.'],
+                        ['label' => 'Service Providers', 'text' => 'If a trusted provider is needed for hosting, storage, authentication, security, or support services.'],
+                    ],
                 ],
                 [
-                    'title' => 'Operational Reports',
-                    'body' => 'Reports summarize records already stored in the system. They are designed for workshop decisions, not for selling customer information.',
+                    'title' => 'Security of Your Information',
+                    'body' => 'MotoX uses application safeguards, access control, and secure session handling to help protect personal and workshop information. No system can guarantee perfect security, so shared devices should be logged out after use.',
                 ],
                 [
-                    'title' => 'Good Practice',
-                    'body' => 'Use strong passwords, log out on shared devices, and keep browser access limited to trusted staff computers or phones.',
+                    'title' => 'Contact Us',
+                    'body' => 'If you have questions or comments about this Privacy Policy, contact the MotoX team through your workshop administrator or support channel.',
+                    'contact' => [
+                        'MotoX Inc.',
+                        'Privacy Department',
+                        'support@motox.local',
+                    ],
                 ],
             ],
         ]);
@@ -161,32 +184,49 @@ class WorkshopFrontendController extends Controller
         return $this->publicInfoPage([
             'pageTitle' => 'MotoX Cookies',
             'eyebrow' => 'Browser Preferences',
-            'title' => 'Cookies',
+            'title' => 'Cookies Policy',
+            'updatedAt' => 'May 15, 2026',
+            'icon' => 'cookie',
             'description' => 'MotoX uses essential browser storage to keep the application usable, consistent, and secure while you work.',
             'sections' => [
                 [
-                    'title' => 'Session Storage',
-                    'body' => 'Authentication and security state are required so the system knows which shop workspace should be opened.',
+                    'title' => 'What are cookies?',
+                    'body' => 'Cookies and browser storage are small pieces of information kept by your browser. MotoX uses them to recognize your session, protect forms, and make your next visit easier.',
                 ],
                 [
-                    'title' => 'Interface Preferences',
-                    'body' => 'Theme mode, language, chart ranges, filters, and similar preferences may be kept locally so your workflow stays consistent on the same device.',
+                    'title' => 'Types of cookies we use',
+                    'body' => 'MotoX keeps browser storage focused on app security and workflow preferences.',
+                    'cards' => [
+                        [
+                            'icon' => 'lock',
+                            'title' => 'Essential Cookies',
+                            'body' => 'These cookies are necessary for login sessions, authenticated requests, and protection against unwanted form submissions.',
+                        ],
+                        [
+                            'icon' => 'settings',
+                            'title' => 'Preference Cookies',
+                            'body' => 'These remember theme mode, language, table filters, chart ranges, and similar interface choices on the same device.',
+                        ],
+                        [
+                            'icon' => 'reports',
+                            'title' => 'Performance & Analytics',
+                            'body' => 'These help summarize app usage patterns so pages, reports, and dashboard workflows can be improved.',
+                        ],
+                    ],
                 ],
                 [
-                    'title' => 'Control',
-                    'body' => 'You can clear browser storage from your browser settings, but doing so may reset saved preferences and require logging in again.',
+                    'title' => 'Third-party cookies',
+                    'body' => 'MotoX may use trusted services for authentication, hosting, or security. These providers may use their own cookies to make those services work correctly.',
                 ],
                 [
-                    'title' => 'Security Tokens',
-                    'body' => 'Security cookies help protect forms, login sessions, and authenticated requests while you use MotoX.',
-                ],
-                [
-                    'title' => 'No Advertising Cookies',
-                    'body' => 'MotoX does not need advertising cookies for workshop pages. Browser storage is focused on app security and user preferences.',
-                ],
-                [
-                    'title' => 'After Clearing Cookies',
-                    'body' => 'If you clear cookies, sign in again and reselect your preferred theme, language, filters, and chart ranges.',
+                    'title' => 'What are your choices regarding cookies',
+                    'body' => 'You can clear cookies or browser storage from your browser settings. If you delete or refuse cookies, some MotoX features may reset, and you may need to sign in again.',
+                    'links' => [
+                        ['label' => 'Chrome Cookie Settings', 'url' => 'https://support.google.com/chrome/answer/95647'],
+                        ['label' => 'Safari Cookie Settings', 'url' => 'https://support.apple.com/guide/safari/manage-cookies-and-website-data-sfri11471/mac'],
+                        ['label' => 'Firefox Cookie Settings', 'url' => 'https://support.mozilla.org/kb/enhanced-tracking-protection-firefox-desktop'],
+                        ['label' => 'Edge Cookie Settings', 'url' => 'https://support.microsoft.com/microsoft-edge/delete-cookies-in-microsoft-edge-63947406-40ac-c3b8-57b9-2a946a29ae09'],
+                    ],
                 ],
             ],
         ]);
@@ -199,7 +239,8 @@ class WorkshopFrontendController extends Controller
             'eyebrow' => 'Help Center',
             'title' => 'Help Me',
             'description' => 'Use this guide when you need to know where to click, what a page is for, or how to finish a common workshop task in MotoX.',
-            'support' => true,
+            'support' => false,
+            'icon' => 'support',
             'sections' => [
                 [
                     'title' => 'Dashboard',
@@ -225,6 +266,19 @@ class WorkshopFrontendController extends Controller
                     'title' => 'Settings',
                     'body' => 'Update your shop profile, profile photo, labor rate, language, and notification preferences. Use the sidebar appearance toggle to switch theme any time.',
                 ],
+                [
+                    'title' => 'How to use Help Me',
+                    'body' => 'Find the page, check the record, then take action. Use the sidebar to move between pages. Use search and date filters to narrow records before editing or downloading receipts.',
+                ],
+                [
+                    'title' => 'Quick Help Workflow',
+                    'body' => 'Follow these steps when something is unclear or blocked.',
+                    'items' => [
+                        ['label' => 'Step 1', 'text' => 'Pick the page you are working on: Dashboard, Inventory, Customers, Job Orders, Billing, Reports, Logs, or Settings.'],
+                        ['label' => 'Step 2', 'text' => 'Use search and date filters before editing records so you are working on the correct customer, invoice, job order, or part.'],
+                        ['label' => 'Step 3', 'text' => 'If something still looks wrong, check the current page, exact record name, date filter, status, and latest Logs.'],
+                    ],
+                ],
             ],
         ]);
     }
@@ -238,6 +292,8 @@ class WorkshopFrontendController extends Controller
             'description' => '',
             'sections' => [],
             'support' => false,
+            'updatedAt' => null,
+            'icon' => 'file',
         ], $content));
     }
 

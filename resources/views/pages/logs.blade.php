@@ -242,7 +242,10 @@
                     <form method="POST" action="{{ route('logs.destroy', $log) }}">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="danger-button">Yes, Delete</button>
+                        <button type="submit" class="danger-button">
+                            <x-icon name="trash" class="h-4 w-4" />
+                            <span>Yes, Delete</span>
+                        </button>
                     </form>
                 </div>
             </div>
@@ -266,7 +269,10 @@
                 <form method="POST" action="{{ route('logs.destroy-all') }}">
                     @csrf
                     @method('DELETE')
-                    <button type="submit" class="danger-button">Yes, Delete</button>
+                    <button type="submit" class="danger-button">
+                        <x-icon name="trash" class="h-4 w-4" />
+                        <span>Yes, Delete</span>
+                    </button>
                 </form>
             </div>
         </div>

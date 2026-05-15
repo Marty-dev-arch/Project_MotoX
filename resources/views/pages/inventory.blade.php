@@ -336,7 +336,10 @@
                     <form method="POST" action="{{ route('inventory.parts.destroy', $part) }}">
                         @csrf
                         @method('DELETE')
-                        <button type="submit" class="danger-button">Yes, Delete</button>
+                        <button type="submit" class="danger-button">
+                            <x-icon name="trash" class="h-4 w-4" />
+                            <span>Yes, Delete</span>
+                        </button>
                     </form>
                 </div>
             </div>
@@ -431,7 +434,10 @@
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" class="ghost-button" data-close-modal="create-part-modal">Cancel</button>
-                    <button type="submit" class="primary-button">Save Part</button>
+                    <button type="submit" class="primary-button">
+                        <x-icon name="check-circle" class="h-4 w-4" />
+                        <span>Save Part</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -534,7 +540,10 @@
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" class="ghost-button" data-close-modal="edit-part-modal">Cancel</button>
-                    <button type="submit" class="primary-button">Update Part</button>
+                    <button type="submit" class="primary-button">
+                        <x-icon name="pencil" class="h-4 w-4" />
+                        <span>Update Part</span>
+                    </button>
                 </div>
             </form>
         </div>
@@ -593,7 +602,10 @@
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" class="ghost-button" data-close-modal="movement-modal">Cancel</button>
-                    <button type="submit" class="primary-button">Save Movement</button>
+                    <button type="submit" class="primary-button">
+                        <x-icon name="check-circle" class="h-4 w-4" />
+                        <span>Save Movement</span>
+                    </button>
                 </div>
             </form>
         </div>

@@ -1,10 +1,10 @@
-<aside class="app-sidebar relative hidden flex-col border-r px-5 py-6 transition-all duration-300 xl:flex xl:min-h-screen" id="sidebar">
-    <div class="sidebar-main space-y-6">
+<aside class="app-sidebar relative hidden h-screen min-h-screen flex-col border-r px-5 py-6 transition-all duration-300 xl:flex" id="sidebar">
+    <div class="sidebar-main h-full">
         <div>
             <div class="sidebar-brand-row flex items-center justify-between gap-3">
                 <a href="{{ route('landing') }}" title="MotoX" class="sidebar-brand-link inline-flex items-center gap-2 text-2xl font-black tracking-tight transition hover:text-brand-400">
-                    <span class="sidebar-brand-icon">
-                        <x-icon name="car" class="h-5 w-5" />
+                    <span class="sidebar-brand-icon motox-logo-mark">
+                        <x-icon name="car" class="motox-logo-icon" />
                     </span>
                     <span class="sidebar-text">MotoX</span>
                 </a>

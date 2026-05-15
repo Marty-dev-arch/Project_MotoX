@@ -178,6 +178,14 @@ class CustomerController extends Controller
 
     private function validatePayload(Request $request, int $shopId, ?int $ignoreCustomerId = null): array
     {
+        if (! filled($request->input('phone'))) {
+            $request->merge([
+                'phone' => null,
+                'phone_country' => null,
+                'phone_dial_code' => null,
+            ]);
+        }
+
         return $request->validate([
             'name' => ['required', 'string', 'max:140'],
             'email' => [
