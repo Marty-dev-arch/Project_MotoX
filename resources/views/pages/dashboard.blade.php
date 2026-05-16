@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Dashboard page. --}}
 @section('content')
     <section
         class="space-y-8"

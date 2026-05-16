@@ -1,3 +1,4 @@
+{{-- Purpose: Defines the main authenticated application layout. --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="light">
     <head>
@@ -154,8 +155,8 @@
                 <span class="logout-loading-mark">
                     <x-icon name="car" class="h-6 w-6" />
                 </span>
-                <span class="logout-loading-title" data-i18n="Logging out">Logging out</span>
-                <span class="logout-loading-text" data-i18n="logging out...">logging out...</span>
+                <span class="logout-loading-title" data-i18n="Log Out">Log Out</span>
+                <span class="logout-loading-text" data-i18n="Please wait...">Please wait...</span>
                 <span class="logout-loading-bar"><span></span></span>
             </div>
         </div>

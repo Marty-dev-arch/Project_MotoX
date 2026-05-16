@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Purpose: Creates users, password reset tokens, and sessions tables.
 return new class extends Migration
 {
     

@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the system logs page. --}}
 @section('content')
     <section class="logs-history-page space-y-6">
         @if (session('status'))

@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+// Purpose: Handles customer pages, records, metrics, and history.
 class CustomerController extends Controller
 {
     use BuildsPageData;
@@ -55,7 +56,7 @@ class CustomerController extends Controller
 
         return view('pages.customers', $this->buildPageData('customers', [
             'heading' => 'Customers',
-            'subheading' => 'Manage your real customer records and keep service history linked to every profile.',
+            'subheading' => 'Create your real customer records and keep service history linked to every profile.',
             'searchPlaceholder' => 'Search customer, email, phone...',
             'showHeaderSearch' => false,
             'customers' => $customers,

@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Purpose: Adds walk-in profile photo support to job orders.
 return new class extends Migration
 {
     public function up(): void

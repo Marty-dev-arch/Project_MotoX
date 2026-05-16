@@ -1,5 +1,7 @@
 @extends('layouts.auth')
 
+
+{{-- Purpose: Renders the public landing page. --}}
 @section('content')
     <div class="landing-refresh-loader" data-landing-loader aria-live="polite">
         <div class="landing-refresh-loader-card">
@@ -57,25 +59,65 @@
                     </div>
 
                     <div class="landing-mark-preview">
-                        <div class="landing-picture-stage">
-                            <img
-                                src="{{ asset('images/landing/motorcycle-repair.jpg') }}"
-                                alt="Technician repairing a motorcycle engine"
-                                fetchpriority="high"
-                                decoding="async"
-                            >
-                            <img
-                                src="{{ asset('images/landing/service-consultation.jpg') }}"
-                                alt="Service consultation inside a motorcycle workshop"
-                                loading="lazy"
-                                decoding="async"
-                            >
-                            <img
-                                src="{{ asset('images/landing/tyre-service.webp') }}"
-                                alt="Motorcycle tyre service in progress"
-                                loading="lazy"
-                                decoding="async"
-                            >
+                        <p class="landing-media-kicker">FEATURED DEMO</p>
+                        <div
+                            class="landing-picture-stage landing-media-showcase"
+                            data-landing-carousel
+                            tabindex="0"
+                            aria-label="MotoX landing media carousel"
+                        >
+                            <div class="landing-media-track">
+                                <article class="landing-media-slide landing-demo-video-card">
+                                    <video
+                                        class="landing-demo-video"
+                                        autoplay
+                                        muted
+                                        loop
+                                        playsinline
+                                        preload="metadata"
+                                        poster="https://i.pinimg.com/236x/73/39/a8/7339a87dff83f6d44ede74d6d99b0bc5.jpg"
+                                        data-landing-demo-video
+                                    >
+                                        <source src="https://v1.pinimg.com/videos/iht/expMp4/ba/28/47/ba2847ca1bee71b4ed70a7662515c277_720w.mp4" type="video/mp4">
+                                    </video>
+                                    <div class="landing-media-content">
+                                        <h2>Your Trusted Workshop</h2>
+                                        <a href="{{ $primaryCtaRoute }}" class="landing-media-button">
+                                            <span>Learn More</span>
+                                            <x-icon name="chevron-right" class="h-4 w-4" />
+                                        </a>
+                                    </div>
+                                    <div class="landing-video-end-title" aria-hidden="true">
+                                        <strong>MotoX</strong>
+                                    </div>
+                                </article>
+
+                                <article class="landing-media-slide">
+                                    <img
+                                        class="landing-media-image"
+                                        src="{{ asset('images/landing/service-consultation.jpg') }}"
+                                        alt="Service consultation inside a motorcycle workshop"
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
+                                    <div class="landing-media-content">
+                                        <h2>Create Good Services</h2>
+                                    </div>
+                                </article>
+                            </div>
+
+                            <button type="button" class="landing-media-control landing-media-prev" data-landing-carousel-prev aria-label="Previous demo" title="Previous demo">
+                                <x-icon name="chevron-left" class="h-4 w-4" />
+                            </button>
+
+                            <button type="button" class="landing-media-control landing-media-next" data-landing-carousel-next aria-label="Next demo" title="Next demo">
+                                <x-icon name="chevron-right" class="h-4 w-4" />
+                            </button>
+
+                            <div class="landing-media-dots" aria-hidden="true">
+                                <span class="landing-media-dot landing-media-dot-active"></span>
+                                <span class="landing-media-dot"></span>
+                            </div>
                         </div>
                     </div>
                 </section>
@@ -154,7 +196,8 @@
                             <span class="landing-brand-name">MotoX</span>
                         </a>
                         <p class="landing-footer-copy">
-                            Professional workshop software for job orders, inventory, billing, customers, and real reports.
+                            A professional-grade workshop management application Automative built by Student Developer to optimize job order workflows, 
+                            inventory control, financial billing, customer data, and comprehensive performance reporting.
                         </p>
                     </div>
 

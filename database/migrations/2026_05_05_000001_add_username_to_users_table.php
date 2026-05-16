@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
 
+// Purpose: Adds username support to users.
 return new class extends Migration
 {
     public function up(): void

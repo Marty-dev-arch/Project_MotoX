@@ -14,6 +14,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+// Purpose: Handles system history logs and log cleanup.
 class SystemLogController extends Controller
 {
     use BuildsPageData;

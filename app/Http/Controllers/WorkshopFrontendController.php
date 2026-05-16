@@ -13,6 +13,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Contracts\View\View;
 
+// Purpose: Handles public landing, support, policy, and metrics pages.
 class WorkshopFrontendController extends Controller
 {
     public function landing(): View
@@ -22,7 +23,7 @@ class WorkshopFrontendController extends Controller
         $moduleHighlights = [
             [
                 'title' => 'Dashboard',
-                'description' => 'Operational overview with live inventory KPIs, movement flow, and category risk alerts.',
+                'description' => 'Operational overview with tracked inventory KPIs, movement flow, and category risk alerts.',
                 'route' => 'dashboard',
                 'icon' => 'dashboard',
             ],
@@ -40,13 +41,13 @@ class WorkshopFrontendController extends Controller
             ],
             [
                 'title' => 'Billing',
-                'description' => 'Invoice-ready totals generated directly from job order and parts usage records.',
+                'description' => 'Invoice-ready totals amount directly from job order and parts usage records.',
                 'route' => 'billing',
                 'icon' => 'billing',
             ],
             [
                 'title' => 'Reports',
-                'description' => 'Revenue, growth, customer contribution, and operational trend insights from live records.',
+                'description' => 'Revenue, growth, customer contribution, and operational trend insights from your records.',
                 'route' => 'reports',
                 'icon' => 'reports',
             ],
@@ -62,7 +63,7 @@ class WorkshopFrontendController extends Controller
         $secondaryRoute = auth()->check() ? 'inventory' : 'login';
 
         return view('pages.landing', [
-            'pageTitle' => 'MotoX - your trusted workshop',
+            'pageTitle' => 'MotoX - your professional workshop',
             'projectSnapshot' => $landingMetrics['projectSnapshot'],
             'workspacePulse' => $landingMetrics['workspacePulse'],
             'moduleHighlights' => $moduleHighlights,
@@ -114,7 +115,7 @@ class WorkshopFrontendController extends Controller
                 ],
                 [
                     'title' => 'Staff Workflow',
-                    'body' => 'Admins should keep user roles, shop details, and notification settings current so staff see the right pages and alerts.',
+                    'body' => 'Mechanics should keep user roles, shop details, and notification settings current so Mechanics see the right pages and alerts.',
                 ],
             ],
         ]);
@@ -126,7 +127,7 @@ class WorkshopFrontendController extends Controller
             'pageTitle' => 'MotoX Privacy',
             'eyebrow' => 'Data Handling',
             'title' => 'Privacy Policy',
-            'updatedAt' => 'May 15, 2026',
+            'updatedAt' => 'April 24, 2026',
             'icon' => 'lock',
             'description' => 'MotoX stores workshop information so mechanics can manage customers, vehicles, repairs, stock, billing, and reports in one place.',
             'sections' => [
@@ -185,7 +186,7 @@ class WorkshopFrontendController extends Controller
             'pageTitle' => 'MotoX Cookies',
             'eyebrow' => 'Browser Preferences',
             'title' => 'Cookies Policy',
-            'updatedAt' => 'May 15, 2026',
+            'updatedAt' => 'April 24, 2026',
             'icon' => 'cookie',
             'description' => 'MotoX uses essential browser storage to keep the application usable, consistent, and secure while you work.',
             'sections' => [

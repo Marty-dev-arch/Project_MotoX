@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
+// Purpose: Handles report pages, metrics, and exports.
 class ReportsController extends Controller
 {
     use BuildsPageData;
@@ -28,7 +29,7 @@ class ReportsController extends Controller
 
         return view('pages.reports', $this->buildPageData('reports', [
             'heading' => 'Reports',
-            'subheading' => 'Live operational metrics generated from your actual customer, inventory, and job-order data.',
+            'subheading' => 'Track your operational metrics generated from your actual customer, inventory, and job-order data.',
             'showHeaderSearch' => false,
             'stats' => $reportData['stats'],
             'activePeriod' => $period,

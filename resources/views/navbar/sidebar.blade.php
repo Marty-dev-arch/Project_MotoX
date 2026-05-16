@@ -1,3 +1,4 @@
+{{-- Purpose: Renders the sidebar navigation menu. --}}
 <aside class="app-sidebar relative hidden h-screen min-h-screen flex-col border-r px-5 py-6 transition-all duration-300 xl:flex" id="sidebar">
     <div class="sidebar-main h-full">
         <div>

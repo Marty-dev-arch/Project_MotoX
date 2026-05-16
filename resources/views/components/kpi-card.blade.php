@@ -1,3 +1,4 @@
+{{-- Purpose: Renders reusable KPI cards. --}}
 @props([
     'label',
     'value',

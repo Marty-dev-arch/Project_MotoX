@@ -1,5 +1,7 @@
 @extends('layouts.auth')
 
+
+{{-- Purpose: Renders the password reset OTP page. --}}
 @section('content')
     @php
         $otpEmail = old('email', $email ?? '');

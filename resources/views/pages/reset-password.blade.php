@@ -1,5 +1,7 @@
 @extends('layouts.auth')
 
+
+{{-- Purpose: Renders the reset password page. --}}
 @section('content')
     <div class="auth-page-shell">
         <div class="auth-layout">
@@ -43,6 +45,7 @@
                         <div class="auth-input-wrap">
                             <x-icon name="lock" class="h-5 w-5 text-slate-500" />
                             <input id="reset-password" type="password" name="password" class="auth-input auth-input-password" placeholder="8-16 characters" required minlength="8" maxlength="16" data-auth-password aria-describedby="reset-password-feedback">
+                            <x-password-toggle target="reset-password" />
                         </div>
                         <div class="auth-password-feedback" id="reset-password-feedback" data-auth-password-feedback>
                             <p class="auth-password-help">Minimum 8 characters</p>
@@ -59,6 +62,7 @@
                         <div class="auth-input-wrap">
                             <x-icon name="lock" class="h-5 w-5 text-slate-500" />
                             <input id="reset-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat new password" required minlength="8" maxlength="16" data-auth-password-confirmation>
+                            <x-password-toggle target="reset-password-confirmation" />
                         </div>
                         <p class="auth-inline-error hidden" data-auth-password-match>Password confirmation does not match.</p>
                     </label>

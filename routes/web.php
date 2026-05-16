@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines web routes and maps URLs to MVC controller actions.
+
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\CustomerController;

@@ -1,5 +1,7 @@
 @props(['value' => 0, 'tone' => 'accent'])
 
+
+{{-- Purpose: Renders reusable progress bars. --}}
 @php
     $fillClass = match ($tone) {
         'success' => 'bg-emerald-500',

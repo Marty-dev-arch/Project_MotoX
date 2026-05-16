@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 
+// Purpose: Represents one-time codes for password reset.
 #[Fillable([
     'email',
     'otp_hash',

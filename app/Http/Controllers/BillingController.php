@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\View\View;
 
+// Purpose: Handles billing pages, invoices, receipts, and payments.
 class BillingController extends Controller
 {
     use BuildsPageData;
@@ -28,7 +29,7 @@ class BillingController extends Controller
 
 return view('pages.billing', $this->buildPageData('billing', [
             'heading' => 'Billing',
-            'subheading' => 'Invoice-ready totals generated from real job order records.',
+            'subheading' => 'Invoice-ready totals amount from real job order records.',
             'showHeaderSearch' => false,
             'invoices' => $snapshot['invoices'],
             'stats' => $snapshot['stats'],

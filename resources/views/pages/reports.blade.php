@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Reports page. --}}
 @section('content')
     <section class="space-y-6" data-reports-metrics-url="{{ $reportsMetricsUrl }}" data-reports-export-url="{{ $reportsExportUrl }}" data-live-table="reports" data-report-export-root>
         <div class="flex flex-wrap items-start justify-between gap-5">

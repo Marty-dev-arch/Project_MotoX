@@ -6,6 +6,7 @@ use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
 
+// Purpose: Prevents browser caching for protected authenticated pages.
 class PreventAuthenticatedPageCache
 {
     public function handle(Request $request, Closure $next): Response

@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Inventory page. --}}
 @section('content')
     @php
         $formatStockQuantity = function (float $stock, float $piecesPerBox): array {

@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines database connections and migration settings.
+
 use Illuminate\Support\Str;
 use Pdo\Mysql;
 

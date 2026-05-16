@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Customers page. --}}
 @section('content')
     <section class="space-y-6" data-customers-metrics-url="{{ $customersMetricsUrl }}">
         @if (session('status'))

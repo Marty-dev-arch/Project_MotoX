@@ -1,5 +1,7 @@
 @props(['name', 'class' => 'h-5 w-5'])
 
+
+{{-- Purpose: Renders reusable SVG icons. --}}
 <svg {{ $attributes->merge(['class' => $class, 'viewBox' => '0 0 24 24', 'fill' => 'none', 'stroke' => 'currentColor', 'stroke-width' => '1.8', 'stroke-linecap' => 'round', 'stroke-linejoin' => 'round']) }}>
     @switch($name)
         @case('dashboard')

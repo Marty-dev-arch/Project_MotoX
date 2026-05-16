@@ -7,6 +7,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 
+// Purpose: Handles notification lists, read status, and deletion.
 class NotificationController extends Controller
 {
     public function index(Request $request): JsonResponse

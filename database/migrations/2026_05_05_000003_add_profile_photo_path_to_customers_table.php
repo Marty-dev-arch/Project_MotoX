@@ -4,6 +4,7 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
+// Purpose: Adds profile photo uploads to customers.
 return new class extends Migration
 {
     public function up(): void

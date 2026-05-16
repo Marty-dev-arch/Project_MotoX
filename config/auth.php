@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines authentication guards, providers, and password settings.
+
 use App\Models\User;
 
 return [

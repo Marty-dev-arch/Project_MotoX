@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines queue connections and worker settings.
+
 return [
 
     

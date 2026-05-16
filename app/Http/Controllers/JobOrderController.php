@@ -14,6 +14,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+// Purpose: Handles job order pages, service records, and updates.
 class JobOrderController extends Controller
 {
     use BuildsPageData;

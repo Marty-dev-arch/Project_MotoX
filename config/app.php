@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines core application settings.
+
 return [
 
     

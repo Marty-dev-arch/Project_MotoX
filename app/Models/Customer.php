@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Purpose: Represents customer records and relationships.
 #[Fillable(['shop_id', 'name', 'email', 'phone', 'address', 'notes', 'profile_photo_path'])]
 class Customer extends Model
 {

@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines local and cloud filesystem disks.
+
 return [
 
     

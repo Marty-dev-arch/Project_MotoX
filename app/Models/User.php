@@ -12,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Notifications\Notifiable;
 
+// Purpose: Represents application users and authentication data.
 #[Fillable(['name', 'username', 'avatar_path', 'email', 'password', 'role', 'shop_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable

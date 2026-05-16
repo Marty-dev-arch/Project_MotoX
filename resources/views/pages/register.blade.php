@@ -1,5 +1,7 @@
 @extends('layouts.auth')
 
+
+{{-- Purpose: Renders the registration page. --}}
 @section('content')
     <div class="auth-page-shell">
         <div class="auth-page-inner auth-page-inner-register">
@@ -128,6 +130,7 @@
                             <div class="auth-input-wrap">
                                 <x-icon name="lock" class="h-5 w-5 text-slate-500" />
                                 <input id="register-password" type="password" name="password" class="auth-input auth-input-password" placeholder="8-16 characters" autocomplete="new-password" required minlength="8" maxlength="16" data-auth-password aria-describedby="register-password-feedback">
+                                <x-password-toggle target="register-password" />
                             </div>
                             <div class="auth-password-feedback" id="register-password-feedback" data-auth-password-feedback>
                                 <p class="auth-password-help"></p>
@@ -144,6 +147,7 @@
                             <div class="auth-input-wrap">
                                 <x-icon name="lock" class="h-5 w-5 text-slate-500" />
                                 <input id="register-password-confirmation" type="password" name="password_confirmation" class="auth-input auth-input-password" placeholder="Repeat password" autocomplete="new-password" required minlength="8" maxlength="16" data-auth-password-confirmation>
+                                <x-password-toggle target="register-password-confirmation" />
                             </div>
                             <p class="auth-inline-error hidden" data-auth-password-match>Password confirmation does not match.</p>
                         </label>

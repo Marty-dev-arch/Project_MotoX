@@ -124,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeLandingBackgroundMotion();
     initializeLandingScrollReveal();
     initializeLandingSectionTracking();
+    initializeLandingMediaShowcase();
     initializeProfileInitials();
     initializeImageUploadPreviews();
     initializeJobOrderCustomerPhotos();
@@ -453,8 +454,7 @@ function initializeLanguagePreference() {
             'Are you sure you want to log out?': 'Sigurado ka bang mag-log out?',
             'You will be logged out of MotoX.': 'Mala-log out ka sa MotoX.',
             'Log Out': 'Mag Log Out',
-            'Logging out': 'Nagla-log out',
-            'logging out...': 'nagla-log out...',
+            'Please wait...': 'Maghintay...',
             'Filter by Date': 'I-filter ayon sa Petsa',
             'Add Part': 'Magdagdag ng Part',
             'Create Customer': 'Gumawa ng Customer',
@@ -1372,6 +1372,135 @@ function initializeAuthPhoneInputs() {
     });
 }
 
+const authRoutePageCache = new Map();
+
+function normalizeAuthRouteUrl(url) {
+    const parsedUrl = new URL(url, window.location.href);
+    parsedUrl.hash = '';
+    return parsedUrl;
+}
+
+function authRouteTargetFromUrl(url) {
+    const pathname = normalizeAuthRouteUrl(url).pathname.replace(/\/+$/, '');
+
+    if (pathname.endsWith('/register')) {
+        return 'register';
+    }
+
+    if (pathname.endsWith('/login')) {
+        return 'login';
+    }
+
+    return '';
+}
+
+function fetchAuthRoutePage(url) {
+    const parsedUrl = normalizeAuthRouteUrl(url);
+
+    if (parsedUrl.origin !== window.location.origin) {
+        return Promise.reject(new Error('External auth route'));
+    }
+
+    const cacheKey = parsedUrl.href;
+    if (!authRoutePageCache.has(cacheKey)) {
+        authRoutePageCache.set(
+            cacheKey,
+            fetch(parsedUrl.href, {
+                credentials: 'same-origin',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            })
+                .then((response) => {
+                    if (!response.ok) {
+                        throw new Error(`Auth route request failed with ${response.status}`);
+                    }
+
+                    return response.text();
+                })
+                .then((html) => new DOMParser().parseFromString(html, 'text/html'))
+                .catch((error) => {
+                    authRoutePageCache.delete(cacheKey);
+                    throw error;
+                }),
+        );
+    }
+
+    return authRoutePageCache.get(cacheKey);
+}
+
+function initializeCurrentAuthPage() {
+    initializePasswordToggles();
+    initializeAuthPasswordValidation();
+    initializeAuthPhoneInputs();
+    initializeAuthRouteSwitch();
+    initializeRegistrationPopup();
+}
+
+function replaceAuthPageFromDocument(nextDocument, url, shouldReplaceState = false) {
+    const currentInner = document.querySelector('.auth-page-inner');
+    const nextInner = nextDocument.querySelector('.auth-page-inner');
+
+    if (!(currentInner instanceof HTMLElement) || !(nextInner instanceof HTMLElement)) {
+        return false;
+    }
+
+    currentInner.className = nextInner.className;
+    currentInner.innerHTML = nextInner.innerHTML;
+
+    const nextTitle = nextDocument.querySelector('title')?.textContent?.trim();
+    if (nextTitle) {
+        document.title = nextTitle;
+    }
+
+    const nextUrl = normalizeAuthRouteUrl(url);
+    const state = {
+        authRoute: authRouteTargetFromUrl(nextUrl.href),
+    };
+
+    if (shouldReplaceState) {
+        window.history.replaceState(state, '', nextUrl.href);
+    } else {
+        window.history.pushState(state, '', nextUrl.href);
+    }
+
+    window.requestAnimationFrame(initializeCurrentAuthPage);
+    return true;
+}
+
+function initializeAuthRouteHistory() {
+    if (window.MotoXAuthRouteHistoryReady) {
+        return;
+    }
+
+    window.MotoXAuthRouteHistoryReady = true;
+
+    const currentTarget = authRouteTargetFromUrl(window.location.href);
+    if (currentTarget) {
+        window.history.replaceState({ authRoute: currentTarget }, '', window.location.href);
+    }
+
+    window.addEventListener('popstate', () => {
+        const target = authRouteTargetFromUrl(window.location.href);
+        const hasAuthShell = document.querySelector('[data-auth-route-switch]');
+
+        if (!target || !(hasAuthShell instanceof HTMLElement)) {
+            window.location.reload();
+            return;
+        }
+
+        fetchAuthRoutePage(window.location.href)
+            .then((nextDocument) => {
+                if (!replaceAuthPageFromDocument(nextDocument, window.location.href, true)) {
+                    window.location.reload();
+                }
+            })
+            .catch(() => {
+                window.location.reload();
+            });
+    });
+}
+
 function initializeAuthRouteSwitch() {
     const layout = document.querySelector('[data-auth-route-switch]');
 
@@ -1379,16 +1508,101 @@ function initializeAuthRouteSwitch() {
         return;
     }
 
+    if (layout.dataset.authRouteSwitchReady === 'true') {
+        return;
+    }
+
+    layout.dataset.authRouteSwitchReady = 'true';
+    initializeAuthRouteHistory();
+
     const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const switchDurationMs = 620;
+    const overlayCopy = {
+        login: {
+            title: 'Hello, Friend!',
+            text: 'Register with your personal shop details to use all MotoX site features.',
+            action: 'Sign Up',
+        },
+        register: {
+            title: 'Welcome Back!',
+            text: 'Enter your MotoX account details to return to your dashboard, inventory, and work orders.',
+            action: 'Sign In',
+        },
+    };
     let isSwitching = false;
+
+    const updateOverlayCopy = (target) => {
+        const copy = overlayCopy[target];
+        const aside = layout.querySelector('.auth-aside');
+
+        if (!copy || !(aside instanceof HTMLElement)) {
+            return;
+        }
+
+        const title = aside.querySelector('.auth-aside-title');
+        const text = aside.querySelector('.auth-aside-text');
+        const action = aside.querySelector('[data-auth-route-target]');
+
+        if (title instanceof HTMLElement) {
+            title.textContent = copy.title;
+        }
+
+        if (text instanceof HTMLElement) {
+            text.textContent = copy.text;
+        }
+
+        if (action instanceof HTMLElement) {
+            action.textContent = copy.action;
+        }
+    };
+
+    const prepareSwitchMotion = (target) => {
+        const aside = layout.querySelector('.auth-aside');
+        const panel = layout.querySelector('.auth-panel');
+
+        if (!(aside instanceof HTMLElement) || !(panel instanceof HTMLElement)) {
+            return;
+        }
+
+        const layoutRect = layout.getBoundingClientRect();
+        const asideRect = aside.getBoundingClientRect();
+        const targetLeft = target === 'register'
+            ? layoutRect.left
+            : layoutRect.right - asideRect.width;
+        const overlayShift = targetLeft - asideRect.left;
+        const formShift = Math.min(layoutRect.width * 0.18, 168) * (target === 'register' ? 1 : -1);
+        const copyShift = target === 'register' ? -18 : 18;
+
+        layout.style.setProperty('--auth-overlay-shift', `${overlayShift.toFixed(2)}px`);
+        layout.style.setProperty('--auth-form-shift', `${formShift.toFixed(2)}px`);
+        layout.style.setProperty('--auth-copy-shift', `${copyShift}px`);
+        layout.style.setProperty('--auth-switch-width', `${layoutRect.width.toFixed(2)}px`);
+        layout.style.setProperty('--auth-switch-height', `${layoutRect.height.toFixed(2)}px`);
+    };
 
     layout.querySelectorAll('[data-auth-route-target]').forEach((trigger) => {
         if (!(trigger instanceof HTMLAnchorElement)) {
             return;
         }
 
+        const preloadTargetPage = () => {
+            if (authRouteTargetFromUrl(trigger.href)) {
+                fetchAuthRoutePage(trigger.href).catch(() => {});
+            }
+        };
+
+        trigger.addEventListener('mouseenter', preloadTargetPage, { once: true });
+        trigger.addEventListener('focus', preloadTargetPage, { once: true });
+        trigger.addEventListener('touchstart', preloadTargetPage, { once: true, passive: true });
+
         trigger.addEventListener('click', (event) => {
-            if (reduceMotion || !trigger.href) {
+            if (!trigger.href
+                || event.metaKey
+                || event.ctrlKey
+                || event.shiftKey
+                || event.altKey
+                || trigger.target === '_blank'
+            ) {
                 return;
             }
 
@@ -1401,14 +1615,30 @@ function initializeAuthRouteSwitch() {
             isSwitching = true;
             const target = trigger.dataset.authRouteTarget === 'register' ? 'register' : 'login';
             const routeClass = target === 'register' ? 'auth-route-to-register' : 'auth-route-to-login';
+            const nextPage = fetchAuthRoutePage(trigger.href);
 
+            if (reduceMotion) {
+                nextPage
+                    .then((nextDocument) => {
+                        if (!replaceAuthPageFromDocument(nextDocument, trigger.href)) {
+                            window.location.href = trigger.href;
+                        }
+                    })
+                    .catch(() => {
+                        window.location.href = trigger.href;
+                    });
+                return;
+            }
+
+            prepareSwitchMotion(target);
             layout.classList.remove(
                 'auth-layout-route-switching',
                 'auth-route-to-register',
                 'auth-route-to-login',
+                'auth-route-copy-changing',
             );
             void layout.offsetWidth;
-            layout.classList.add('auth-layout-route-switching', routeClass);
+            layout.classList.add('auth-layout-route-switching', routeClass, 'auth-route-copy-changing');
 
             layout.querySelectorAll('[data-auth-route-target]').forEach((link) => {
                 if (link instanceof HTMLAnchorElement) {
@@ -1417,8 +1647,23 @@ function initializeAuthRouteSwitch() {
             });
 
             window.setTimeout(() => {
-                window.location.href = trigger.href;
-            }, 240);
+                updateOverlayCopy(target);
+                window.requestAnimationFrame(() => {
+                    layout.classList.remove('auth-route-copy-changing');
+                });
+            }, 180);
+
+            window.setTimeout(() => {
+                nextPage
+                    .then((nextDocument) => {
+                        if (!replaceAuthPageFromDocument(nextDocument, trigger.href)) {
+                            window.location.href = trigger.href;
+                        }
+                    })
+                    .catch(() => {
+                        window.location.href = trigger.href;
+                    });
+            }, switchDurationMs);
         });
     });
 }
@@ -3279,6 +3524,220 @@ function initializeLandingSectionTracking() {
         : sectionItems[0].targetId;
 
     setActiveLink(initialTargetId);
+}
+
+function initializeLandingMediaShowcase() {
+    const demoVideos = [...document.querySelectorAll('[data-landing-demo-video]')];
+    demoVideos.forEach((video) => {
+        if (!(video instanceof HTMLVideoElement)) {
+            return;
+        }
+
+        const card = video.closest('.landing-demo-video-card');
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const syncOutro = () => {
+            const duration = Number.isFinite(video.duration) ? video.duration : 0;
+            const outroStart = duration > 0 ? Math.max(duration - 2.4, duration * 0.72) : Infinity;
+            card.classList.toggle('is-ending', video.currentTime >= outroStart);
+        };
+
+        video.addEventListener('loadedmetadata', syncOutro);
+        video.addEventListener('timeupdate', syncOutro);
+        video.addEventListener('seeked', syncOutro);
+
+        const playPromise = video.play();
+        if (playPromise instanceof Promise) {
+            playPromise.catch(() => {});
+        }
+    });
+
+    const carousels = [...document.querySelectorAll('[data-landing-carousel]')];
+    carousels.forEach((carousel) => {
+        if (!(carousel instanceof HTMLElement)) {
+            return;
+        }
+
+        const track = carousel.querySelector('.landing-media-track');
+        const slides = [...carousel.querySelectorAll('.landing-media-slide')];
+        const dots = [...carousel.querySelectorAll('.landing-media-dot')];
+        const prevButton = carousel.querySelector('[data-landing-carousel-prev]');
+        const nextButton = carousel.querySelector('[data-landing-carousel-next]');
+
+        if (!(track instanceof HTMLElement) || slides.length < 2) {
+            return;
+        }
+
+        let activeIndex = 0;
+        let pointerId = null;
+        let startX = 0;
+        let lastDelta = 0;
+        let didDrag = false;
+
+        const setOffset = (value) => {
+            carousel.style.setProperty('--landing-media-offset', `${value.toFixed(2)}%`);
+        };
+
+        const setActiveSlide = (index) => {
+            activeIndex = (index + slides.length) % slides.length;
+            setOffset(activeIndex * -100);
+
+            dots.forEach((dot, dotIndex) => {
+                dot.classList.toggle('landing-media-dot-active', dotIndex === activeIndex);
+            });
+        };
+
+        const isInteractiveTarget = (target) => (
+            target instanceof Element
+            && Boolean(target.closest('a, button, input, textarea, select, [role="button"]'))
+        );
+
+        const finishDrag = (event) => {
+            if (pointerId === null || event.pointerId !== pointerId) {
+                return;
+            }
+
+            const rect = carousel.getBoundingClientRect();
+            const threshold = Math.max(44, rect.width * 0.12);
+            let nextIndex = activeIndex;
+
+            if (didDrag && Math.abs(lastDelta) >= threshold) {
+                nextIndex += lastDelta < 0 ? 1 : -1;
+            }
+
+            if (carousel.hasPointerCapture?.(pointerId)) {
+                carousel.releasePointerCapture(pointerId);
+            }
+
+            pointerId = null;
+            startX = 0;
+            lastDelta = 0;
+            didDrag = false;
+            carousel.classList.remove('is-dragging');
+            setActiveSlide(nextIndex);
+        };
+
+        prevButton?.addEventListener('click', () => setActiveSlide(activeIndex - 1));
+        nextButton?.addEventListener('click', () => setActiveSlide(activeIndex + 1));
+
+        carousel.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            if (event.key === 'Home') {
+                setActiveSlide(0);
+                return;
+            }
+
+            if (event.key === 'End') {
+                setActiveSlide(slides.length - 1);
+                return;
+            }
+
+            setActiveSlide(activeIndex + (event.key === 'ArrowRight' ? 1 : -1));
+        });
+
+        carousel.addEventListener('pointerdown', (event) => {
+            if (event.button !== 0 || isInteractiveTarget(event.target)) {
+                return;
+            }
+
+            pointerId = event.pointerId;
+            startX = event.clientX;
+            lastDelta = 0;
+            didDrag = false;
+            carousel.classList.add('is-dragging');
+            carousel.setPointerCapture?.(pointerId);
+        });
+
+        carousel.addEventListener('pointermove', (event) => {
+            if (pointerId === null || event.pointerId !== pointerId) {
+                return;
+            }
+
+            const rect = carousel.getBoundingClientRect();
+            if (!rect.width) {
+                return;
+            }
+
+            lastDelta = event.clientX - startX;
+            if (Math.abs(lastDelta) < 4) {
+                return;
+            }
+
+            didDrag = true;
+            let deltaPercent = (lastDelta / rect.width) * 100;
+
+            if ((activeIndex === 0 && deltaPercent > 0)
+                || (activeIndex === slides.length - 1 && deltaPercent < 0)) {
+                deltaPercent *= 0.28;
+            }
+
+            const minOffset = (slides.length - 1) * -100;
+            const nextOffset = Math.min(0, Math.max(minOffset, (activeIndex * -100) + deltaPercent));
+
+            setOffset(nextOffset);
+            event.preventDefault();
+        });
+
+        carousel.addEventListener('pointerup', finishDrag);
+        carousel.addEventListener('pointercancel', finishDrag);
+
+        setActiveSlide(0);
+    });
+
+    const swipeCards = [...document.querySelectorAll('[data-landing-swipe]')];
+    swipeCards.forEach((card) => {
+        if (!(card instanceof HTMLElement)) {
+            return;
+        }
+
+        const setSwipe = (value) => {
+            const bounded = Math.min(88, Math.max(12, value));
+            card.style.setProperty('--swipe-x', `${bounded.toFixed(2)}%`);
+        };
+
+        const setSwipeFromPointer = (clientX) => {
+            const rect = card.getBoundingClientRect();
+            if (!rect.width) {
+                return;
+            }
+
+            setSwipe(((clientX - rect.left) / rect.width) * 100);
+        };
+
+        card.addEventListener('pointermove', (event) => {
+            setSwipeFromPointer(event.clientX);
+        });
+
+        card.addEventListener('pointerleave', () => {
+            setSwipe(50);
+        });
+
+        card.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+            const currentValue = Number.parseFloat(card.style.getPropertyValue('--swipe-x')) || 50;
+            if (event.key === 'Home') {
+                setSwipe(12);
+                return;
+            }
+            if (event.key === 'End') {
+                setSwipe(88);
+                return;
+            }
+
+            setSwipe(currentValue + (event.key === 'ArrowRight' ? 8 : -8));
+        });
+    });
 }
 
 function initializeHeaderMenus() {

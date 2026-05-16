@@ -21,6 +21,7 @@ use Laravel\Socialite\Two\InvalidStateException;
 use Symfony\Component\HttpFoundation\Cookie;
 use Throwable;
 
+// Purpose: Handles login, registration, password reset, and verification requests.
 class AuthController extends Controller
 {
     private const GOOGLE_ACCOUNT_COOKIE = 'motox_google_account';

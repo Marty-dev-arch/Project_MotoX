@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+// Purpose: Handles shop profile, account, and preference settings.
 class SettingsController extends Controller
 {
     use BuildsPageData;

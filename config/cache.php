@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines cache stores and cache behavior.
+
 use Illuminate\Support\Str;
 
 return [

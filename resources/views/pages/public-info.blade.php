@@ -1,3 +1,4 @@
+{{-- Purpose: Renders public policy and support information pages. --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="light">
     <head>

@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Purpose: Represents inventory stock in and out history.
 #[Fillable(['part_id', 'user_id', 'type', 'quantity', 'reason', 'reference', 'moved_at'])]
 class StockMovement extends Model
 {

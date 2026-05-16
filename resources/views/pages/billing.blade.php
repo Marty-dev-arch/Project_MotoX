@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Billing page. --}}
 @section('content')
     <section class="space-y-6" data-billing-metrics-url="{{ $billingMetricsUrl }}" data-billing-export-url="{{ $billingExportUrl }}" data-live-table="billing">
         <div class="flex flex-wrap items-start justify-between gap-5">

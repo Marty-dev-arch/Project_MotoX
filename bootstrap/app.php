@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Configures Laravel routing, middleware aliases, and exception handling.
+
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;

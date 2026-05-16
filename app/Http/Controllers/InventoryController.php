@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
+// Purpose: Handles inventory pages, parts, stock, and movements.
 class InventoryController extends Controller
 {
     public function index(Request $request): View

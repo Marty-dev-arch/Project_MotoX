@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines mailer transports and sender settings.
+
 return [
 
     

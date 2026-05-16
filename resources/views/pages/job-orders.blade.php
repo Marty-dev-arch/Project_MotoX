@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Job Orders page. --}}
 @section('content')
     <section class="space-y-6" data-joborders-metrics-url="{{ $jobOrdersMetricsUrl }}">
         @if (session('status'))

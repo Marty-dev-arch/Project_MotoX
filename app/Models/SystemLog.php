@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
+// Purpose: Represents audit log entries for system activity.
 #[Fillable([
     'shop_id',
     'user_id',

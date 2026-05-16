@@ -9,6 +9,7 @@ use App\Models\StockMovement;
 use App\Observers\SystemActionObserver;
 use Illuminate\Support\ServiceProvider;
 
+// Purpose: Boots application services such as model observers.
 class AppServiceProvider extends ServiceProvider
 {
     

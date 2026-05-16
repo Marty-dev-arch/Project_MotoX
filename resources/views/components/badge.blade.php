@@ -1,5 +1,7 @@
 @props(['tone' => 'neutral'])
 
+
+{{-- Purpose: Renders reusable status badges. --}}
 @php
     $classes = match ($tone) {
         'success' => 'bg-emerald-50 text-emerald-700 ring-emerald-100',

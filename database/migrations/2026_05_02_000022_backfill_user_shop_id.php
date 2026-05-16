@@ -3,6 +3,7 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
+// Purpose: Backfills shop IDs for existing users.
 return new class extends Migration
 {
     public function up(): void

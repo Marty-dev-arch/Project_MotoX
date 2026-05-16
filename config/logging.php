@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines log channels and error logging behavior.
+
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;

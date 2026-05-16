@@ -1,3 +1,4 @@
+{{-- Purpose: Defines the guest authentication layout. --}}
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}" class="light">
     <head>
@@ -14,6 +15,18 @@
                 document.documentElement.classList.toggle('light', theme !== 'dark');
             })();
         </script>
+        <style>
+            html,
+            body {
+                min-height: 100%;
+                background: #f9f8f5;
+            }
+
+            html.dark,
+            html.dark body {
+                background: #0b0d14;
+            }
+        </style>
 
         <link rel="preconnect" href="https://fonts.googleapis.com">
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

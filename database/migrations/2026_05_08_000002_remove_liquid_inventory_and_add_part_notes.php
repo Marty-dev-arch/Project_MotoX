@@ -5,6 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+// Purpose: Removes liquid inventory fields and adds part notes.
 return new class extends Migration
 {
     public function up(): void

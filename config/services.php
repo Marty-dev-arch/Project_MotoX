@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Stores third-party service credentials.
+
 return [
 
     

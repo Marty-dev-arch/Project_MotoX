@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
+// Purpose: Represents repair job orders and workflow status.
 #[Fillable([
     'shop_id',
     'customer_id',

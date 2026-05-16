@@ -1,5 +1,7 @@
 <?php
 
+// Purpose: Defines session storage, lifetime, and cookie settings.
+
 use Illuminate\Support\Str;
 
 return [

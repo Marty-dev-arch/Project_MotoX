@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
+// Purpose: Handles dashboard page data and summary metrics.
 class DashboardController extends Controller
 {
     public function index(Request $request): View

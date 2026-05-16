@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
+// Purpose: Represents inventory parts, stock, pricing, and relationships.
 #[Fillable([
     'shop_id',
     'sku',

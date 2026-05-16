@@ -1,5 +1,7 @@
 @extends('layouts.auth')
 
+
+{{-- Purpose: Renders the forgot password request page. --}}
 @section('content')
     <div class="auth-page-shell">
         <div class="auth-layout">

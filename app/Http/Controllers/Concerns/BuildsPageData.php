@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Concerns;
 
+// Purpose: Builds shared layout and navigation data for controller views.
 trait BuildsPageData
 {
     

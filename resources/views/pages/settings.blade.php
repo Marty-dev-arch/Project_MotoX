@@ -1,5 +1,7 @@
 @extends('layouts.app')
 
+
+{{-- Purpose: Renders the Settings page. --}}
 @section('content')
     <section class="space-y-6">
         @if (session('status'))

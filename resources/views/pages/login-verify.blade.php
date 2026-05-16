@@ -1,5 +1,7 @@
 @extends('layouts.auth')
 
+
+{{-- Purpose: Renders the login verification page. --}}
 @section('content')
     @php
         $oldOtp = preg_replace('/\D+/', '', (string) old('otp', ''));
