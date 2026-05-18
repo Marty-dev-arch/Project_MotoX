@@ -4,24 +4,61 @@
 {{-- Purpose: Renders the Inventory page. --}}
 @section('content')
     @php
-        $formatStockQuantity = function (float $stock, float $piecesPerBox): array {
+        $formatStockQuantity = function (float $stock, float $piecesPerBox, string $unitLabel = 'box'): array {
             $piecesPerBox = max(1.0, $piecesPerBox);
-            $wholeBoxes = (int) floor($stock / $piecesPerBox);
-            $loosePieces = round($stock - ($wholeBoxes * $piecesPerBox), 3);
+            $stock = max(0.0, $stock);
+            
+            // Calculate physical containers (e.g. boxes) using ceiling division
+            $boxCount = $stock > 0 ? (int) ceil($stock / $piecesPerBox) : 0;
+            
+            // Dynamic pluralization based on unit label choice
+            $pluralUnit = match (strtolower($unitLabel)) {
+                'box' => 'boxes',
+                'case' => 'cases',
+                'pack' => 'packs',
+                'set' => 'sets',
+                default => $unitLabel . 's',
+            };
+            
+            $boxLabel = $boxCount === 1 ? $unitLabel : $pluralUnit;
+            $display = $boxCount . ' ' . $boxLabel;
+            
             $formatNumber = fn (float $value): string => rtrim(rtrim(number_format($value, 3, '.', ''), '0'), '.');
-            $parts = [];
-
-            if ($wholeBoxes > 0) {
-                $parts[] = $wholeBoxes.' box'.($wholeBoxes === 1 ? '' : 'es');
+            
+            if (abs($piecesPerBox - 1.0) < 0.00001) {
+                return [
+                    'display' => $formatNumber($stock) . ' piece' . (abs($stock - 1.0) < 0.00001 ? '' : 's'),
+                    'total' => '',
+                ];
             }
-
-            if ($loosePieces > 0 || $parts === []) {
-                $parts[] = $formatNumber(max(0, $loosePieces)).' piece'.(abs($loosePieces - 1.0) < 0.00001 ? '' : 's');
+            
+            // Compute detailed breakdown
+            $fullBoxes = (int) floor($stock / $piecesPerBox);
+            $loosePieces = round($stock - ($fullBoxes * $piecesPerBox), 3);
+            
+            if ($loosePieces > 0 && $fullBoxes > 0) {
+                $breakdown = sprintf(
+                    '%s total pieces (%d full, %s loose)',
+                    $formatNumber($stock),
+                    $fullBoxes,
+                    $formatNumber($loosePieces)
+                );
+            } elseif ($loosePieces > 0) {
+                $breakdown = sprintf(
+                    '%s total pieces (%s loose)',
+                    $formatNumber($stock),
+                    $formatNumber($loosePieces)
+                );
+            } else {
+                $breakdown = sprintf(
+                    '%s total pieces',
+                    $formatNumber($stock)
+                );
             }
-
+            
             return [
-                'display' => implode(' + ', $parts),
-                'total' => $formatNumber(max(0, $stock)).' total piece'.(abs($stock - 1.0) < 0.00001 ? '' : 's'),
+                'display' => $display,
+                'total' => $breakdown,
             ];
         };
     @endphp
@@ -151,10 +188,10 @@
                         @php
                             $isOut = (float) $part->current_stock <= 0;
                             $conversion = max(1.0, (float) ($part->pieces_per_box ?? 1));
-                            $stockQuantity = $formatStockQuantity((float) $part->current_stock, $conversion);
+                            $displayUnitLabel = $part->unit_label ?: 'box';
+                            $stockQuantity = $formatStockQuantity((float) $part->current_stock, $conversion, $displayUnitLabel);
                             $current = $stockQuantity['display'];
                             $minimum = rtrim(rtrim(number_format((float) $part->minimum_stock, 3, '.', ''), '0'), '.');
-                            $displayUnitLabel = $part->unit_label ?: 'box';
                             $editStockMode = 'box_piece';
                         @endphp
                         <article class="detail-card inventory-restock-card">
@@ -175,6 +212,8 @@
                                 data-movement-part-stock="{{ $current }}"
                                 data-movement-part-mode="{{ $editStockMode }}"
                                 data-movement-part-unit="{{ $displayUnitLabel }}"
+                                data-movement-part-pieces-per-box="{{ $conversion }}"
+                                data-movement-part-current-pieces="{{ (float) $part->current_stock }}"
                             >
                                 <x-icon name="plus" class="h-4 w-4" />
                                 <span>Restock</span>
@@ -223,7 +262,7 @@
                                 $partImageUrl = $part->image_path && Storage::disk('public')->exists($part->image_path)
                                     ? Storage::url($part->image_path)
                                     : null;
-                                $stockQuantity = $formatStockQuantity((float) $part->current_stock, $conversion);
+                                $stockQuantity = $formatStockQuantity((float) $part->current_stock, $conversion, $displayUnitLabel);
                                 $stockDisplay = $stockQuantity['display'];
                                 $stockBreakdown = $stockQuantity['total'];
                             @endphp
@@ -272,6 +311,8 @@
                                             data-movement-part-stock="{{ $stockDisplay }}"
                                             data-movement-part-mode="{{ $editStockMode }}"
                                             data-movement-part-unit="{{ $displayUnitLabel }}"
+                                            data-movement-part-pieces-per-box="{{ $conversion }}"
+                                            data-movement-part-current-pieces="{{ (float) $part->current_stock }}"
                                         >
                                             <x-icon name="trend" class="h-4 w-4" />
                                         </button>
@@ -601,6 +642,26 @@
                     <span class="muted-label">Reason</span>
                     <input type="text" name="reason" class="input-shell" placeholder="e.g. Supplier restock">
                 </label>
+
+                <!-- Premium Real-time Live Stock Preview -->
+                <div class="rounded-2xl bg-slate-50/80 p-4 border border-slate-100/50 hidden" data-movement-preview-container>
+                    <p class="text-xs font-semibold uppercase tracking-[0.14em] text-slate-400">Stock Level Preview</p>
+                    <div class="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-4">
+                        <div>
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">On Hand</p>
+                            <p class="mt-1 text-sm font-bold text-slate-700" data-movement-preview-current></p>
+                        </div>
+                        <div class="text-slate-300">
+                            <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                            </svg>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Post Movement</p>
+                            <p class="mt-1 text-sm font-bold text-emerald-600" data-movement-preview-expected></p>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="flex justify-end gap-3 pt-2">
                     <button type="button" class="ghost-button" data-close-modal="movement-modal">Cancel</button>

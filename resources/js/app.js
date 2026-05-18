@@ -314,6 +314,10 @@ function initializeModalControls() {
         const template = movementForm.dataset.actionTemplate ?? '';
         movementForm.action = template.replace('__PART_ID__', partId);
 
+        const piecesPerBox = parseFloat(trigger.dataset.movementPartPiecesPerBox ?? '1');
+        const currentPieces = parseFloat(trigger.dataset.movementPartCurrentPieces ?? '0');
+        const unitLabel = trigger.dataset.movementPartUnit ?? 'box';
+
         if (movementLabel instanceof HTMLElement) {
             const partName = trigger.dataset.movementPartName ?? 'Part';
             const currentStock = trigger.dataset.movementPartStock ?? '0';
@@ -324,17 +328,92 @@ function initializeModalControls() {
         const unitSelect = movementForm.querySelector('[data-movement-unit-select]');
         const typeSelect = movementForm.querySelector('[data-movement-type-select]');
         const quantityInput = movementForm.querySelector('input[name="quantity"]');
+
+        const previewContainer = movementForm.querySelector('[data-movement-preview-container]');
+        const previewCurrent = movementForm.querySelector('[data-movement-preview-current]');
+        const previewExpected = movementForm.querySelector('[data-movement-preview-expected]');
+
+        const formatJSStockQuantity = (stock, conversion, unit) => {
+            if (conversion <= 0) conversion = 1;
+            if (stock < 0) stock = 0;
+            
+            const boxCount = stock > 0 ? Math.ceil(stock / conversion) : 0;
+            const pluralUnit = unit.toLowerCase() === 'box' ? 'boxes'
+                             : unit.toLowerCase() === 'case' ? 'cases'
+                             : unit.toLowerCase() === 'pack' ? 'packs'
+                             : unit.toLowerCase() === 'set' ? 'sets'
+                             : unit + 's';
+                             
+            const boxLabel = boxCount === 1 ? unit : pluralUnit;
+            const displayStr = `${boxCount} ${boxLabel}`;
+            
+            if (Math.abs(conversion - 1) < 0.001) {
+                return `${stock} piece${stock === 1 ? '' : 's'}`;
+            }
+            
+            const fullBoxes = Math.floor(stock / conversion);
+            const loosePieces = Math.round((stock - (fullBoxes * conversion)) * 1000) / 1000;
+            
+            let breakdown = '';
+            if (loosePieces > 0 && fullBoxes > 0) {
+                breakdown = `${stock} total pieces (${fullBoxes} full, ${loosePieces} loose)`;
+            } else if (loosePieces > 0) {
+                breakdown = `${stock} total pieces (${loosePieces} loose)`;
+            } else {
+                breakdown = `${stock} total pieces`;
+            }
+            
+            return `${displayStr} <span class="block text-xs font-normal text-slate-400 mt-0.5">${breakdown}</span>`;
+        };
+
+        const updatePreview = () => {
+            if (!previewContainer || !previewCurrent || !previewExpected) return;
+
+            const type = typeSelect instanceof HTMLSelectElement ? typeSelect.value : 'in';
+            const qtyVal = parseFloat(quantityInput instanceof HTMLInputElement ? quantityInput.value : '0') || 0;
+            const qtyUnit = unitSelect instanceof HTMLSelectElement ? unitSelect.value : 'box';
+
+            let inputPieces = qtyVal;
+            if (qtyUnit === 'box') {
+                inputPieces = qtyVal * piecesPerBox;
+            }
+
+            let nextPieces = currentPieces;
+            if (type === 'in') {
+                nextPieces = currentPieces + inputPieces;
+            } else {
+                nextPieces = currentPieces - inputPieces;
+            }
+
+            if (nextPieces < 0) {
+                nextPieces = 0;
+            }
+
+            previewContainer.classList.remove('hidden');
+            previewCurrent.innerHTML = formatJSStockQuantity(currentPieces, piecesPerBox, unitLabel);
+            previewExpected.innerHTML = formatJSStockQuantity(nextPieces, piecesPerBox, unitLabel);
+
+            if (nextPieces < currentPieces) {
+                previewExpected.classList.remove('text-emerald-600');
+                previewExpected.classList.add('text-rose-600');
+            } else {
+                previewExpected.classList.remove('text-rose-600');
+                previewExpected.classList.add('text-emerald-600');
+            }
+        };
+
         const syncMovementUnits = () => {
             if (!(unitSelect instanceof HTMLSelectElement)) {
                 return;
             }
 
             const type = typeSelect instanceof HTMLSelectElement ? typeSelect.value : 'in';
+            const capUnit = unitLabel.charAt(0).toUpperCase() + unitLabel.slice(1);
             const options = {
                 box_piece: type === 'in'
-                    ? [{ value: 'box', label: 'Box' }]
+                    ? [{ value: 'box', label: capUnit }]
                     : [
-                        { value: 'box', label: 'Box' },
+                        { value: 'box', label: capUnit },
                         { value: 'piece', label: 'Pieces' },
                     ],
             };
@@ -346,13 +425,28 @@ function initializeModalControls() {
                 quantityInput.step = '1';
                 quantityInput.min = '1';
             }
+
+            // Sync units might affect expected quantity, update preview
+            updatePreview();
         };
 
         if (typeSelect instanceof HTMLSelectElement) {
-            typeSelect.onchange = syncMovementUnits;
+            typeSelect.onchange = () => {
+                syncMovementUnits();
+                updatePreview();
+            };
+        }
+
+        if (unitSelect instanceof HTMLSelectElement) {
+            unitSelect.onchange = updatePreview;
+        }
+
+        if (quantityInput instanceof HTMLInputElement) {
+            quantityInput.oninput = updatePreview;
         }
 
         syncMovementUnits();
+        updatePreview();
     };
 
     document.querySelectorAll('[data-stock-mode-select]').forEach((select) => {

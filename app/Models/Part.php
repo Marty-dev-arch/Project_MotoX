@@ -10,6 +10,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Support\InventoryUnits;
 
 // Purpose: Represents inventory parts, stock, pricing, and relationships.
 #[Fillable([
@@ -59,6 +60,27 @@ class Part extends Model
 
                 return (float) ($attributes['current_stock'] ?? 0);
             },
+        );
+    }
+
+    /**
+     * Get the count of physical containers present.
+     * This stays at '1' even if pieces are deducted, until pieces reach 0.
+     */
+    protected function currentBoxes(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => InventoryUnits::boxCount($this, (float) $this->current_stock),
+        );
+    }
+
+    /**
+     * Get the loose pieces remaining in the currently open box.
+     */
+    protected function currentPieces(): Attribute
+    {
+        return Attribute::make(
+            get: fn () => InventoryUnits::remainingPieces($this, (float) $this->current_stock),
         );
     }
 
